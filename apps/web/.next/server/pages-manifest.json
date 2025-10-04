@@ -1,0 +1,10 @@
+{
+  "/_app": "pages/_app.js",
+  "/_error": "pages/_error.js",
+  "/_document": "pages/_document.js",
+  "/basket": "pages/basket.js",
+  "/daily": "pages/daily.js",
+  "/gap-fill": "pages/gap-fill.js",
+  "/api/reco/daily-outfits": "pages/api/reco/daily-outfits.js",
+  "/api/reco/basket-mixmatch": "pages/api/reco/basket-mixmatch.js"
+}
