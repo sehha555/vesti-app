@@ -1,1 +1,113 @@
-Too many parameters - 3
+C:\Users\a6050\OneDrive\桌面\style\
+├───.github\
+│   └───workflows\
+├───apps\
+│   ├───admin\
+│   ├───mobile\
+│   └───web\
+│       ├───lib\
+│       │   └───api.ts
+│       ├───pages\
+│       │   ├───api\
+│       │   │   └───reco\
+│       │   ├───basket\
+│       │   │   └───index.tsx
+│       │   ├───cart\
+│       │   │   └───index.tsx
+│       │   ├───daily\
+│       │   │   └───index.tsx
+│       │   └───gap-fill\
+│       │       └───index.tsx
+│       ├───next-env.d.ts
+│       └───tsconfig.json
+├───docs\
+│   ├───adr\
+│   ├───api\
+│   ├───evals\
+│   │   └───metrics.md
+│   ├───reco\
+│   │   ├───compatibility.md
+│   │   ├───preference-loop.md
+│   │   └───sequential.md
+│   ├───vibe\
+│   │   └───guide.md
+│   ├───architecture.md
+│   ├───git-github-guide.md
+│   └───milestone-mvp.md
+├───infra\
+│   ├───ci\
+│   ├───k8s\
+│   ├───terraform\
+│   └───docker-compose.yml
+├───packages\
+│   ├───config\
+│   ├───prompts\
+│   │   ├───src\
+│   │   │   └───vqa-prompts.ts
+│   │   └───vqa_outfit_keywords.md
+│   ├───types\
+│   │   ├───src\
+│   │   │   ├───basket.ts
+│   │   │   ├───cart.ts
+│   │   │   ├───daily.ts
+│   │   │   ├───gap.ts
+│   │   │   ├───outfit.ts
+│   │   │   ├───payments.ts
+│   │   │   ├───persistence.ts
+│   │   │   ├───reco.ts
+│   │   │   ├───tryon.ts
+│   │   │   ├───wardrobe.ts
+│   │   │   └───weather.ts
+│   │   └───reco.ts
+│   └───ui\
+├───scripts\
+│   ├───dev.sh
+│   ├───eval.sh
+│   ├───seed.sh
+│   └───smoke.sh
+├───services\
+│   ├───api-gateway\
+│   │   └───index.ts
+│   ├───auth\
+│   ├───cart-payments\
+│   │   ├───payments\
+│   │   │   └───mock.ts
+│   │   └───index.ts
+│   ├───catalog\
+│   │   └───index.ts
+│   ├───notifications\
+│   ├───reco\
+│   │   ├───evals\
+│   │   │   ├───datasets\
+│   │   │   └───offline_metrics\
+│   │   ├───modules\
+│   │   │   ├───compatibility\
+│   │   │   ├───image_features\
+│   │   │   ├───preference\
+│   │   │   ├───retrieval\
+│   │   │   ├───scoring\
+│   │   │   └───seq_memory\
+│   │   ├───persistence\
+│   │   │   ├───inMemoryAdapter.ts
+│   │   │   └───interface.ts
+│   │   └───pipelines\
+│   │       ├───basket_mixmatch\
+│   │       ├───closet_gap_fill\
+│   │       ├───daily_outfits\
+│   │       └───events\
+│   ├───tryon\
+│   │   └───index.ts
+│   ├───wardrobe\
+│   │   ├───modules\
+│   │   └───workers\
+│   └───weather\
+│       └───weather.service.ts
+├───.gitignore
+├───eslint.config.js
+├───jest.config.cjs
+├───jest.setup.js
+├───package-lock.json
+├───package.json
+├───project-structure.txt
+├───README.md
+└───tsconfig.json

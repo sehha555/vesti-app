@@ -1,12 +1,12 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, vi } from 'vitest';
 import httpMocks from 'node-mocks-http';
 import eventLoggerHandler from './route';
 import { preferenceLogger } from '../../modules/preference/logger';
 
 // Mock the preferenceLogger to avoid actual logging
-jest.mock('../../modules/preference/logger', () => ({
+vi.mock('../../modules/preference/logger', () => ({
   preferenceLogger: {
-    logEvent: jest.fn(),
+    logEvent: vi.fn(),
   },
 }));
 

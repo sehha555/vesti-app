@@ -1,10 +1,11 @@
 import { InMemoryAdapter } from './inMemoryAdapter';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock the uuid module
-jest.mock('uuid', () => {
+vi.mock('uuid', () => {
   let counter = 0;
   return {
-    v4: jest.fn(() => `mock-uuid-${++counter}`), // Provide a mock implementation for v4
+    v4: vi.fn(() => `mock-uuid-${++counter}`), // Provide a mock implementation for v4
   };
 });
 

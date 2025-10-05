@@ -1,24 +1,41 @@
-
 import { Injectable } from '@nestjs/common';
 import { WardrobeItem, Style } from '@/packages/types/src/wardrobe';
 import { DailyOutfitRequest, DailyOutfitRecommendation, DailyOutfitResponse } from '@/packages/types/src/daily';
 import { ItemsService } from '../../../wardrobe/modules/items/items.service';
-import { WeatherService } from '../../../weather/weather.service';
+import { getCurrentWeather } from '../../../weather/weather.service';
 import { weatherFitFilter, scoreOccasion, scoreCompatibility } from '../../modules/scoring/rules';
 import { generateOutfitCombinations } from '../../modules/retrieval/simple';
+import { Weather } from '../../../weather/weather.types';
+import { WeatherSummary } from '@/packages/types/src/weather';
 
 @Injectable()
 export class DailyOutfitsService {
   private readonly itemsService = new ItemsService();
-  private readonly weatherService = new WeatherService();
+
+  private toWeatherSummary(weather: Weather): WeatherSummary {
+    const conditionMap: { [key: string]: WeatherSummary['condition'] } = {
+      clear: 'sunny',
+      clouds: 'cloudy',
+      rain: 'rainy',
+      drizzle: 'rainy',
+      snow: 'snowy',
+    };
+
+    return {
+      temperature: weather.temperature,
+      condition: conditionMap[weather.condition] || 'sunny',
+      windSpeed: weather.windSpeed,
+    };
+  }
 
   async generate(request: DailyOutfitRequest): Promise<DailyOutfitResponse> {
     const { userId, latitude, longitude, occasion } = request;
 
     const wardrobe = await this.itemsService.findAll(userId);
-    const weather = await this.weatherService.getSummary(latitude, longitude);
+    const weather = await getCurrentWeather({ lat: latitude, lon: longitude });
+    const weatherSummary = this.toWeatherSummary(weather);
 
-    const weatherFilteredItems = weatherFitFilter(wardrobe, weather);
+    const weatherFilteredItems = weatherFitFilter(wardrobe, weatherSummary);
 
     const combinations = generateOutfitCombinations(weatherFilteredItems);
 

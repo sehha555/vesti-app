@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, jest, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { PreferencePersistence } from './persistence';
 import { PreferenceLogger } from './logger';
 import { InMemoryAdapter } from '../../persistence/inMemoryAdapter';
@@ -7,10 +7,10 @@ import { PersistenceAdapter } from '../../persistence/interface';
 import { PersistenceAPI } from './persistence.api'; // Import the new interface
 
 // Mock uuid globally for tests that might use it indirectly
-jest.mock('uuid', () => {
+vi.mock('uuid', () => {
   let counter = 0;
   return {
-    v4: jest.fn(() => `mock-uuid-${++counter}`),
+    v4: vi.fn(() => `mock-uuid-${++counter}`),
   };
 });
 
@@ -24,7 +24,7 @@ describe('PreferencePersistence', () => {
     // Clear the adapter before each test
     // Access private property for testing, or add a clear method to InMemoryAdapter
     (mockAdapter as any).data = new Map();
-    jest.clearAllMocks(); // Clear mocks for each test
+    vi.clearAllMocks(); // Clear mocks for each test
   });
 
   it('should save a user event', async () => {
@@ -56,13 +56,13 @@ describe('PreferencePersistence', () => {
 
 describe('PreferenceLogger', () => {
   let logger: PreferenceLogger;
-  let mockPersistenceInstance: jest.Mocked<PersistenceAPI>;
+  let mockPersistenceInstance: any;
 
   beforeEach(() => {
     mockPersistenceInstance = {
-      saveEvent: jest.fn(),
-      getEvents: jest.fn(),
-      getEventById: jest.fn(),
+      saveEvent: vi.fn(),
+      getEvents: vi.fn(),
+      getEventById: vi.fn(),
     };
     logger = new PreferenceLogger(mockPersistenceInstance);
   });

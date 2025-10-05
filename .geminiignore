@@ -1,0 +1,34 @@
+# 排除依賴與建置輸出
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+coverage/
+
+# 排除大型檔案
+public/images/
+public/uploads/
+*.jpg
+*.png
+*.gif
+*.mp4
+*.pdf
+*.zip
+
+# 排除日誌與快取
+*.log
+logs/
+.cache/
+.turbo/
+
+# 排除環境變數
+.env
+.env.*
+!.env.example
+
+# 排除IDE與Git
+.vscode/
+.idea/
+.git/
