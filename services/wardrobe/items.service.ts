@@ -1,20 +1,49 @@
 import crypto from 'crypto';
 import { WardrobeItem, CreateWardrobeItemDto } from '../../packages/types/src/wardrobe';
+import { WardrobePersistence } from './persistence';
 
 /**
  * WardrobeService 負責管理虛擬衣櫃中的衣物。
- * 使用一個簡單的 in-memory Map 來儲存資料。
+ * It uses an in-memory Map for fast access and a persistence layer to save data.
  */
 export class WardrobeService {
   private items: Map<string, WardrobeItem> = new Map();
+  private persistence: WardrobePersistence;
 
   /**
-   * 新增一件衣物到使用者的衣櫃。
+   * @param persistence - An instance of WardrobePersistence for data storage.
+   */
+  constructor(persistence: WardrobePersistence) {
+    this.persistence = persistence;
+  }
+
+  /**
+   * Initializes the service by loading items from the persistence layer.
+   */
+  async initialize(): Promise<void> {
+    const loadedItems = await this.persistence.loadItems();
+    this.items = new Map(loadedItems.map(item => {
+      if (typeof item.createdAt === 'string') {
+        item.createdAt = new Date(item.createdAt);
+      }
+      return [item.id, item];
+    }));
+  }
+
+  /**
+   * Persists the current state of the items map to the storage.
+   */
+  private async persist(): Promise<void> {
+    await this.persistence.saveItems(Array.from(this.items.values()));
+  }
+
+  /**
+   * 新增一件衣物到使用者的衣櫃並保存。
    * @param userId - 使用者 ID
    * @param dto - 建立衣物的資料傳輸物件
-   * @returns {WardrobeItem} 新建立的衣物物件
+   * @returns {Promise<WardrobeItem>} 新建立的衣物物件
    */
-  createItem(userId: string, dto: Omit<CreateWardrobeItemDto, 'userId'>): WardrobeItem {
+  async createItem(userId: string, dto: Omit<CreateWardrobeItemDto, 'userId'>): Promise<WardrobeItem> {
     const id = crypto.randomUUID();
     const newItem: WardrobeItem = {
       id,
@@ -24,6 +53,7 @@ export class WardrobeService {
       createdAt: new Date(),
     };
     this.items.set(id, newItem);
+    await this.persist();
     return newItem;
   }
 
@@ -46,21 +76,34 @@ export class WardrobeService {
   }
 
   /**
-   * 根據衣物 ID 刪除一件衣物。
+   * 根據衣物 ID 刪除一件衣物並保存。
    * @param itemId - 要刪除的衣物 ID
-   * @returns {boolean} 如果成功刪除則返回 true，否則返回 false
+   * @returns {Promise<boolean>} 如果成功刪除則返回 true，否則返回 false
    */
-  deleteItem(itemId: string): boolean {
-    return this.items.delete(itemId);
+  async deleteItem(itemId: string): Promise<boolean> {
+    const result = this.items.delete(itemId);
+    if (result) {
+      await this.persist();
+    }
+    return result;
   }
 
   /**
    * 清空所有衣物資料（主要用於測試）。
    */
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     this.items.clear();
+    await this.persist();
   }
 }
 
-// 匯出一個單例 (singleton) 實例，方便在不同地方共用
-export const wardrobeService = new WardrobeService();
+// Singleton factory to handle async initialization
+async function createWardrobeService(): Promise<WardrobeService> {
+  const persistence = new WardrobePersistence();
+  const service = new WardrobeService(persistence);
+  await service.initialize();
+  return service;
+}
+
+// Export a promise that resolves to the initialized service instance
+export const wardrobeServicePromise = createWardrobeService();
