@@ -1,4 +1,3 @@
-
 export enum Hue {
   RED = 'red',
   ORANGE = 'orange',
@@ -85,18 +84,18 @@ export interface ImageFeatures {
   occasion: Occasion;
 }
 
+// 根據需求更新的 WardrobeItem 介面
 export interface WardrobeItem {
   id: string;
   userId: string;
   name: string;
-  category: 'top' | 'bottom' | 'outerwear' | 'shoes' | 'accessory';
-  style: Style;
-  tags: string[];
+  type: 'top' | 'bottom' | 'outerwear' | 'shoes' | 'accessory';
   imageUrl: string;
-  features?: ImageFeatures;
+  colors: string[];
+  season: 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season';
+  purchased: boolean;
   createdAt: Date;
-  updatedAt: Date;
-  // New fields for daily outfits
-  seasonality?: 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season';
-  occasionSuitability?: string[]; // e.g., ['casual', 'work']
 }
+
+// 用於創建新衣物的 DTO (Data Transfer Object)
+export type CreateWardrobeItemDto = Omit<WardrobeItem, 'id' | 'createdAt'>;
