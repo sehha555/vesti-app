@@ -40,5 +40,6 @@
     "p-retry": "^7.0.0",
     "typescript-eslint": "^8.44.1",
     "uuid": "^13.0.0"
-  }
+  },
+  "packageManager": "npm@10.0.0"
 }

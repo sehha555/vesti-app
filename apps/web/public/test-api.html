@@ -1,0 +1,101 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wardrobe API 測試</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        button { margin: 10px 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #result { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 20px; white-space: pre-wrap; font-family: monospace; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🧥 Wardrobe API 測試工具</h1>
+    
+    <button onclick="testPOST()">1️⃣ 測試 POST</button>
+    <button onclick="testGET()">2️⃣ 測試 GET</button>
+    <button onclick="testDELETE()">3️⃣ 測試 DELETE</button>
+    <button onclick="testAll()">🚀 完整測試</button>
+    
+    <div id="result">等待測試...</div>
+
+    <script>
+        let lastItemId = null;
+
+        async function testPOST() {
+            const result = document.getElementById('result');
+            result.textContent = '正在測試 POST API...';
+            
+            try {
+                const response = await fetch('/api/wardrobe/items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: "test-user-1",
+                        name: "測試藍色襯衫",
+                        type: "top",
+                        colors: ["blue"],
+                        season: "spring",
+                        imageUrl: "https://example.com/shirt.jpg",
+                        purchased: true
+                    })
+                });
+                
+                const data = await response.json();
+                lastItemId = data.id;
+                result.innerHTML = '<span class="success">✅ POST 成功！</span>\nStatus: ' + response.status + '\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.innerHTML = '<span class="error">❌ POST 失敗：' + error.message + '</span>';
+            }
+        }
+
+        async function testGET() {
+            const result = document.getElementById('result');
+            result.textContent = '正在測試 GET API...';
+            
+            try {
+                const response = await fetch('/api/wardrobe/items?userId=test-user-1');
+                const data = await response.json();
+                result.innerHTML = '<span class="success">✅ GET 成功！</span>\nStatus: ' + response.status + '\n找到 ' + data.length + ' 件衣物：\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.innerHTML = '<span class="error">❌ GET 失敗：' + error.message + '</span>';
+            }
+        }
+
+        async function testDELETE() {
+            const result = document.getElementById('result');
+            
+            if (!lastItemId) {
+                result.innerHTML = '<span class="error">⚠️ 請先執行 POST 測試以取得 ID</span>';
+                return;
+            }
+            
+            result.textContent = '正在刪除 ID: ' + lastItemId + '...';
+            
+            try {
+                const response = await fetch('/api/wardrobe/items/' + lastItemId, {
+                    method: 'DELETE'
+                });
+                
+                result.innerHTML = '<span class="success">✅ DELETE 成功！</span>\nStatus: ' + response.status + '\nID: ' + lastItemId;
+                lastItemId = null;
+            } catch (error) {
+                result.innerHTML = '<span class="error">❌ DELETE 失敗：' + error.message + '</span>';
+            }
+        }
+
+        async function testAll() {
+            await testPOST();
+            await new Promise(r => setTimeout(r, 1000));
+            await testGET();
+            await new Promise(r => setTimeout(r, 1000));
+            await testDELETE();
+            await new Promise(r => setTimeout(r, 1000));
+            await testGET();
+        }
+    </script>
+</body>
+</html>
