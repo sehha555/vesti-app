@@ -15,7 +15,7 @@ export default async function handler(
 ) {
   switch (req.method) {
     case 'GET':
-      const { userId, season, tag } = req.query;
+      const { userId, season, tag, purchased } = req.query;
 
       if (!userId || typeof userId !== 'string') {
         return res.status(400).json({ error: '缺少或無效的 userId' });
@@ -42,6 +42,12 @@ export default async function handler(
         // If a tag is also provided, filter the already-filtered list
         if (tag && typeof tag === 'string') {
           items = items.filter(item => item.tags?.includes(tag));
+        }
+
+        // Add purchased status filter
+        if (purchased !== undefined && (purchased === 'true' || purchased === 'false')) {
+          const isPurchased = purchased === 'true';
+          items = items.filter(item => item.purchased === isPurchased);
         }
         
         return res.status(200).json(items);

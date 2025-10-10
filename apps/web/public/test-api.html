@@ -63,6 +63,16 @@
       <p class="note">此區塊的測試會使用獨立的 Item ID。</p>
   </div>
 
+  <div class="test-section">
+      <h2>🛒 購買狀態測試</h2>
+      <button id="btn-purchased-seed">1. 新增已購買和 Wishlist 衣物</button>
+      <br>
+      <button id="btn-purchased-filter-true">查詢已購買</button>
+      <button id="btn-purchased-filter-false">查詢 Wishlist</button>
+      <button id="btn-purchased-combo-season">組合查詢 (春季已購買)</button>
+      <button id="btn-purchased-combo-tag">組合查詢 (有'最愛'標籤的 Wishlist)</button>
+  </div>
+
   <h2>測試結果</h2>
   <pre id="result">點擊按鈕以開始測試...</pre>
 
@@ -100,6 +110,21 @@
         console.error('API Error:', err);
         throw err;
       }
+    }
+
+    // --- Refactored Filter Function ---
+    async function getFilteredItems(title, params = {}) {
+        const query = new URLSearchParams({ userId });
+        if (params.season) query.set('season', params.season);
+        if (params.tag) query.set('tag', params.tag);
+        if (params.purchased !== undefined) query.set('purchased', params.purchased);
+        
+        try {
+            const result = await apiFetch(`/api/wardrobe/items?${query.toString()}`);
+            logResult(title, result, true);
+        } catch (err) {
+            logResult(`${title} - 失敗`, err, false);
+        }
     }
 
     // --- Test Functions (Original) ---
@@ -148,26 +173,12 @@
             logResult('季節衣物新增成功', results, true);
         } catch (err) { logResult('季節衣物新增失敗', err, false); }
     }
-    async function getFilteredItems(season, title, tag) {
-        let url = `/api/wardrobe/items?userId=${userId}`;
-        if (season) { url += `&season=${season}`; }
-        if (tag) { url += `&tag=${tag}`; }
-        try {
-            const result = await apiFetch(url);
-            logResult(title, result, true);
-        } catch (err) { logResult(`${title} - 失敗`, err, false); }
-    }
     async function testInvalidSeason() {
         const title = '測試無效季節參數';
         try {
-            // We call apiFetch directly to catch the expected error
             await apiFetch(`/api/wardrobe/items?userId=${userId}&season=invalidseason`);
         } catch (err) {
-            if (err.status === 400) {
-                logResult(title + ' (成功攔截錯誤)', err, true);
-            } else {
-                logResult(title + ' (未攔截到預期錯誤)', err, false);
-            }
+            if (err.status === 400) { logResult(title + ' (成功攔截錯誤)', err, true); } else { logResult(title + ' (未攔截到預期錯誤)', err, false); }
         }
     }
 
@@ -210,6 +221,21 @@
         }
     }
 
+    // --- Test Functions (Purchase Status) ---
+    async function seedPurchaseStatusItems() {
+        const purchasedItem = { userId, name: '黑色西裝外套', type: 'top', season: 'spring', purchased: true, imageUrl: 'img.jpg', colors:['black'] };
+        const wishlistItem = { userId, name: '夢想中的皮衣', type: 'outerwear', season: 'fall', purchased: false, tags: ['最愛'], imageUrl: 'img.jpg', colors:['brown'] };
+        try {
+            const results = await Promise.all([
+                apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(purchasedItem) }),
+                apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(wishlistItem) })
+            ]);
+            logResult('購買狀態衣物新增成功', results, true);
+        } catch (err) {
+            logResult('購買狀態衣物新增失敗', err, false);
+        }
+    }
+
     // --- Event Listeners ---
     document.getElementById('btn-create').addEventListener('click', createItem);
     document.getElementById('btn-get-before').addEventListener('click', () => getItem(currentItemId, '2. 更新前'));
@@ -220,11 +246,11 @@
 
     // Season filtering listeners
     document.getElementById('btn-seed-seasons').addEventListener('click', seedSeasonItems);
-    document.getElementById('btn-filter-spring').addEventListener('click', () => getFilteredItems('spring', '查詢春季衣物'));
-    document.getElementById('btn-filter-summer').addEventListener('click', () => getFilteredItems('summer', '查詢夏季衣物'));
-    document.getElementById('btn-filter-fall').addEventListener('click', () => getFilteredItems('fall', '查詢秋季衣物'));
-    document.getElementById('btn-filter-winter').addEventListener('click', () => getFilteredItems('winter', '查詢冬季衣物'));
-    document.getElementById('btn-filter-all').addEventListener('click', () => getFilteredItems(null, '查詢所有衣物'));
+    document.getElementById('btn-filter-spring').addEventListener('click', () => getFilteredItems('查詢春季衣物', { season: 'spring' }));
+    document.getElementById('btn-filter-summer').addEventListener('click', () => getFilteredItems('查詢夏季衣物', { season: 'summer' }));
+    document.getElementById('btn-filter-fall').addEventListener('click', () => getFilteredItems('查詢秋季衣物', { season: 'fall' }));
+    document.getElementById('btn-filter-winter').addEventListener('click', () => getFilteredItems('查詢冬季衣物', { season: 'winter' }));
+    document.getElementById('btn-filter-all').addEventListener('click', () => getFilteredItems('查詢所有衣物'));
     document.getElementById('btn-filter-invalid').addEventListener('click', testInvalidSeason);
 
     // Tag system listeners
@@ -232,9 +258,16 @@
     document.getElementById('btn-tags-add').addEventListener('click', addTag);
     document.getElementById('btn-tags-remove').addEventListener('click', removeTag);
     document.getElementById('btn-tags-get-all').addEventListener('click', getAllUserTags);
-    document.getElementById('btn-tags-filter-tag').addEventListener('click', () => getFilteredItems(null, '5. 依標籤過濾', '最愛'));
-    document.getElementById('btn-tags-filter-combo').addEventListener('click', () => getFilteredItems('spring', '6. 季節+標籤組合過濾', '最愛'));
+    document.getElementById('btn-tags-filter-tag').addEventListener('click', () => getFilteredItems('5. 依標籤過濾', { tag: '最愛' }));
+    document.getElementById('btn-tags-filter-combo').addEventListener('click', () => getFilteredItems('6. 季節+標籤組合過濾', { season: 'spring', tag: '最愛' }));
     document.getElementById('btn-tags-action-invalid').addEventListener('click', testInvalidAction);
+
+    // Purchase status listeners
+    document.getElementById('btn-purchased-seed').addEventListener('click', seedPurchaseStatusItems);
+    document.getElementById('btn-purchased-filter-true').addEventListener('click', () => getFilteredItems('查詢已購買', { purchased: 'true' }));
+    document.getElementById('btn-purchased-filter-false').addEventListener('click', () => getFilteredItems('查詢 Wishlist', { purchased: 'false' }));
+    document.getElementById('btn-purchased-combo-season').addEventListener('click', () => getFilteredItems('組合查詢 (春季已購買)', { season: 'spring', purchased: 'true' }));
+    document.getElementById('btn-purchased-combo-tag').addEventListener('click', () => getFilteredItems('組合查詢 (有\'最愛\'標籤的 Wishlist)', { tag: '最愛', purchased: 'false' }));
 
   </script>
 </body>
