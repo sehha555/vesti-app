@@ -1,101 +1,174 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wardrobe API 測試</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-        button { margin: 10px 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
-        #result { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 20px; white-space: pre-wrap; font-family: monospace; }
-        .success { color: green; }
-        .error { color: red; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>衣櫃 API 測試工具</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; }
+    h1, h2 { color: #333; }
+    .test-section { background-color: #fff; border: 1px solid #ddd; padding: 1em; margin-bottom: 1em; border-radius: 8px; }
+    button { padding: 10px 15px; font-size: 14px; margin: 5px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background-color: #e9e9e9; }
+    button:hover { background-color: #ddd; }
+    pre { padding: 1em; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; }
+    .success { background-color: #e8f5e9; border-left: 5px solid #4caf50; }
+    .error { background-color: #ffebee; border-left: 5px solid #f44336; }
+    #result { margin-top: 1em; }
+    .note { font-size: 0.9em; color: #666; margin-top: 10px;}
+  </style>
 </head>
 <body>
-    <h1>🧥 Wardrobe API 測試工具</h1>
-    
-    <button onclick="testPOST()">1️⃣ 測試 POST</button>
-    <button onclick="testGET()">2️⃣ 測試 GET</button>
-    <button onclick="testDELETE()">3️⃣ 測試 DELETE</button>
-    <button onclick="testAll()">🚀 完整測試</button>
-    
-    <div id="result">等待測試...</div>
 
-    <script>
-        let lastItemId = null;
+  <h1>衣櫃 API 測試工具</h1>
 
-        async function testPOST() {
-            const result = document.getElementById('result');
-            result.textContent = '正在測試 POST API...';
-            
-            try {
-                const response = await fetch('/api/wardrobe/items', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: "test-user-1",
-                        name: "測試藍色襯衫",
-                        type: "top",
-                        colors: ["blue"],
-                        season: "spring",
-                        imageUrl: "https://example.com/shirt.jpg",
-                        purchased: true
-                    })
-                });
-                
-                const data = await response.json();
-                lastItemId = data.id;
-                result.innerHTML = '<span class="success">✅ POST 成功！</span>\nStatus: ' + response.status + '\n' + JSON.stringify(data, null, 2);
-            } catch (error) {
-                result.innerHTML = '<span class="error">❌ POST 失敗：' + error.message + '</span>';
+  <div class="test-section">
+    <h2>正常更新流程 (Happy Path)</h2>
+    <p>依序點擊按鈕來測試完整的建立、讀取、更新、再讀取流程。</p>
+    <button id="btn-create">1. 新增測試衣物 (POST)</button>
+    <button id="btn-get-before">2. 取得更新前資料 (GET)</button>
+    <button id="btn-update">3. 更新衣物名稱 (PUT)</button>
+    <button id="btn-get-after">4. 取得更新後資料 (GET)</button>
+    <p class="note">將使用固定的 UserID: 'test-user-001'。新增的物品 ID 會被暫存以供後續步驟使用。</p>
+  </div>
+
+  <div class="test-section">
+    <h2>錯誤處理測試 (Error Cases)</h2>
+    <button id="btn-update-404">測試更新不存在的 ID (應回傳 404)</button>
+    <button id="btn-update-400">測試缺少 userId 的請求 (應回傳 400)</button>
+  </div>
+
+  <h2>測試結果</h2>
+  <pre id="result">點擊按鈕以開始測試...</pre>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    const userId = 'test-user-001';
+    let currentItemId = null;
+
+    // --- Helper Functions ---
+    function logResult(title, data, success) {
+      resultEl.innerHTML = `<h3>${title}</h3>${JSON.stringify(data, null, 2)}`;
+      resultEl.className = success ? 'success' : 'error';
+    }
+
+    async function apiFetch(url, options = {}) {
+      try {
+        const response = await fetch(url, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options,
+        });
+        const data = response.status === 204 ? null : await response.json();
+        if (!response.ok) {
+          throw { status: response.status, data };
+        }
+        return data;
+      } catch (err) {
+        console.error('API Error:', err);
+        throw err;
+      }
+    }
+
+    // --- Test Functions ---
+    async function createItem() {
+      try {
+        const newItemDto = {
+          userId,
+          name: '復古牛仔夾克',
+          type: 'outerwear',
+          imageUrl: 'http://example.com/image.jpg',
+          colors: ['blue'],
+          season: 'all-season',
+          purchased: true,
+        };
+        // **注意**: 根據您的 API 路由, 建立項目的端點是 /api/wardrobe/items
+        const result = await apiFetch('/api/wardrobe/items', {
+          method: 'POST',
+          body: JSON.stringify(newItemDto),
+        });
+        currentItemId = result.id;
+        logResult('1. 新增衣物成功', { ...result, note: `已儲存 ID: ${currentItemId}` }, true);
+      } catch (err) {
+        logResult('1. 新增衣物失敗', err, false);
+      }
+    }
+
+    async function getItem(id, step) {
+      if (!id) {
+        logResult(`${step}. 取得資料失敗`, { error: "尚未建立衣物，請先點擊步驟 1" }, false);
+        return;
+      }
+      try {
+        const result = await apiFetch(`/api/wardrobe/items/${id}`);
+        logResult(`${step}. 取得資料成功`, result, true);
+        return result;
+      } catch (err) {
+        logResult(`${step}. 取得資料失敗`, err, false);
+      }
+    }
+
+    async function updateItem() {
+      if (!currentItemId) {
+        logResult('3. 更新失敗', { error: "尚未建立衣物，請先點擊步驟 1" }, false);
+        return;
+      }
+      try {
+        const updateDto = {
+          userId,
+          name: '摩登皮夾克 (已更新)',
+          colors: ['black'],
+        };
+        const result = await apiFetch(`/api/wardrobe/items/${currentItemId}`, {
+          method: 'PUT',
+          body: JSON.stringify(updateDto),
+        });
+        logResult('3. 更新成功', result, true);
+      } catch (err) {
+        logResult('3. 更新失敗', err, false);
+      }
+    }
+
+    async function test404() {
+      try {
+        await apiFetch('/api/wardrobe/items/non-existent-id-12345', {
+          method: 'PUT',
+          body: JSON.stringify({ userId, name: 'test' })
+        });
+      } catch (err) {
+        if (err.status === 404) {
+          logResult('404 測試成功', err, true);
+        } else {
+          logResult('404 測試失敗', err, false);
+        }
+      }
+    }
+
+    async function test400() {
+        if (!currentItemId) {
+            logResult('400 測試失敗', { error: "尚未建立衣物，請先點擊步驟 1" }, false);
+            return;
+        }
+        try {
+            await apiFetch(`/api/wardrobe/items/${currentItemId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ name: 'a new name without userId' })
+            });
+        } catch (err) {
+            if (err.status === 400) {
+                logResult('400 測試成功', err, true);
+            } else {
+                logResult('400 測試失敗', err, false);
             }
         }
+    }
 
-        async function testGET() {
-            const result = document.getElementById('result');
-            result.textContent = '正在測試 GET API...';
-            
-            try {
-                const response = await fetch('/api/wardrobe/items?userId=test-user-1');
-                const data = await response.json();
-                result.innerHTML = '<span class="success">✅ GET 成功！</span>\nStatus: ' + response.status + '\n找到 ' + data.length + ' 件衣物：\n' + JSON.stringify(data, null, 2);
-            } catch (error) {
-                result.innerHTML = '<span class="error">❌ GET 失敗：' + error.message + '</span>';
-            }
-        }
+    // --- Event Listeners ---
+    document.getElementById('btn-create').addEventListener('click', createItem);
+    document.getElementById('btn-get-before').addEventListener('click', () => getItem(currentItemId, '2. 更新前'));
+    document.getElementById('btn-update').addEventListener('click', updateItem);
+    document.getElementById('btn-get-after').addEventListener('click', () => getItem(currentItemId, '4. 更新後'));
+    document.getElementById('btn-update-404').addEventListener('click', test404);
+    document.getElementById('btn-update-400').addEventListener('click', test400);
 
-        async function testDELETE() {
-            const result = document.getElementById('result');
-            
-            if (!lastItemId) {
-                result.innerHTML = '<span class="error">⚠️ 請先執行 POST 測試以取得 ID</span>';
-                return;
-            }
-            
-            result.textContent = '正在刪除 ID: ' + lastItemId + '...';
-            
-            try {
-                const response = await fetch('/api/wardrobe/items/' + lastItemId, {
-                    method: 'DELETE'
-                });
-                
-                result.innerHTML = '<span class="success">✅ DELETE 成功！</span>\nStatus: ' + response.status + '\nID: ' + lastItemId;
-                lastItemId = null;
-            } catch (error) {
-                result.innerHTML = '<span class="error">❌ DELETE 失敗：' + error.message + '</span>';
-            }
-        }
-
-        async function testAll() {
-            await testPOST();
-            await new Promise(r => setTimeout(r, 1000));
-            await testGET();
-            await new Promise(r => setTimeout(r, 1000));
-            await testDELETE();
-            await new Promise(r => setTimeout(r, 1000));
-            await testGET();
-        }
-    </script>
+  </script>
 </body>
 </html>
