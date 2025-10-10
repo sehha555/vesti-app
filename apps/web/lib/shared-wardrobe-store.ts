@@ -47,3 +47,24 @@ export function updateItem(userId: string, itemId: string, updatedData: UpdateWa
   inMemoryWardrobeItems.set(itemId, updatedItem);
   return updatedItem;
 }
+
+/**
+ * Retrieves items for a user, filtered by a specific season.
+ * Also includes items marked as 'all-season'.
+ * @param userId - The ID of the user.
+ * @param season - The season to filter by (e.g., 'summer', 'winter'). If omitted, all items for the user are returned.
+ * @returns An array of wardrobe items matching the criteria.
+ */
+export function getItemsBySeason(userId: string, season?: 'spring' | 'summer' | 'autumn' | 'winter'): WardrobeItem[] {
+  const userItems = Array.from(inMemoryWardrobeItems.values()).filter(
+    (item) => item.userId === userId
+  );
+
+  if (!season) {
+    return userItems; // No season specified, return all user's items
+  }
+
+  return userItems.filter(
+    (item) => item.season === season || item.season === 'all-season'
+  );
+}
