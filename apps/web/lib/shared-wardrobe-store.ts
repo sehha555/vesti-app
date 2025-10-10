@@ -68,3 +68,83 @@ export function getItemsBySeason(userId: string, season?: 'spring' | 'summer' | 
     (item) => item.season === season || item.season === 'all-season'
   );
 }
+
+// --- Tag Management Functions ---
+
+/**
+ * Retrieves items for a user that include a specific tag.
+ * @param userId - The ID of the user.
+ * @param tag - The tag to filter by.
+ * @returns An array of wardrobe items that have the specified tag.
+ */
+export function getItemsByTag(userId: string, tag: string): WardrobeItem[] {
+  if (!tag) return [];
+  const userItems = Array.from(inMemoryWardrobeItems.values()).filter(
+    (item) => item.userId === userId
+  );
+  return userItems.filter((item) => item.tags?.includes(tag));
+}
+
+/**
+ * Retrieves all unique tags used by a specific user.
+ * @param userId - The ID of the user.
+ * @returns An array of unique tags.
+ */
+export function getUserTags(userId: string): string[] {
+  const userItems = Array.from(inMemoryWardrobeItems.values()).filter(
+    (item) => item.userId === userId
+  );
+  const allTags = userItems.flatMap((item) => item.tags || []);
+  return [...new Set(allTags)];
+}
+
+/**
+ * Adds a tag to a specific wardrobe item.
+ * @param userId - The ID of the user who owns the item.
+ * @param itemId - The ID of the item to add the tag to.
+ * @param tag - The tag to add.
+ * @returns The updated wardrobe item, or null if not found.
+ */
+export function addTagToItem(userId: string, itemId: string, tag: string): WardrobeItem | null {
+  const item = inMemoryWardrobeItems.get(itemId);
+  if (!item || item.userId !== userId) return null;
+
+  const tags = item.tags || [];
+  if (tags.includes(tag)) {
+    return item; // Tag already exists, no changes needed
+  }
+
+  const updatedItem: WardrobeItem = {
+    ...item,
+    tags: [...tags, tag],
+    updatedAt: new Date(),
+  };
+
+  inMemoryWardrobeItems.set(itemId, updatedItem);
+  return updatedItem;
+}
+
+/**
+ * Removes a tag from a specific wardrobe item.
+ * @param userId - The ID of the user who owns the item.
+ * @param itemId - The ID of the item to remove the tag from.
+ * @param tag - The tag to remove.
+ * @returns The updated wardrobe item, or null if not found.
+ */
+export function removeTagFromItem(userId: string, itemId: string, tag: string): WardrobeItem | null {
+  const item = inMemoryWardrobeItems.get(itemId);
+  if (!item || item.userId !== userId) return null;
+
+  if (!item.tags || !item.tags.includes(tag)) {
+    return item; // Tag doesn't exist, no changes needed
+  }
+
+  const updatedItem: WardrobeItem = {
+    ...item,
+    tags: item.tags.filter((t) => t !== tag),
+    updatedAt: new Date(),
+  };
+
+  inMemoryWardrobeItems.set(itemId, updatedItem);
+  return updatedItem;
+}

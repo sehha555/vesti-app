@@ -43,11 +43,24 @@
     <br>
     <button id="btn-filter-spring">測試春季 (spring)</button>
     <button id="btn-filter-summer">測試夏季 (summer)</button>
-    <button id="btn-filter-autumn">測試秋季 (autumn)</button>
+    <button id="btn-filter-fall">測試秋季 (fall)</button>
     <button id="btn-filter-winter">測試冬季 (winter)</button>
     <br>
     <button id="btn-filter-all">測試不過濾 (應回傳所有)</button>
     <button id="btn-filter-invalid">測試無效季節 (應回傳 400)</button>
+  </div>
+
+  <div class="test-section">
+      <h2>🏷️ 標籤系統測試</h2>
+      <button id="btn-tags-create">1. 新增帶有標籤的衣物</button>
+      <button id="btn-tags-add">2. 為衣物新增標籤 ('運動風')</button>
+      <button id="btn-tags-remove">3. 為衣物移除標籤 ('約會穿')</button>
+      <button id="btn-tags-get-all">4. 取得使用者所有標籤</button>
+      <br>
+      <button id="btn-tags-filter-tag">5. 依標籤過濾 ('最愛')</button>
+      <button id="btn-tags-filter-combo">6. 季節+標籤組合過濾</button>
+      <button id="btn-tags-action-invalid">7. 測試無效 Action</button>
+      <p class="note">此區塊的測試會使用獨立的 Item ID。</p>
   </div>
 
   <h2>測試結果</h2>
@@ -57,13 +70,14 @@
     const resultEl = document.getElementById('result');
     const userId = 'test-user-001';
     let currentItemId = null;
+    let tagTestItemId = null; // Separate item ID for tag tests
 
     // --- Helper Functions ---
     function logResult(title, data, success) {
       let content = `<h3>${title}</h3>`;
       if (data) {
         if (Array.isArray(data)) {
-          content += `<p>找到 ${data.length} 件衣物。</p>`;
+          content += `<p>找到 ${data.length} 件項目。</p>`;
         }
         content += JSON.stringify(data, null, 2);
       }
@@ -91,139 +105,108 @@
     // --- Test Functions (Original) ---
     async function createItem() {
       try {
-        const newItemDto = {
-          userId,
-          name: '復古牛仔夾克',
-          type: 'outerwear',
-          imageUrl: 'http://example.com/image.jpg',
-          colors: ['blue'],
-          season: 'all-season',
-          purchased: true,
-        };
-        const result = await apiFetch('/api/wardrobe/items', {
-          method: 'POST',
-          body: JSON.stringify(newItemDto),
-        });
+        const newItemDto = { userId, name: '復古牛仔夾克', type: 'outerwear', imageUrl: 'http://example.com/image.jpg', colors: ['blue'], season: 'all-season', purchased: true };
+        const result = await apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(newItemDto) });
         currentItemId = result.id;
         logResult('1. 新增衣物成功', { ...result, note: `已儲存 ID: ${currentItemId}` }, true);
-      } catch (err) {
-        logResult('1. 新增衣物失敗', err, false);
-      }
+      } catch (err) { logResult('1. 新增衣物失敗', err, false); }
     }
-
     async function getItem(id, step) {
-      if (!id) {
-        logResult(`${step}. 取得資料失敗`, { error: "尚未建立衣物，請先點擊步驟 1" }, false);
-        return;
-      }
+      if (!id) { logResult(`${step}. 取得資料失敗`, { error: "尚未建立衣物" }, false); return; }
       try {
         const result = await apiFetch(`/api/wardrobe/items/${id}`);
         logResult(`${step}. 取得資料成功`, result, true);
         return result;
-      } catch (err) {
-        logResult(`${step}. 取得資料失敗`, err, false);
-      }
+      } catch (err) { logResult(`${step}. 取得資料失敗`, err, false); }
     }
-
     async function updateItem() {
-      if (!currentItemId) {
-        logResult('3. 更新失敗', { error: "尚未建立衣物，請先點擊步驟 1" }, false);
-        return;
-      }
+      if (!currentItemId) { logResult('3. 更新失敗', { error: "尚未建立衣物" }, false); return; }
       try {
-        const updateDto = {
-          userId,
-          name: '摩登皮夾克 (已更新)',
-          colors: ['black'],
-        };
-        const result = await apiFetch(`/api/wardrobe/items/${currentItemId}`, {
-          method: 'PUT',
-          body: JSON.stringify(updateDto),
-        });
+        const updateDto = { userId, name: '摩登皮夾克 (已更新)', colors: ['black'] };
+        const result = await apiFetch(`/api/wardrobe/items/${currentItemId}`, { method: 'PUT', body: JSON.stringify(updateDto) });
         logResult('3. 更新成功', result, true);
-      } catch (err) {
-        logResult('3. 更新失敗', err, false);
-      }
+      } catch (err) { logResult('3. 更新失敗', err, false); }
     }
-
     async function test404() {
-      try {
-        await apiFetch('/api/wardrobe/items/non-existent-id-12345', {
-          method: 'PUT',
-          body: JSON.stringify({ userId, name: 'test' })
-        });
-      } catch (err) {
-        if (err.status === 404) {
-          logResult('404 測試成功', err, true);
-        } else {
-          logResult('404 測試失敗', err, false);
-        }
+      try { await apiFetch('/api/wardrobe/items/non-existent-id-12345', { method: 'PUT', body: JSON.stringify({ userId, name: 'test' }) }); } catch (err) {
+        if (err.status === 404) { logResult('404 測試成功', err, true); } else { logResult('404 測試失敗', err, false); }
       }
     }
-
     async function test400() {
-        if (!currentItemId) {
-            logResult('400 測試失敗', { error: "尚未建立衣物，請先點擊步驟 1" }, false);
-            return;
-        }
-        try {
-            await apiFetch(`/api/wardrobe/items/${currentItemId}`, {
-                method: 'PUT',
-                body: JSON.stringify({ name: 'a new name without userId' })
-            });
-        } catch (err) {
-            if (err.status === 400) {
-                logResult('400 測試成功', err, true);
-            } else {
-                logResult('400 測試失敗', err, false);
-            }
+        if (!currentItemId) { logResult('400 測試失敗', { error: "尚未建立衣物" }, false); return; }
+        try { await apiFetch(`/api/wardrobe/items/${currentItemId}`, { method: 'PUT', body: JSON.stringify({ name: 'a new name without userId' }) }); } catch (err) {
+            if (err.status === 400) { logResult('400 測試成功', err, true); } else { logResult('400 測試失敗', err, false); }
         }
     }
 
     // --- Test Functions (Season Filtering) ---
     async function seedSeasonItems() {
-        const itemsToCreate = [
-            { name: '春季薄衫', season: 'spring', type: 'top' },
-            { name: '夏季短褲', season: 'summer', type: 'bottom' },
-            { name: '秋季風衣', season: 'autumn', type: 'outerwear' }, // API 驗證的是 autumn
-            { name: '冬季毛衣', season: 'winter', type: 'top' },
-        ];
-
+        const itemsToCreate = [ { name: '春季薄衫', season: 'spring', type: 'top' }, { name: '夏季短褲', season: 'summer', type: 'bottom' }, { name: '秋季風衣', season: 'fall', type: 'outerwear' }, { name: '冬季毛衣', season: 'winter', type: 'top' } ];
         try {
-            const promises = itemsToCreate.map(item => apiFetch('/api/wardrobe/items', {
-                method: 'POST',
-                body: JSON.stringify({ ...item, userId, imageUrl: 'img.jpg', colors:['red'], purchased: false }),
-            }));
+            const promises = itemsToCreate.map(item => apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify({ ...item, userId, imageUrl: 'img.jpg', colors:['red'], purchased: false }) }));
             const results = await Promise.all(promises);
             logResult('季節衣物新增成功', results, true);
-        } catch (err) {
-            logResult('季節衣物新增失敗', err, false);
-        }
+        } catch (err) { logResult('季節衣物新增失敗', err, false); }
     }
-
-    async function getFilteredItems(season, title) {
+    async function getFilteredItems(season, title, tag) {
         let url = `/api/wardrobe/items?userId=${userId}`;
-        if (season) {
-            url += `&season=${season}`;
-        }
+        if (season) { url += `&season=${season}`; }
+        if (tag) { url += `&tag=${tag}`; }
         try {
             const result = await apiFetch(url);
             logResult(title, result, true);
-        } catch (err) {
-            logResult(`${title} - 失敗`, err, false);
-        }
+        } catch (err) { logResult(`${title} - 失敗`, err, false); }
     }
-
     async function testInvalidSeason() {
         const title = '測試無效季節參數';
         try {
-            await getFilteredItems('invalidseason', title);
+            // We call apiFetch directly to catch the expected error
+            await apiFetch(`/api/wardrobe/items?userId=${userId}&season=invalidseason`);
         } catch (err) {
             if (err.status === 400) {
                 logResult(title + ' (成功攔截錯誤)', err, true);
             } else {
                 logResult(title + ' (未攔截到預期錯誤)', err, false);
             }
+        }
+    }
+
+    // --- Test Functions (Tag System) ---
+    async function createItemWithTags() {
+        try {
+            const newItemDto = { userId, name: '白色襯衫', type: 'top', season: 'spring', tags: ['約會穿', '最愛'], imageUrl: 'img.jpg', colors:['white'], purchased: true };
+            const result = await apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(newItemDto) });
+            tagTestItemId = result.id;
+            logResult('1. 新增帶標籤衣物成功', { ...result, note: `已儲存 ID: ${tagTestItemId}` }, true);
+        } catch (err) { logResult('1. 新增帶標籤衣物失敗', err, false); }
+    }
+    async function addTag() {
+        if (!tagTestItemId) { logResult('新增標籤失敗', { error: "尚未建立標籤測試衣物" }, false); return; }
+        try {
+            const result = await apiFetch('/api/wardrobe/tags', { method: 'POST', body: JSON.stringify({ userId, itemId: tagTestItemId, tag: '運動風', action: 'add' }) });
+            logResult('2. 新增標籤成功', result, true);
+        } catch (err) { logResult('2. 新增標籤失敗', err, false); }
+    }
+    async function removeTag() {
+        if (!tagTestItemId) { logResult('移除標籤失敗', { error: "尚未建立標籤測試衣物" }, false); return; }
+        try {
+            const result = await apiFetch('/api/wardrobe/tags', { method: 'POST', body: JSON.stringify({ userId, itemId: tagTestItemId, tag: '約會穿', action: 'remove' }) });
+            logResult('3. 移除標籤成功', result, true);
+        } catch (err) { logResult('3. 移除標籤失敗', err, false); }
+    }
+    async function getAllUserTags() {
+        try {
+            const result = await apiFetch(`/api/wardrobe/tags?userId=${userId}`);
+            logResult('4. 取得所有標籤成功', result, true);
+        } catch (err) { logResult('4. 取得所有標籤失敗', err, false); }
+    }
+    async function testInvalidAction() {
+        if (!tagTestItemId) { logResult('無效 Action 測試失敗', { error: "尚未建立標籤測試衣物" }, false); return; }
+        const title = '7. 測試無效 Action';
+        try {
+            await apiFetch('/api/wardrobe/tags', { method: 'POST', body: JSON.stringify({ userId, itemId: tagTestItemId, tag: 'test', action: 'delete' }) });
+        } catch (err) {
+            if (err.status === 400) { logResult(title + ' (成功攔截錯誤)', err, true); } else { logResult(title + ' (未攔截到預期錯誤)', err, false); }
         }
     }
 
@@ -239,10 +222,19 @@
     document.getElementById('btn-seed-seasons').addEventListener('click', seedSeasonItems);
     document.getElementById('btn-filter-spring').addEventListener('click', () => getFilteredItems('spring', '查詢春季衣物'));
     document.getElementById('btn-filter-summer').addEventListener('click', () => getFilteredItems('summer', '查詢夏季衣物'));
-    document.getElementById('btn-filter-autumn').addEventListener('click', () => getFilteredItems('autumn', '查詢秋季衣物'));
+    document.getElementById('btn-filter-fall').addEventListener('click', () => getFilteredItems('fall', '查詢秋季衣物'));
     document.getElementById('btn-filter-winter').addEventListener('click', () => getFilteredItems('winter', '查詢冬季衣物'));
     document.getElementById('btn-filter-all').addEventListener('click', () => getFilteredItems(null, '查詢所有衣物'));
     document.getElementById('btn-filter-invalid').addEventListener('click', testInvalidSeason);
+
+    // Tag system listeners
+    document.getElementById('btn-tags-create').addEventListener('click', createItemWithTags);
+    document.getElementById('btn-tags-add').addEventListener('click', addTag);
+    document.getElementById('btn-tags-remove').addEventListener('click', removeTag);
+    document.getElementById('btn-tags-get-all').addEventListener('click', getAllUserTags);
+    document.getElementById('btn-tags-filter-tag').addEventListener('click', () => getFilteredItems(null, '5. 依標籤過濾', '最愛'));
+    document.getElementById('btn-tags-filter-combo').addEventListener('click', () => getFilteredItems('spring', '6. 季節+標籤組合過濾', '最愛'));
+    document.getElementById('btn-tags-action-invalid').addEventListener('click', testInvalidAction);
 
   </script>
 </body>

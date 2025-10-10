@@ -94,7 +94,10 @@ export interface WardrobeItem {
   colors: string[];
   season: 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season';
   purchased: boolean;
+  /** User-defined tags for custom categorization */
+  tags?: string[];
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 // 用於創建新衣物的 DTO (Data Transfer Object)
