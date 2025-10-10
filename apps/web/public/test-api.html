@@ -6,8 +6,9 @@
   <title>衣櫃 API 測試工具</title>
   <style>
     body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; }
-    h1, h2 { color: #333; }
+    h1, h2, h4 { color: #333; }
     .test-section { background-color: #fff; border: 1px solid #ddd; padding: 1em; margin-bottom: 1em; border-radius: 8px; }
+    .test-group { border-top: 1px solid #eee; margin-top: 1em; padding-top: 1em; }
     button { padding: 10px 15px; font-size: 14px; margin: 5px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background-color: #e9e9e9; }
     button:hover { background-color: #ddd; }
     pre { padding: 1em; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; }
@@ -73,6 +74,38 @@
       <button id="btn-purchased-combo-tag">組合查詢 (有'最愛'標籤的 Wishlist)</button>
   </div>
 
+  <div class="test-section">
+      <h2>👔 搭配組合測試</h2>
+      <div class="test-group">
+          <h4>1. 準備衣物</h4>
+          <button id="btn-outfit-prep-1">新增白色襯衫</button>
+          <button id="btn-outfit-prep-2">新增黑色西裝褲</button>
+          <button id="btn-outfit-prep-3">新增棕色皮鞋</button>
+          <p class="note">請先新增這三件衣物來準備建立搭配組合。</p>
+      </div>
+      <div class="test-group">
+          <h4>2. CRUD 測試</h4>
+          <button id="btn-outfit-crud-create">建立搭配</button>
+          <button id="btn-outfit-crud-get-all">查詢所有搭配</button>
+          <button id="btn-outfit-crud-get-one">查詢單一搭配</button>
+          <button id="btn-outfit-crud-update">更新搭配</button>
+          <button id="btn-outfit-crud-delete">刪除搭配</button>
+      </div>
+      <div class="test-group">
+          <h4>3. 過濾測試</h4>
+          <button id="btn-outfit-filter-seed">建立過濾用搭配</button>
+          <button id="btn-outfit-filter-season">依季節過濾 (spring)</button>
+          <button id="btn-outfit-filter-occasion">依場合過濾 (約會)</button>
+          <button id="btn-outfit-filter-tag">依標籤過濾 (浪漫)</button>
+      </div>
+      <div class="test-group">
+          <h4>4. 錯誤處理</h4>
+          <button id="btn-outfit-error-no-items">測試缺少 itemIds</button>
+          <button id="btn-outfit-error-season">測試無效 season</button>
+          <button id="btn-outfit-error-rating">測試無效 rating</button>
+      </div>
+  </div>
+
   <h2>測試結果</h2>
   <pre id="result">點擊按鈕以開始測試...</pre>
 
@@ -80,7 +113,9 @@
     const resultEl = document.getElementById('result');
     const userId = 'test-user-001';
     let currentItemId = null;
-    let tagTestItemId = null; // Separate item ID for tag tests
+    let tagTestItemId = null;
+    let testItemIds = [];
+    let testOutfitId = null;
 
     // --- Helper Functions ---
     function logResult(title, data, success) {
@@ -122,9 +157,7 @@
         try {
             const result = await apiFetch(`/api/wardrobe/items?${query.toString()}`);
             logResult(title, result, true);
-        } catch (err) {
-            logResult(`${title} - 失敗`, err, false);
-        }
+        } catch (err) { logResult(`${title} - 失敗`, err, false); }
     }
 
     // --- Test Functions (Original) ---
@@ -175,9 +208,7 @@
     }
     async function testInvalidSeason() {
         const title = '測試無效季節參數';
-        try {
-            await apiFetch(`/api/wardrobe/items?userId=${userId}&season=invalidseason`);
-        } catch (err) {
+        try { await apiFetch(`/api/wardrobe/items?userId=${userId}&season=invalidseason`); } catch (err) {
             if (err.status === 400) { logResult(title + ' (成功攔截錯誤)', err, true); } else { logResult(title + ' (未攔截到預期錯誤)', err, false); }
         }
     }
@@ -214,9 +245,7 @@
     async function testInvalidAction() {
         if (!tagTestItemId) { logResult('無效 Action 測試失敗', { error: "尚未建立標籤測試衣物" }, false); return; }
         const title = '7. 測試無效 Action';
-        try {
-            await apiFetch('/api/wardrobe/tags', { method: 'POST', body: JSON.stringify({ userId, itemId: tagTestItemId, tag: 'test', action: 'delete' }) });
-        } catch (err) {
+        try { await apiFetch('/api/wardrobe/tags', { method: 'POST', body: JSON.stringify({ userId, itemId: tagTestItemId, tag: 'test', action: 'delete' }) }); } catch (err) {
             if (err.status === 400) { logResult(title + ' (成功攔截錯誤)', err, true); } else { logResult(title + ' (未攔截到預期錯誤)', err, false); }
         }
     }
@@ -226,13 +255,83 @@
         const purchasedItem = { userId, name: '黑色西裝外套', type: 'top', season: 'spring', purchased: true, imageUrl: 'img.jpg', colors:['black'] };
         const wishlistItem = { userId, name: '夢想中的皮衣', type: 'outerwear', season: 'fall', purchased: false, tags: ['最愛'], imageUrl: 'img.jpg', colors:['brown'] };
         try {
-            const results = await Promise.all([
-                apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(purchasedItem) }),
-                apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(wishlistItem) })
-            ]);
+            const results = await Promise.all([ apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(purchasedItem) }), apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify(wishlistItem) }) ]);
             logResult('購買狀態衣物新增成功', results, true);
+        } catch (err) { logResult('購買狀態衣物新增失敗', err, false); }
+    }
+
+    // --- Test Functions (Outfit) ---
+    async function createTestWardrobeItem(dto, title) {
+        try {
+            const result = await apiFetch('/api/wardrobe/items', { method: 'POST', body: JSON.stringify({ ...dto, userId, imageUrl: 'img.jpg', colors:['default'], purchased: true }) });
+            testItemIds.push(result.id);
+            logResult(title, { ...result, note: `已儲存衣物 ID: ${result.id}。目前衣物數: ${testItemIds.length}` }, true);
+        } catch (err) { logResult(title, err, false); }
+    }
+    async function createTestOutfit() {
+        if (testItemIds.length < 3) { logResult('建立搭配失敗', { error: "請先新增 3 件準備衣物" }, false); return; }
+        try {
+            const dto = { userId, name: '商務會議穿搭', description: '正式場合專用', itemIds: testItemIds, occasion: '上班', tags: ['正式', '商務'] };
+            const result = await apiFetch('/api/outfits', { method: 'POST', body: JSON.stringify(dto) });
+            testOutfitId = result.id;
+            logResult('建立搭配成功', { ...result, note: `已儲存搭配 ID: ${testOutfitId}` }, true);
+        } catch (err) { logResult('建立搭配失敗', err, false); }
+    }
+    async function getAllTestOutfits() {
+        try {
+            const result = await apiFetch(`/api/outfits?userId=${userId}`);
+            logResult('查詢所有搭配成功', result, true);
+        } catch (err) { logResult('查詢所有搭配失敗', err, false); }
+    }
+    async function getSingleTestOutfit() {
+        if (!testOutfitId) { logResult('查詢單一搭配失敗', { error: "尚未建立搭配" }, false); return; }
+        try {
+            const result = await apiFetch(`/api/outfits/${testOutfitId}?userId=${userId}`);
+            logResult('查詢單一搭配成功', result, true);
+        } catch (err) { logResult('查詢單一搭配失敗', err, false); }
+    }
+    async function updateTestOutfit() {
+        if (!testOutfitId) { logResult('更新搭配失敗', { error: "尚未建立搭配" }, false); return; }
+        try {
+            const updates = { userId, name: '商務會議穿搭 (更新版)', tags: ['正式', '商務', '重要會議'], rating: 5 };
+            const result = await apiFetch(`/api/outfits/${testOutfitId}`, { method: 'PUT', body: JSON.stringify(updates) });
+            logResult('更新搭配成功', result, true);
+        } catch (err) { logResult('更新搭配失敗', err, false); }
+    }
+    async function deleteTestOutfit() {
+        if (!testOutfitId) { logResult('刪除搭配失敗', { error: "尚未建立搭配" }, false); return; }
+        try {
+            const result = await apiFetch(`/api/outfits/${testOutfitId}?userId=${userId}`, { method: 'DELETE' });
+            logResult('刪除搭配成功', result, true);
+            testOutfitId = null; // Clear the ID after deletion
+        } catch (err) { logResult('刪除搭配失敗', err, false); }
+    }
+    async function createFilterTestData() {
+        const outfit1 = { userId, name: '春季約會搭配', itemIds: [testItemIds[0] || 'item1'], season: 'spring', occasion: '約會', tags: ['浪漫'] };
+        const outfit2 = { userId, name: '夏季運動搭配', itemIds: [testItemIds[1] || 'item2'], season: 'summer', occasion: '運動', tags: ['休閒'] };
+        try {
+            const results = await Promise.all([
+                apiFetch('/api/outfits', { method: 'POST', body: JSON.stringify(outfit1) }),
+                apiFetch('/api/outfits', { method: 'POST', body: JSON.stringify(outfit2) })
+            ]);
+            logResult('建立過濾用搭配成功', results, true);
+        } catch (err) { logResult('建立過濾用搭配失敗', err, false); }
+    }
+    async function getFilteredOutfits(title, params = {}) {
+        const query = new URLSearchParams({ userId });
+        if (params.season) query.set('season', params.season);
+        if (params.tag) query.set('tag', params.tag);
+        if (params.occasion) query.set('occasion', params.occasion);
+        try {
+            const result = await apiFetch(`/api/outfits?${query.toString()}`);
+            logResult(title, result, true);
+        } catch (err) { logResult(`${title} - 失敗`, err, false); }
+    }
+    async function testOutfitError(title, dto) {
+        try {
+            await apiFetch('/api/outfits', { method: 'POST', body: JSON.stringify({ userId, name: '錯誤測試', ...dto }) });
         } catch (err) {
-            logResult('購買狀態衣物新增失敗', err, false);
+            if (err.status === 400) { logResult(title + ' (成功攔截錯誤)', err, true); } else { logResult(title + ' (未攔截到預期錯誤)', err, false); }
         }
     }
 
@@ -250,7 +349,7 @@
     document.getElementById('btn-filter-summer').addEventListener('click', () => getFilteredItems('查詢夏季衣物', { season: 'summer' }));
     document.getElementById('btn-filter-fall').addEventListener('click', () => getFilteredItems('查詢秋季衣物', { season: 'fall' }));
     document.getElementById('btn-filter-winter').addEventListener('click', () => getFilteredItems('查詢冬季衣物', { season: 'winter' }));
-    document.getElementById('btn-filter-all').addEventListener('click', () => getFilteredItems('查詢所有衣物'));
+    document.getElementById('btn-filter-all').addEventListener('click', () => getFilteredItems('查詢所有衣物', {}));
     document.getElementById('btn-filter-invalid').addEventListener('click', testInvalidSeason);
 
     // Tag system listeners
@@ -268,6 +367,23 @@
     document.getElementById('btn-purchased-filter-false').addEventListener('click', () => getFilteredItems('查詢 Wishlist', { purchased: 'false' }));
     document.getElementById('btn-purchased-combo-season').addEventListener('click', () => getFilteredItems('組合查詢 (春季已購買)', { season: 'spring', purchased: 'true' }));
     document.getElementById('btn-purchased-combo-tag').addEventListener('click', () => getFilteredItems('組合查詢 (有\'最愛\'標籤的 Wishlist)', { tag: '最愛', purchased: 'false' }));
+
+    // Outfit listeners
+    document.getElementById('btn-outfit-prep-1').addEventListener('click', () => createTestWardrobeItem({ name: '白色襯衫', type: 'top', season: 'all-season' }, '新增白色襯衫'));
+    document.getElementById('btn-outfit-prep-2').addEventListener('click', () => createTestWardrobeItem({ name: '黑色西裝褲', type: 'bottom', season: 'all-season' }, '新增黑色西裝褲'));
+    document.getElementById('btn-outfit-prep-3').addEventListener('click', () => createTestWardrobeItem({ name: '棕色皮鞋', type: 'shoes', season: 'all-season' }, '新增棕色皮鞋'));
+    document.getElementById('btn-outfit-crud-create').addEventListener('click', createTestOutfit);
+    document.getElementById('btn-outfit-crud-get-all').addEventListener('click', getAllTestOutfits);
+    document.getElementById('btn-outfit-crud-get-one').addEventListener('click', getSingleTestOutfit);
+    document.getElementById('btn-outfit-crud-update').addEventListener('click', updateTestOutfit);
+    document.getElementById('btn-outfit-crud-delete').addEventListener('click', deleteTestOutfit);
+    document.getElementById('btn-outfit-filter-seed').addEventListener('click', createFilterTestData);
+    document.getElementById('btn-outfit-filter-season').addEventListener('click', () => getFilteredOutfits('依季節過濾 (spring)', { season: 'spring' }));
+    document.getElementById('btn-outfit-filter-occasion').addEventListener('click', () => getFilteredOutfits('依場合過濾 (約會)', { occasion: '約會' }));
+    document.getElementById('btn-outfit-filter-tag').addEventListener('click', () => getFilteredOutfits('依標籤過濾 (浪漫)', { tag: '浪漫' }));
+    document.getElementById('btn-outfit-error-no-items').addEventListener('click', () => testOutfitError('測試缺少 itemIds', { itemIds: [] }));
+    document.getElementById('btn-outfit-error-season').addEventListener('click', () => testOutfitError('測試無效 season', { itemIds: ['item1'], season: 'rainy' }));
+    document.getElementById('btn-outfit-error-rating').addEventListener('click', () => testOutfitError('測試無效 rating', { itemIds: ['item1'], rating: 99 }));
 
   </script>
 </body>
