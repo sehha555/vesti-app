@@ -46,7 +46,16 @@
     <div class="test-group">
       <h3>2. 上傳結果</h3>
       <div id="uploadResult">尚未上傳</div>
-      <img id="uploadPreview" style="max-width: 300px; display: none; margin-top: 10px;">
+      <div id="imagePreviews" style="display: flex; gap: 20px; margin-top: 10px;">
+          <div id="originalContainer" style="display:none;">
+              <h4>原圖</h4>
+              <img id="uploadPreview" style="max-width: 300px; border: 1px solid #ccc;">
+          </div>
+          <div id="removedContainer" style="display:none;">
+              <h4>去背圖</h4>
+              <img id="removedBgPreview" style="max-width: 300px; border: 1px solid #ccc;">
+          </div>
+      </div>
     </div>
     <div class="test-group">
       <h3>3. 使用圖片新增衣物</h3>
@@ -366,29 +375,51 @@
           xhr.send(formData);
         });
         
-        // 計算上傳時間
-        const uploadTime = ((Date.now() - uploadStartTime) / 1000).toFixed(2);
-        
         // === 階段 3: 完成 ===
-        updateProgress(100, '✓ 上傳成功! (耗時 ' + uploadTime + ' 秒)');
+        updateProgress(100, '✓ 上傳成功!');
         
+        const data = result;
+        console.log('✅ API Response:', data);
+
         // 儲存 URL
-        uploadedImageUrl = result.url;
-        
+        uploadedImageUrl = data.originalUrl;
+
         // 顯示成功訊息
-        statusDiv.innerHTML = 
-          '<p style="color: green; font-weight: bold;">✓ 上傳成功!</p>' +
+        let successMessage = '<p style="color: green; font-weight: bold;">✓ 上傳成功!</p>' +
           '<p style="font-size: 12px;">壓縮: ' + originalSize + 'KB → ' + compressedSize + 'KB (減少 ' + reduction + '%)</p>' +
-          '<p style="font-size: 12px;">上傳時間: ' + uploadTime + ' 秒</p>';
-        
+          '<p style="font-size: 12px;">總處理時間: ' + data.processingTime.toFixed(2) + ' 秒</p>';
+        if (data.backgroundRemoved === false && data.error) {
+            successMessage += '<p style="color: #d8a044; font-weight: bold;">' + data.error + '</p>';
+        }
+        statusDiv.innerHTML = successMessage;
+
         // 顯示結果
-        document.getElementById('uploadResult').innerHTML = 
-          '<pre style="font-size: 11px;">' + JSON.stringify(result, null, 2) + '</pre>';
-        
+        document.getElementById('uploadResult').innerHTML =
+          '<pre style="font-size: 11px;">' + JSON.stringify(data, null, 2) + '</pre>';
+
         // 顯示預覽
-        const img = document.getElementById('uploadPreview');
-        img.src = result.url;
-        img.style.display = 'block';
+        const originalContainer = document.getElementById('originalContainer');
+        const removedContainer = document.getElementById('removedContainer');
+        const uploadPreview = document.getElementById('uploadPreview');
+        const removedBgPreview = document.getElementById('removedBgPreview');
+
+        // Reset
+        originalContainer.style.display = 'none';
+        removedContainer.style.display = 'none';
+
+        if (data.success && data.originalUrl) {
+            uploadPreview.src = data.originalUrl;
+            originalContainer.style.display = 'block';
+
+            if (data.backgroundRemoved && data.removedBgUrl) {
+                removedBgPreview.src = data.removedBgUrl;
+                removedContainer.style.display = 'block';
+            } else {
+                console.log('去背圖不存在或去背失敗');
+            }
+        } else {
+            console.error('上傳成功，但回傳的資料格式不符預期', data);
+        }
         
         // 2 秒後隱藏進度條
         setTimeout(() => {

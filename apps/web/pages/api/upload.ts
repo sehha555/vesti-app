@@ -1,162 +1,158 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import formidable from 'formidable';
+import { removeBackgroundFromImageUrl } from 'remove.bg';
+import { Readable } from 'stream';
 
-// Disable Next.js body parser to handle multipart/form-data
+// Disable Next.js body parser
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Configure Cloudinary using environment variables
+// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-  timeout: 60000,
-  upload_prefix: 'https://api.cloudinary.com', // 使用最近的 CDN
-  secure: true, // 強制 HTTPS
+  secure: true,
 });
 
-// Define the response type for this API endpoint
+// Define the response type
 type UploadResponse = {
-  url: string;
-  publicId: string;
-  format: string;
+  success: boolean;
+  originalUrl: string;
+  removedBgUrl?: string | null;
+  backgroundRemoved: boolean;
   width: number;
   height: number;
-  bytes: number;
-  optimizedUrl: string;
-} | {
-  error: string;
+  format: string;
+  processingTime?: number;
+  error?: string;
 };
 
-/**
- * API handler for image uploads.
- */
+// Helper to upload a buffer to Cloudinary
+const uploadStream = (buffer: Buffer, options: object): Promise<UploadApiResponse> => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (result) {
+        resolve(result);
+      } else {
+        reject(error);
+      }
+    });
+    Readable.from(buffer).pipe(stream);
+  });
+};
+
 export default async function handler(
-  req: NextApiRequest, 
-  res: NextApiResponse<UploadResponse>
+  req: NextApiRequest,
+  res: NextApiResponse<UploadResponse | { error: string }>
 ) {
-  // Allow only POST requests
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `方法 ${req.method} 不允許` });
   }
 
+  const startTime = Date.now();
+
   try {
-    // Verify that Cloudinary environment variables are set
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
       console.error('Cloudinary environment variables are not set.');
       return res.status(500).json({ error: '伺服器設定不完整' });
     }
 
-    // Parse the incoming form data
-    const form = formidable({
-      maxFileSize: 10 * 1024 * 1024, // 10MB
-      keepExtensions: true,
-    });
-    
+    const form = formidable({ maxFileSize: 10 * 1024 * 1024, keepExtensions: true });
     const [fields, files] = await form.parse(req);
-    
-    // --- File Validation ---
+
     const file = files.file?.[0];
     if (!file) {
       return res.status(400).json({ error: '請選擇要上傳的圖片檔案' });
     }
-    
-    // Validate MIME type
+
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.mimetype || '')) {
-      return res.status(400).json({ 
-        error: `不支援的檔案類型。請上傳 JPG, PNG, 或 WebP 格式。 (收到: ${file.mimetype})` 
-      });
+      return res.status(400).json({ error: `不支援的檔案類型。請上傳 JPG, PNG, 或 WebP 格式。 (收到: ${file.mimetype})` });
     }
-    
-    // --- Upload to Cloudinary ---
-    const result = await cloudinary.uploader.upload(file.filepath, {
+
+    // 1. Upload original image
+    const originalResult = await cloudinary.uploader.upload(file.filepath, {
       folder: 'style-app/wardrobe',
       resource_type: 'image',
-      timeout: 60000,
-      chunk_size: 6000000,
-      
-      // === 速度優化 ===
-      use_filename: false, // 不使用原始檔名 (加速)
-      unique_filename: true, // 自動生成唯一檔名
-      overwrite: false, // 不覆蓋現有檔案
-      
-      // === 轉換優化 ===
-      eager_async: true, // 非同步轉換 (不阻塞回應)
-      transformation: [
-        {
-          width: 800,
-          height: 800,
-          crop: 'limit',
-          quality: 'auto:good',
-          fetch_format: 'auto'
-        }
-      ],
-      
-      // === 額外優化 ===
-      invalidate: false, // 不清除 CDN 快取 (加速)
-      phash: true, // 生成感知雜湊 (用於去重)
+      transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto:good' }],
+      phash: true,
     });
 
-    // 記錄上傳效能
-    console.log('Upload performance:', {
-      originalSize: file.size,
-      uploadedSize: result.bytes,
-      compression: ((1 - result.bytes / (file.size || 1)) * 100).toFixed(1) + '%',
-      format: result.format,
-      dimensions: result.width + 'x' + result.height
-    });
-    
-    // --- Return Success Response ---
-    return res.status(200).json({
-      url: result.secure_url,
-      publicId: result.public_id,
-      format: result.format,
-      width: result.width,
-      height: result.height,
-      bytes: result.bytes,
-      // 提供優化後的 URL (如果需要)
-      optimizedUrl: result.secure_url.replace('/upload/', '/upload/f_auto,q_auto:good/')
-    });
-    
-  } catch (error: any) {
-    console.error('Upload API error:', error);
-
-    // Handle timeout errors
-    if (error?.name === 'TimeoutError' || error?.http_code === 499) {
-      return res.status(408).json({ 
-        error: '上傳逾時,請檢查網路連線或使用較小的圖片' 
+    // 2. Remove background if API key is available
+    if (!process.env.REMOVE_BG_API_KEY) {
+      console.warn('REMOVE_BG_API_KEY is not set. Skipping background removal.');
+      const processingTime = (Date.now() - startTime) / 1000;
+      return res.status(200).json({
+        success: true,
+        originalUrl: originalResult.secure_url,
+        backgroundRemoved: false,
+        width: originalResult.width,
+        height: originalResult.height,
+        format: originalResult.format,
+        processingTime,
       });
     }
 
-    // Handle file size errors from formidable
+    try {
+      const removeBgResult = await removeBackgroundFromImageUrl({
+        url: originalResult.secure_url,
+        apiKey: process.env.REMOVE_BG_API_KEY!,
+        size: 'auto',
+        type: 'auto',
+        format: 'png'
+      });
+
+      const buffer = Buffer.from(removeBgResult.base64img, 'base64');
+
+      // 3. Upload background-removed image
+      const removedBgResult = await uploadStream(buffer, {
+        folder: 'style-app/wardrobe',
+        public_id: `${originalResult.public_id}_nobg`,
+        resource_type: 'image',
+      });
+      
+      const processingTime = (Date.now() - startTime) / 1000;
+      console.log(`Total processing time: ${processingTime.toFixed(2)}s`);
+
+      // 4. Return both URLs
+      return res.status(200).json({
+        success: true,
+        originalUrl: originalResult.secure_url,
+        removedBgUrl: removedBgResult.secure_url,
+        backgroundRemoved: true,
+        width: originalResult.width,
+        height: originalResult.height,
+        format: removedBgResult.format,
+        processingTime,
+      });
+
+    } catch (removeBgError: any) {
+      console.error('Remove.bg API error:', removeBgError.message || removeBgError);
+      const processingTime = (Date.now() - startTime) / 1000;
+      // If background removal fails, still return the original image URL
+      return res.status(200).json({
+        success: true,
+        originalUrl: originalResult.secure_url,
+        backgroundRemoved: false,
+        width: originalResult.width,
+        height: originalResult.height,
+        format: originalResult.format,
+        processingTime,
+        error: '去背失敗，但原圖已上傳。',
+      });
+    }
+
+  } catch (error: any) {
+    console.error('Upload API error:', error);
     if (error?.message?.includes('maxFileSize exceeded')) {
       return res.status(400).json({ error: '檔案大小不能超過 10MB' });
     }
-
-    // Handle Cloudinary authentication errors
-    if (error?.http_code === 401) {
-      console.error('Cloudinary authentication failed');
-      return res.status(500).json({ 
-        error: '伺服器設定錯誤,請聯繫管理員' 
-      });
-    }
-
-    // Handle other Cloudinary-specific errors
-    if (error?.http_code) {
-      return res.status(500).json({ 
-        error: `上傳失敗 (${error.http_code}): ${error.message || '未知錯誤'}`
-      });
-    }
-
-    // Generic fallback error
-    return res.status(500).json({ 
-      error: '圖片上傳失敗,請稍後再試' 
-    });
+    return res.status(500).json({ error: '圖片上傳失敗，請稍後再試' });
   }
 }
