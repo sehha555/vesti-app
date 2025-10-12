@@ -39,15 +39,10 @@ export class HttpVlmProvider implements VlmProvider {
 
 export const normalize = (rawAnswers: Record<string, string>): ImageFeatures => {
   return {
-    hue: rawAnswers['Q1'] as Hue,
-    brightness: rawAnswers['Q2'] as Brightness,
-    chroma: rawAnswers['Q3'] as Chroma,
-    pattern: rawAnswers['Q4'] as Pattern,
+    dominantColors: rawAnswers['Q1'] ? [rawAnswers['Q1']] : [], // Assuming Q1 is the dominant color
     style: rawAnswers['Q5'] as Style,
+    pattern: rawAnswers['Q4'] as Pattern,
     material: rawAnswers['Q6'] as Material,
-    age_range: rawAnswers['Q7'] as AgeRange,
-    gender: rawAnswers['Q8'] as Gender,
-    occasion: rawAnswers['Q9'] as Occasion,
   };
 };
 

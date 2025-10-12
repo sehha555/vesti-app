@@ -4,6 +4,7 @@ import { SaveDailyOutfitRequest } from '@/packages/types/src/persistence';
 import { createMocks } from 'node-mocks-http';
 import { beforeEach, vi } from 'vitest';
 import { DailyOutfitsService } from './daily_outfits.service';
+import { WardrobeItem, ClothingType } from '@/packages/types/src/wardrobe'; // Import WardrobeItem and ClothingType
 
 vi.mock('./daily_outfits.service');
 
@@ -14,12 +15,25 @@ beforeEach(() => {
 
 // Contract test for the route
 it('should return 5 outfits for a valid request', async () => {
+  const createMockWardrobeItem = (id: string, type: ClothingType): WardrobeItem => ({
+    id,
+    userId: 'test-user',
+    name: `${type}-${id}`,
+    type,
+    imageUrl: `http://example.com/${type}-${id}.jpg`,
+    colors: [],
+    season: 'all-season',
+    purchased: true,
+    source: 'upload',
+    createdAt: new Date(),
+  });
+
   const mockRecommendations = [
-    { outfit: { top: 't1', bottom: 'b1', shoes: 's1' }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: 't2', bottom: 'b2', shoes: 's2' }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: 't3', bottom: 'b3', shoes: 's3' }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: 't4', bottom: 'b4', shoes: 's4' }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: 't5', bottom: 'b5', shoes: 's5' }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
+    { outfit: { top: createMockWardrobeItem('t1', 'top'), bottom: createMockWardrobeItem('b1', 'bottom'), shoes: createMockWardrobeItem('s1', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
+    { outfit: { top: createMockWardrobeItem('t2', 'top'), bottom: createMockWardrobeItem('b2', 'bottom'), shoes: createMockWardrobeItem('s2', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
+    { outfit: { top: createMockWardrobeItem('t3', 'top'), bottom: createMockWardrobeItem('b3', 'bottom'), shoes: createMockWardrobeItem('s3', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
+    { outfit: { top: createMockWardrobeItem('t4', 'top'), bottom: createMockWardrobeItem('b4', 'bottom'), shoes: createMockWardrobeItem('s4', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
+    { outfit: { top: createMockWardrobeItem('t5', 'top'), bottom: createMockWardrobeItem('b5', 'bottom'), shoes: createMockWardrobeItem('s5', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
   ];
 
   vi.mocked(DailyOutfitsService.prototype.generate).mockResolvedValue({

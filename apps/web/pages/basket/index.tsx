@@ -115,7 +115,7 @@ const BasketPage = () => {
             <h3>外套</h3>
             <p>{rec.outfit.outerwear.name}</p>
             <img src={rec.outfit.outerwear.imageUrl} alt={rec.outfit.outerwear.name} />
-            <button onClick={() => console.log('Add to cart:', rec.outfit.outerwear.id)} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded text-sm mt-2">
+            <button onClick={() => console.log('Add to cart:', rec.outfit.outerwear?.id)} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded text-sm mt-2">
               加入購物車
             </button>
           </div>}

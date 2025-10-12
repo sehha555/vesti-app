@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { WardrobeItem, CreateWardrobeItemDto } from '../../packages/types/src/wardrobe';
-import { WardrobePersistence } from './persistence';
+import { WardrobeItem, CreateWardrobeItemDto, Season, ClothingSource } from '../../packages/types/src/wardrobe';
+import { WardrobePersistence } './persistence';
 
 /**
  * WardrobeService 負責管理虛擬衣櫃中的衣物。
@@ -48,9 +48,20 @@ export class WardrobeService {
     const newItem: WardrobeItem = {
       id,
       userId,
-      ...dto,
+      name: dto.name,
+      type: dto.type,
+      imageUrl: dto.imageUrl,
+      colors: dto.colors || [],
+      season: (dto.season || 'all-season') as Season,
+      source: (dto.source || 'upload') as ClothingSource,
       purchased: dto.purchased ?? false,
       createdAt: new Date(),
+      style: dto.style,
+      material: dto.material,
+      pattern: dto.pattern,
+      occasions: dto.occasions,
+      customTags: dto.customTags,
+      originalImageUrl: dto.originalImageUrl,
     };
     this.items.set(id, newItem);
     await this.persist();

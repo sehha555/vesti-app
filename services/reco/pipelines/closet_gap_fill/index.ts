@@ -7,8 +7,8 @@ import { LRUCache } from '../../modules/retrieval/lruCache';
 
 // Placeholder for fetching user's wardrobe
 const getWardrobe = async (userId: string): Promise<WardrobeItem[]> => [
-  { id: '1', userId, name: 'T-Shirt', category: 'top', style: Style.CASUAL, tags: ['white'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '2', userId, name: 'Jeans', category: 'bottom', style: Style.CASUAL, tags: ['blue'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
+  { id: '1', userId, name: 'T-Shirt', type: 'top', style: Style.CASUAL, customTags: ['white'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '2', userId, name: 'Jeans', type: 'bottom', style: Style.CASUAL, customTags: ['blue'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
 ];
 
 const catalogSearchCache = new LRUCache<string, CatalogItem[]>(100); // 快取 100 個目錄搜尋結果
@@ -23,7 +23,7 @@ export class ClosetGapFillService {
 
     const requiredCategories = ['top', 'bottom', 'shoes'];
     const missingCategories = requiredCategories.filter(category => 
-      !wardrobeByOccasion.some(item => item.category === category)
+      !wardrobeByOccasion.some(item => item.type === category)
     );
 
     if (missingCategories.length === 0) {
@@ -33,7 +33,7 @@ export class ClosetGapFillService {
     const recommendations: GapSuggestion[] = [];
 
     for (const category of missingCategories) {
-      const filter: CatalogFilter = { style: occasion, category, minPrice, maxPrice, season };
+      const filter: CatalogFilter = { style: occasion, type: category as any, minPrice, maxPrice, season };
       const cacheKey = `catalog-search-${JSON.stringify(filter)}`;
       let candidates = catalogSearchCache.get(cacheKey);
 
@@ -52,13 +52,16 @@ export class ClosetGapFillService {
           id: candidate.id,
           userId: userId, // 假設推薦的商品屬於當前使用者
           name: candidate.name,
-          category: candidate.category,
+          type: candidate.type,
           style: candidate.style,
-          tags: [], // 佔位符
+          customTags: [], // 佔位符
           imageUrl: candidate.imageUrl,
+          colors: [],
+          season: candidate.season || 'all-season',
+          source: 'shop',
+          purchased: false,
           createdAt: new Date(),
           updatedAt: new Date(),
-          seasonality: candidate.seasonality,
         };
         const newWardrobe = [...wardrobe, candidateAsWardrobeItem];
         const combinations = generateOutfitCombinations(newWardrobe);
@@ -66,7 +69,7 @@ export class ClosetGapFillService {
 
         return {
           item: candidate,
-          reason: `You need a ${candidate.category} for your ${occasion} outfits.`,
+          reason: `You need a ${candidate.type} for your ${occasion} outfits.`,
           score: unlockCount, // Use unlockCount as a score
           unlockCount,
           examplePairings: combinations.slice(0, 3),

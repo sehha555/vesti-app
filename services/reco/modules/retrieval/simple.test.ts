@@ -17,9 +17,9 @@ describe('simple retrieval', () => {
 
   it('should generate outfit combinations', () => {
     const items: WardrobeItem[] = [
-      { id: '1', name: 'T-Shirt', category: 'top', style: Style.CASUAL, tags: [], imageUrl: '', createdAt: new Date(), updatedAt: new Date(), userId: '1' },
-      { id: '2', name: 'Jeans', category: 'bottom', style: Style.CASUAL, tags: [], imageUrl: '', createdAt: new Date(), updatedAt: new Date(), userId: '1' },
-      { id: '3', name: 'Sneakers', category: 'shoes', style: Style.CASUAL, tags: [], imageUrl: '', createdAt: new Date(), updatedAt: new Date(), userId: '1' },
+      { id: '1', name: 'T-Shirt', type: 'top', style: Style.CASUAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date(), userId: '1' },
+      { id: '2', name: 'Jeans', type: 'bottom', style: Style.CASUAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date(), userId: '1' },
+      { id: '3', name: 'Sneakers', type: 'shoes', style: Style.CASUAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date(), userId: '1' },
     ];
     const combinations = generateOutfitCombinations(items);
     expect(combinations).toHaveLength(1);

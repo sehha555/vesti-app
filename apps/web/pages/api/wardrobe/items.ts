@@ -41,7 +41,7 @@ export default async function handler(
 
         // If a tag is also provided, filter the already-filtered list
         if (tag && typeof tag === 'string') {
-          items = items.filter(item => item.tags?.includes(tag));
+          items = items.filter(item => item.customTags?.includes(tag));
         }
 
         // Add purchased status filter

@@ -1,29 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { CatalogItem } from '@/packages/types/src/gap';
-import { Style } from '@/packages/types/src/wardrobe';
+import { Style, ClothingType, Season } from '@/packages/types/src/wardrobe';
+import type { CatalogItem } from '@/packages/types/src/gap'; // Add this import
 
 export interface CatalogFilter {
-  category?: string;
+  type?: ClothingType;
   style?: Style;
   minPrice?: number;
   maxPrice?: number;
-  season?: 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season';
+  season?: Season;
 }
 
 @Injectable()
 export class CatalogService {
   private readonly dummyCatalog: CatalogItem[] = [
-    { id: '101', name: 'Classic White Sneakers', category: 'shoes', style: Style.CASUAL, imageUrl: '', price: 80, seasonality: 'all-season' },
-    { id: '102', name: 'Black Leather Loafers', category: 'shoes', style: Style.FORMAL, imageUrl: '', price: 120, seasonality: 'all-season' },
-    { id: '103', name: 'Blue Denim Jacket', category: 'outerwear', style: Style.CASUAL, imageUrl: '', price: 90, seasonality: 'autumn' },
-    { id: '104', name: 'Khaki Shorts', category: 'bottom', style: Style.CASUAL, imageUrl: '', price: 40, seasonality: 'summer' },
-    { id: '105', name: 'Wool Scarf', category: 'accessory', style: Style.CASUAL, imageUrl: '', price: 30, seasonality: 'winter' },
-    { id: '106', name: 'Summer Sandals', category: 'shoes', style: Style.CASUAL, imageUrl: '', price: 50, seasonality: 'summer' },
+    { id: '101', name: 'Classic White Sneakers', type: 'shoes', style: Style.CASUAL, imageUrl: '', price: 80, season: 'all-season' },
+    { id: '102', name: 'Black Leather Loafers', type: 'shoes', style: Style.FORMAL, imageUrl: '', price: 120, season: 'all-season' },
+    { id: '103', name: 'Blue Denim Jacket', type: 'outerwear', style: Style.CASUAL, imageUrl: '', price: 90, season: 'autumn' },
+    { id: '104', name: 'Khaki Shorts', type: 'bottom', style: Style.CASUAL, imageUrl: '', price: 40, season: 'summer' },
+    { id: '105', name: 'Wool Scarf', type: 'accessory', style: Style.CASUAL, imageUrl: '', price: 30, season: 'winter' },
+    { id: '106', name: 'Summer Sandals', type: 'shoes', style: Style.CASUAL, imageUrl: '', price: 50, season: 'summer' },
   ];
 
   async search(filter: CatalogFilter): Promise<CatalogItem[]> {
     return this.dummyCatalog.filter(item => {
-      if (filter.category && item.category !== filter.category) {
+      if (filter.type && item.type !== filter.type) {
         return false;
       }
       if (filter.style && item.style !== filter.style) {
@@ -35,7 +35,7 @@ export class CatalogService {
       if (filter.maxPrice !== undefined && item.price > filter.maxPrice) {
         return false;
       }
-      if (filter.season && item.seasonality !== filter.season && item.seasonality !== 'all-season') {
+      if (filter.season && item.season !== filter.season && item.season !== 'all-season') {
         return false;
       }
       return true;

@@ -2,16 +2,16 @@ import { OutfitCombination } from '@/packages/types/src/basket';
 import { Style, WardrobeItem } from '@/packages/types/src/wardrobe';
 
 const dummyWardrobe: WardrobeItem[] = [
-  { id: '1', userId: '1', name: 'T-Shirt', category: 'top', style: Style.CASUAL, tags: ['white'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '2', userId: '1', name: 'Jeans', category: 'bottom', style: Style.CASUAL, tags: ['blue'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '3', userId: '1', name: 'Sneakers', category: 'shoes', style: Style.CASUAL, tags: ['white'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '4', userId: '1', name: 'Jacket', category: 'outerwear', style: Style.CASUAL, tags: ['black'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '5', userId: '1', name: 'Summer Dress', category: 'top', style: Style.CASUAL, tags: ['summer', 'light'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '6', userId: '1', name: 'Work Shirt', category: 'top', style: Style.FORMAL, tags: [], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '7', userId: '1', name: 'Rain Boots', category: 'shoes', style: Style.CASUAL, tags: ['waterproof'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '8', userId: '1', name: 'sandals', category: 'shoes', style: Style.CASUAL, tags: ['summer'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '9', userId: '1', name: 'shorts', category: 'bottom', style: Style.CASUAL, tags: ['summer'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
-  { id: '10', userId: '1', name: 'blouse', category: 'top', style: Style.FORMAL, tags: ['work'], imageUrl: '', createdAt: new Date(), updatedAt: new Date() },
+  { id: '1', userId: '1', name: 'T-Shirt', type: 'top', style: Style.CASUAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '2', userId: '1', name: 'Jeans', type: 'bottom', style: Style.CASUAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '3', userId: '1', name: 'Sneakers', type: 'shoes', style: Style.CASUAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '4', userId: '1', name: 'Jacket', type: 'outerwear', style: Style.CASUAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '5', userId: '1', name: 'Summer Dress', type: 'top', style: Style.CASUAL, customTags: ['summer', 'light'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '6', userId: '1', name: 'Work Shirt', type: 'top', style: Style.FORMAL, customTags: [], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '7', userId: '1', name: 'Rain Boots', type: 'shoes', style: Style.CASUAL, customTags: ['waterproof'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '8', userId: '1', name: 'sandals', type: 'shoes', style: Style.CASUAL, customTags: ['summer'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '9', userId: '1', name: 'shorts', type: 'bottom', style: Style.CASUAL, customTags: ['summer'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
+  { id: '10', userId: '1', name: 'blouse', type: 'top', style: Style.FORMAL, customTags: ['work'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date() },
 ];
 
 export const getCandidates = async (itemIds: string[], basket: string[]): Promise<WardrobeItem[]> => {
@@ -24,16 +24,16 @@ export const getCandidates = async (itemIds: string[], basket: string[]): Promis
 
 export const generateOutfitCombinations = (items: WardrobeItem[]): OutfitCombination[] => {
   const combinations: OutfitCombination[] = [];
-  const itemsByCategory = items.reduce((acc, item) => {
-    acc[item.category] = acc[item.category] || [];
-    acc[item.category].push(item);
+  const itemsByType = items.reduce((acc, item) => {
+    acc[item.type] = acc[item.type] || [];
+    acc[item.type].push(item);
     return acc;
   }, {} as Record<string, WardrobeItem[]>);
 
-  const tops = itemsByCategory['top'] || [];
-  const bottoms = itemsByCategory['bottom'] || [];
-  const shoes = itemsByCategory['shoes'] || [];
-  const outerwear = itemsByCategory['outerwear'] || [];
+  const tops = itemsByType['top'] || [];
+  const bottoms = itemsByType['bottom'] || [];
+  const shoes = itemsByType['shoes'] || [];
+  const outerwear = itemsByType['outerwear'] || [];
 
   for (const top of tops) {
     for (const bottom of bottoms) {

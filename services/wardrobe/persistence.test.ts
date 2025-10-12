@@ -23,8 +23,8 @@ describe('WardrobePersistence', () => {
   });
 
   const mockItems: WardrobeItem[] = [
-    { id: '1', userId: 'user1', name: 'T-shirt', type: 'top', imageUrl: '', colors: ['red'], season: 'summer', purchased: false, createdAt: new Date() },
-    { id: '2', userId: 'user1', name: 'Jeans', type: 'bottom', imageUrl: '', colors: ['blue'], season: 'all-season', purchased: true, createdAt: new Date() },
+    { id: '1', userId: 'user1', name: 'T-shirt', type: 'top', imageUrl: '', colors: ['red'], season: 'summer', purchased: false, createdAt: new Date(), source: 'upload' },
+    { id: '2', userId: 'user1', name: 'Jeans', type: 'bottom', imageUrl: '', colors: ['blue'], season: 'all-season', purchased: true, createdAt: new Date(), source: 'upload' },
   ];
 
   describe('saveItems', () => {
@@ -55,6 +55,7 @@ describe('WardrobePersistence', () => {
 
       expect(fs.readFile).toHaveBeenCalledWith(TEST_FILE_PATH, 'utf-8');
       // Dates will be strings after JSON parsing, so we compare a simplified version
+      // We need to ensure that the source field is also present in the loaded items
       expect(JSON.stringify(loadedItems)).toEqual(JSON.stringify(mockItems));
     });
 

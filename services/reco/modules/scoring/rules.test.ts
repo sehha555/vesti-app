@@ -7,8 +7,8 @@ import { WardrobeItem } from '@/packages/types/src/wardrobe';
 // Unit tests for scoring equivalence
 describe('scoring rules', () => {
   const items: WardrobeItem[] = [
-    { id: '1', name: 'Winter Coat', category: 'outerwear', style: Style.CASUAL, tags: ['winter', 'warm', 'waterproof'], imageUrl: '', createdAt: new Date(), updatedAt: new Date(), userId: 'test' },
-    { id: '2', name: 'Summer Dress', category: 'top', style: Style.CASUAL, tags: ['summer', 'light'], imageUrl: '', createdAt: new Date(), updatedAt: new Date(), userId: 'test' },
+    { id: '1', name: 'Winter Coat', type: 'outerwear', style: Style.CASUAL, customTags: ['winter', 'warm', 'waterproof'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date(), userId: 'test' },
+    { id: '2', name: 'Summer Dress', type: 'top', style: Style.CASUAL, customTags: ['summer', 'light'], imageUrl: '', colors: [], season: 'all-season', source: 'upload', purchased: false, createdAt: new Date(), updatedAt: new Date(), userId: 'test' },
   ];
 
   it('should return the same score for the same occasion', () => {

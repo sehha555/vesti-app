@@ -15,9 +15,20 @@ export function createWardrobeItem(userId: string, dto: CreateWardrobeItemDto): 
   const newItem: WardrobeItem = {
     id,
     userId,
+    name: dto.name,
+    type: dto.type,
+    imageUrl: dto.imageUrl,
+    colors: dto.colors || [],
+    season: dto.season || 'all-season',
+    source: dto.source || 'upload',
+    purchased: dto.purchased ?? false,
     createdAt: new Date(),
-    ...dto,
-    colors: dto.colors || [],  // 🔥 如果 undefined 則使用空陣列
+    style: dto.style,
+    material: dto.material,
+    pattern: dto.pattern,
+    occasions: dto.occasions,
+    customTags: dto.customTags,
+    originalImageUrl: dto.originalImageUrl,
   };
   inMemoryWardrobeItems.set(id, newItem);
   return newItem;

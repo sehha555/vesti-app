@@ -17,15 +17,10 @@ describe('normalization', () => {
     };
 
     const expectedFeatures = {
-      hue: Hue.BLUE,
-      brightness: Brightness.MEDIUM,
-      chroma: Chroma.NEUTRAL,
+      dominantColors: ['blue'],
       pattern: Pattern.SOLID,
       style: Style.CASUAL,
       material: Material.DENIM,
-      age_range: AgeRange.YOUNG_ADULT,
-      gender: Gender.UNISEX,
-      occasion: Occasion.DAILY,
     };
 
     const normalized = normalize(rawAnswers as any);
@@ -38,7 +33,7 @@ describe('normalization', () => {
       'Q5': 'funky', // not in enum
     };
     const normalized = normalize(rawAnswers as any);
-    expect(normalized.hue).toBe('chartreuse');
+    expect(normalized.dominantColors).toEqual(['chartreuse']);
     expect(normalized.style).toBe('funky');
   });
 });

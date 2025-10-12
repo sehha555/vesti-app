@@ -1,14 +1,16 @@
-import { Style, WardrobeItem } from './wardrobe';
+import { Style, WardrobeItem, ClothingType, Season } from './wardrobe';
 import { OutfitCombination } from './basket';
 
 export interface CatalogItem {
   id: string;
   name: string;
-  category: 'top' | 'bottom' | 'shoes' | 'outerwear' | 'accessory';
+  type: ClothingType;
   style: Style;
   imageUrl: string;
   price: number;
-  seasonality?: 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season';
+  season?: Season;
+  category?: string;
+  seasonality?: string;
 }
 
 export interface GapFillRequest {

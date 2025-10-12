@@ -1,13 +1,13 @@
 import { filterByPrice, filterBySeason } from './filter';
 import { CatalogItem } from '@/packages/types/src/gap';
-import { Style } from '@/packages/types/src/wardrobe';
+import { Style, ClothingType } from '@/packages/types/src/wardrobe';
 
 describe('filter retrieval', () => {
   const items: CatalogItem[] = [
-    { id: '1', name: 'T-Shirt', category: 'top', style: Style.CASUAL, imageUrl: '', price: 10, seasonality: 'summer' },
-    { id: '2', name: 'Jeans', category: 'bottom', style: Style.CASUAL, imageUrl: '', price: 50, seasonality: 'all-season' },
-    { id: '3', name: 'Sneakers', category: 'shoes', style: Style.CASUAL, imageUrl: '', price: 80, seasonality: 'all-season' },
-    { id: '4', name: 'Wool Coat', category: 'outerwear', style: Style.FORMAL, imageUrl: '', price: 150, seasonality: 'winter' },
+    { id: '1', name: 'T-Shirt', type: 'top' as ClothingType, style: Style.CASUAL, imageUrl: '', price: 10, season: 'summer' },
+    { id: '2', name: 'Jeans', type: 'bottom' as ClothingType, style: Style.CASUAL, imageUrl: '', price: 50, season: 'all-season' },
+    { id: '3', name: 'Sneakers', type: 'shoes' as ClothingType, style: Style.CASUAL, imageUrl: '', price: 80, season: 'all-season' },
+    { id: '4', name: 'Wool Coat', type: 'outerwear' as ClothingType, style: Style.FORMAL, imageUrl: '', price: 150, season: 'winter' },
   ];
 
   it('should filter items by max price', () => {

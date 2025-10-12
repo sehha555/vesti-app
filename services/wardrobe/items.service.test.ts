@@ -30,7 +30,7 @@ describe('WardrobeService (Integration with Persistence)', () => {
   });
 
   it('should create an item and persist', async () => {
-    const newItemDto: Omit<CreateWardrobeItemDto, 'userId'> = { name: 'Blue T-shirt', type: 'top', imageUrl: '', colors: [], season: 'summer', purchased: false };
+    const newItemDto: Omit<CreateWardrobeItemDto, 'userId'> = { name: 'Blue T-shirt', type: 'top', imageUrl: '', colors: [], season: 'summer', purchased: false, source: 'upload' };
     
     const createdItem = await service.createItem(userId, newItemDto);
 
@@ -46,7 +46,7 @@ describe('WardrobeService (Integration with Persistence)', () => {
 
   it('should delete an item and persist', async () => {
     // Setup: create an item first
-    const createDto: Omit<CreateWardrobeItemDto, 'userId'> = { name: 'Delete Me', type: 'top', imageUrl: '', colors: [], season: 'summer', purchased: false };
+    const createDto: Omit<CreateWardrobeItemDto, 'userId'> = { name: 'Delete Me', type: 'top', imageUrl: '', colors: [], season: 'summer', purchased: false, source: 'upload' };
     const createdItem = await service.createItem(userId, createDto);
     
     // Now, delete the item
@@ -62,7 +62,7 @@ describe('WardrobeService (Integration with Persistence)', () => {
 
   it('should initialize with data from persistence', async () => {
     const initialItems: WardrobeItem[] = [
-        { id: 'loaded-1', userId: 'user-123', name: 'Loaded T-shirt', type: 'top', imageUrl: '', colors: ['red'], season: 'summer', purchased: false, createdAt: new Date() },
+        { id: 'loaded-1', userId: 'user-123', name: 'Loaded T-shirt', type: 'top', imageUrl: '', colors: ['red'], season: 'summer', purchased: false, createdAt: new Date(), source: 'upload' },
     ];
     // 將 initialItems 中的 createdAt 轉換為 ISO 字串格式，以便寫入檔案
     const itemsToWrite = initialItems.map(item => ({ ...item, createdAt: item.createdAt.toISOString() }));
@@ -92,9 +92,9 @@ describe('WardrobeService (Integration with Persistence)', () => {
   it('should get items for a user', async () => {
     // This test requires a more complex setup if we test the mocks rigorously,
     // but for now, let's ensure the get logic works after create.
-    await service.createItem(userId, { name: 'Item 1', type: 'top', imageUrl: '', colors: [], season: 'all-season', purchased: false });
-    await service.createItem(userId, { name: 'Item 2', type: 'bottom', imageUrl: '', colors: [], season: 'all-season', purchased: false });
-    await service.createItem('another-user', { name: 'Item 3', type: 'shoes', imageUrl: '', colors: [], season: 'all-season', purchased: false });
+    await service.createItem(userId, { name: 'Item 1', type: 'top', imageUrl: '', colors: [], season: 'all-season', purchased: false, source: 'upload' });
+    await service.createItem(userId, { name: 'Item 2', type: 'bottom', imageUrl: '', colors: [], season: 'all-season', purchased: false, source: 'upload' });
+    await service.createItem('another-user', { name: 'Item 3', type: 'shoes', imageUrl: '', colors: [], season: 'all-season', purchased: false, source: 'upload' });
 
     const items = service.getItems(userId);
     expect(items.length).toBe(2);
