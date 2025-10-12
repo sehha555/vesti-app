@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>虛擬衣櫃 - 上傳測試</title>
+  <style>
+    :root {
+      --primary-color: #4a90e2;
+      --success-color: #4caf50;
+      --error-color: #f44336;
+      --light-gray: #f4f4f9;
+      --dark-gray: #333;
+      --mid-gray: #ccc;
+      --card-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0; 
+      padding: 2em;
+      background-color: var(--light-gray);
+      color: var(--dark-gray);
+    }
+    .container { max-width: 800px; margin: auto; }
+    h1 { color: var(--dark-gray); text-align: center; }
+    .form-container, .results-container { 
+      background-color: #fff; 
+      padding: 2em; 
+      margin-bottom: 2em; 
+      border-radius: 8px; 
+      box-shadow: var(--card-shadow);
+    }
+    .form-grid { 
+      display: grid; 
+      grid-template-columns: 1fr;
+      gap: 1.2em;
+    }
+    @media (min-width: 600px) {
+      .form-grid { grid-template-columns: 1fr 1fr; }
+      .grid-span-2 { grid-column: span 2; }
+    }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-weight: bold; margin-bottom: 0.5em; }
+    .form-group .required-star { color: var(--error-color); }
+    .form-group input[type="text"], .form-group select, .form-group input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--mid-gray);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .checkbox-group { display: flex; align-items: center; gap: 0.5em; }
+    #uploadBtn { 
+      width: 100%; 
+      padding: 12px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      border: none;
+      border-radius: 4px; 
+      background-color: var(--primary-color); 
+      color: white;
+      transition: background-color 0.2s;
+    }
+    #uploadBtn:hover { background-color: #357abd; }
+    #uploadBtn:disabled { background-color: #a0a0a0; cursor: not-allowed; }
+    .result-card {
+      background: #fff; border-left: 5px solid var(--mid-gray);
+      margin-top: 1em; padding: 1em; border-radius: 4px; box-shadow: var(--card-shadow);
+      display: flex; flex-direction: column; gap: 1em;
+    }
+    .result-card.success { border-left-color: var(--success-color); }
+    .result-card.error { border-left-color: var(--error-color); }
+    .result-card h4 { margin: 0; }
+    .result-card .previews { display: flex; gap: 1em; flex-wrap: wrap; }
+    .result-card img { max-width: 150px; border-radius: 4px; }
+    .progress-bar { width: 100%; background-color: #e0e0e0; border-radius: 4px; overflow: hidden; }
+    .progress-bar-inner { height: 10px; width: 0%; background-color: var(--primary-color); transition: width 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>虛擬衣櫃 - 上傳測試</h1>
+
+    <div class="form-container">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="userId">UserID</label>
+          <input type="text" id="userId" value="test-user-001">
+        </div>
+        <div class="form-group">
+          <label for="name">衣服名稱 <span class="required-star">*</span></label>
+          <input type="text" id="name" placeholder="例: 白色T恤">
+        </div>
+        <div class="form-group">
+          <label for="type">類型 <span class="required-star">*</span></label>
+          <select id="type">
+            <option value="top">上衣 (top)</option>
+            <option value="bottom">下著 (bottom)</option>
+            <option value="outerwear">外套 (outerwear)</option>
+            <option value="shoes">鞋子 (shoes)</option>
+            <option value="accessory">配件 (accessory)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="season">季節</label>
+          <select id="season">
+            <option value="all-season">四季 (all-season)</option>
+            <option value="spring">春季 (spring)</option>
+            <option value="summer">夏季 (summer)</option>
+            <option value="autumn">秋季 (autumn)</option>
+            <option value="winter">冬季 (winter)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="colors">顏色</label>
+          <input type="text" id="colors" placeholder="例: white,blue">
+        </div>
+        <div class="form-group">
+          <label for="tags">標籤</label>
+          <input type="text" id="tags" placeholder="例: casual,basic">
+        </div>
+        <div class="form-group grid-span-2">
+          <label for="files">圖片檔案 <span class="required-star">*</span></label>
+          <input type="file" id="files" multiple accept="image/*">
+        </div>
+        <div class="form-group grid-span-2 checkbox-group">
+          <input type="checkbox" id="purchased" checked>
+          <label for="purchased">已購買</label>
+        </div>
+        <div class="form-group grid-span-2">
+          <button id="uploadBtn">上傳</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-container" id="results"></div>
+  </div>
+
+  <script>
+    const uploadBtn = document.getElementById('uploadBtn');
+    const resultsDiv = document.getElementById('results');
+
+    uploadBtn.addEventListener('click', async () => {
+      const files = document.getElementById('files').files;
+      if (files.length === 0) {
+        alert('請選擇要上傳的圖片檔案。');
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = '上傳中...';
+      resultsDiv.innerHTML = '';
+
+      for (const file of files) {
+        await uploadFile(file);
+      }
+
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = '上傳';
+    });
+
+    async function uploadFile(file) {
+      const resultCard = document.createElement('div');
+      resultCard.className = 'result-card';
+      resultCard.innerHTML = `
+        <h4>${file.name}</h4>
+        <div class="progress-bar"><div class="progress-bar-inner"></div></div>
+        <div class="status">準備中...</div>
+      `;
+      resultsDiv.appendChild(resultCard);
+
+      const progressBar = resultCard.querySelector('.progress-bar-inner');
+      const statusDiv = resultCard.querySelector('.status');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('userId', document.getElementById('userId').value);
+        formData.append('name', document.getElementById('name').value || file.name.split('.')[0]);
+        formData.append('type', document.getElementById('type').value);
+        formData.append('season', document.getElementById('season').value);
+        formData.append('purchased', document.getElementById('purchased').checked.toString());
+
+        const colors = document.getElementById('colors').value.split(',').map(c => c.trim()).filter(Boolean);
+        if (colors.length) formData.append('colors', JSON.stringify(colors));
+
+        const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(Boolean);
+        if (tags.length) formData.append('tags', JSON.stringify(tags));
+
+        const response = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/upload', true);
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percent = (e.loaded / e.total) * 100;
+              progressBar.style.width = percent + '%';
+              statusDiv.textContent = `上傳中... ${Math.round(percent)}%`;
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(JSON.parse(xhr.responseText));
+            } else {
+              reject(new Error(JSON.parse(xhr.responseText).error || `HTTP ${xhr.status} 錯誤`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('網路錯誤'));
+          xhr.send(formData);
+        });
+
+        resultCard.classList.add('success');
+        const item = response.wardrobeItem;
+        statusDiv.textContent = `✓ 完成 | 處理時間: ${response.processingTime.toFixed(2)}s`;
+        resultCard.innerHTML += `
+          <div>
+            <strong>ID:</strong> ${item.id}<br>
+            <strong>名稱:</strong> ${item.name}<br>
+            <strong>類型:</strong> ${item.type}<br>
+            <strong>季節:</strong> ${item.season}
+          </div>
+          <div class="previews">
+            <div>
+              <p><strong>原圖</strong></p>
+              <a href="${response.originalUrl}" target="_blank"><img src="${response.originalUrl}"></a>
+            </div>
+            ${response.removedBgUrl ? `
+            <div>
+              <p><strong>去背圖</strong></p>
+              <a href="${response.removedBgUrl}" target="_blank"><img src="${response.removedBgUrl}"></a>
+            </div>` : ''}
+          </div>
+        `;
+      } catch (error) {
+        resultCard.classList.add('error');
+        statusDiv.textContent = `✗ 錯誤: ${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>

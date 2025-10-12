@@ -65,40 +65,76 @@ export enum Gender {
 }
 
 export enum Occasion {
-  DAILY = 'daily',
-  WORK = 'work',
-  EVENING = 'evening',
-  SPORT = 'sport',
-  PARTY = 'party',
+    WORK = 'work',
+    DATE = 'date',
+    CASUAL = 'casual',
+    SPORTS = 'sports',
+    FORMAL_EVENT = 'formal-event',
+    PARTY = 'party',
+    TRAVEL = 'travel',
+    HOME = 'home',
+    DAILY = 'daily',
 }
+
+export type ClothingType = 'top' | 'bottom' | 'outerwear' | 'shoes' | 'accessory';
+export type Season = 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season';
+export type ClothingSource = 'shop' | 'upload';
 
 export interface ImageFeatures {
-  hue: Hue;
-  brightness: Brightness;
-  chroma: Chroma;
-  pattern: Pattern;
-  style: Style;
-  material: Material;
-  age_range: AgeRange;
-  gender: Gender;
-  occasion: Occasion;
+  dominantColors: string[];
+  style?: Style;
+  pattern?: Pattern;
+  material?: Material;
 }
 
-// 根據需求更新的 WardrobeItem 介面
 export interface WardrobeItem {
   id: string;
   userId: string;
   name: string;
-  type: 'top' | 'bottom' | 'outerwear' | 'shoes' | 'accessory';
+  type: ClothingType;
   imageUrl: string;
+  /** URL of the original, unprocessed image */
+  originalImageUrl?: string;
+
+  // AI-identified attributes
   colors: string[];
-  season: 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season';
-  purchased: boolean;
+  season: Season;
+  /** AI-identified style */
+  style?: Style;
+  /** AI-identified material */
+  material?: Material;
+  /** AI-identified pattern */
+  pattern?: Pattern;
+
+  // Occasions for the item
+  /** Array of suitable occasions for the item */
+  occasions?: Occasion[];
+
+  // Source tracking
+  /** Where the item came from (e.g., purchased from a shop or uploaded by user) */
+  source: ClothingSource;
+  /** The ID of the product if it came from a shop */
+  shopProductId?: string;
+
+  // Personal categorization
   /** User-defined tags for custom categorization */
-  tags?: string[];
+  customTags?: string[];
+  purchased: boolean;
+
+  // Timestamps
   createdAt: Date;
   updatedAt?: Date;
 }
 
-// 用於創建新衣物的 DTO (Data Transfer Object)
-export type CreateWardrobeItemDto = Omit<WardrobeItem, 'id' | 'createdAt'>;
+// DTO for creating a new wardrobe item
+export type CreateWardrobeItemDto = Omit<Partial<WardrobeItem>, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & {
+  name: string;
+  type: ClothingType;
+  imageUrl: string;
+  colors: string[]; // Explicitly make colors required
+  source?: ClothingSource; // Optional here, will be defaulted to 'upload' in the backend
+};
+
+export type UpdateWardrobeItemDto = Partial<CreateWardrobeItemDto> & {
+  id: string;
+};

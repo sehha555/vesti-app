@@ -3,6 +3,8 @@ import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import formidable from 'formidable';
 import { removeBackgroundFromImageUrl } from 'remove.bg';
 import { Readable } from 'stream';
+import { createWardrobeItem } from '../../lib/shared-wardrobe-store';
+import type { CreateWardrobeItemDto, Occasion, WardrobeItem } from '../../../../packages/types/src/wardrobe';
 
 // Disable Next.js body parser
 export const config = {
@@ -22,8 +24,9 @@ cloudinary.config({
 // Define the response type
 type UploadResponse = {
   success: boolean;
+  wardrobeItem?: WardrobeItem;
   originalUrl: string;
-  removedBgUrl?: string | null;
+  removedBgUrl?: string;
   backgroundRemoved: boolean;
   width: number;
   height: number;
@@ -65,7 +68,7 @@ export default async function handler(
 
     const form = formidable({ maxFileSize: 10 * 1024 * 1024, keepExtensions: true });
     const [fields, files] = await form.parse(req);
-
+    
     const file = files.file?.[0];
     if (!file) {
       return res.status(400).json({ error: '請選擇要上傳的圖片檔案' });
@@ -84,69 +87,113 @@ export default async function handler(
       phash: true,
     });
 
+    let removedBgUrl: string | undefined = undefined;
+    let backgroundRemoved = false;
+
     // 2. Remove background if API key is available
-    if (!process.env.REMOVE_BG_API_KEY) {
+    if (process.env.REMOVE_BG_API_KEY) {
+      try {
+        const removeBgResult = await removeBackgroundFromImageUrl({
+          url: originalResult.secure_url,
+          apiKey: process.env.REMOVE_BG_API_KEY!,
+          size: 'auto',
+          type: 'auto',
+          format: 'png'
+        });
+        const buffer = Buffer.from(removeBgResult.base64img, 'base64');
+        const uploadedRemovedBg = await uploadStream(buffer, {
+          folder: 'style-app/wardrobe',
+          public_id: `${originalResult.public_id}_nobg`,
+          resource_type: 'image',
+        });
+        removedBgUrl = uploadedRemovedBg.secure_url;
+        backgroundRemoved = true;
+      } catch (removeBgError: any) {
+        console.error('Remove.bg API error:', removeBgError.message || removeBgError);
+        // Fail gracefully, the original image is still available
+      }
+    } else {
       console.warn('REMOVE_BG_API_KEY is not set. Skipping background removal.');
+    }
+
+    const userId = fields.userId?.[0];
+    
+    // If no userId, perform old behavior (backward compatibility)
+    if (!userId) {
       const processingTime = (Date.now() - startTime) / 1000;
       return res.status(200).json({
         success: true,
         originalUrl: originalResult.secure_url,
-        backgroundRemoved: false,
+        removedBgUrl,
+        backgroundRemoved,
         width: originalResult.width,
         height: originalResult.height,
         format: originalResult.format,
         processingTime,
+        error: backgroundRemoved ? undefined : '去背失敗，但原圖已上傳。',
       });
     }
 
-    try {
-      const removeBgResult = await removeBackgroundFromImageUrl({
-        url: originalResult.secure_url,
-        apiKey: process.env.REMOVE_BG_API_KEY!,
-        size: 'auto',
-        type: 'auto',
-        format: 'png'
-      });
+    // 3. Create Wardrobe Item
+    const { name, type, season, colors, purchased, style, material, pattern, occasions, customTags } = fields;
 
-      const buffer = Buffer.from(removeBgResult.base64img, 'base64');
-
-      // 3. Upload background-removed image
-      const removedBgResult = await uploadStream(buffer, {
-        folder: 'style-app/wardrobe',
-        public_id: `${originalResult.public_id}_nobg`,
-        resource_type: 'image',
-      });
-      
-      const processingTime = (Date.now() - startTime) / 1000;
-      console.log(`Total processing time: ${processingTime.toFixed(2)}s`);
-
-      // 4. Return both URLs
-      return res.status(200).json({
-        success: true,
-        originalUrl: originalResult.secure_url,
-        removedBgUrl: removedBgResult.secure_url,
-        backgroundRemoved: true,
-        width: originalResult.width,
-        height: originalResult.height,
-        format: removedBgResult.format,
-        processingTime,
-      });
-
-    } catch (removeBgError: any) {
-      console.error('Remove.bg API error:', removeBgError.message || removeBgError);
-      const processingTime = (Date.now() - startTime) / 1000;
-      // If background removal fails, still return the original image URL
-      return res.status(200).json({
-        success: true,
-        originalUrl: originalResult.secure_url,
-        backgroundRemoved: false,
-        width: originalResult.width,
-        height: originalResult.height,
-        format: originalResult.format,
-        processingTime,
-        error: '去背失敗，但原圖已上傳。',
-      });
+    if (!name?.[0] || !type?.[0]) {
+      return res.status(400).json({ error: '`name` and `type` are required fields.' });
     }
+
+    // Parse occasions if provided
+    let parsedOccasions: Occasion[] | undefined;
+    if (occasions && occasions[0] && typeof occasions[0] === 'string') {
+      try {
+        parsedOccasions = JSON.parse(occasions[0]);
+      } catch {
+        parsedOccasions = undefined;
+      }
+    }
+
+    // Parse customTags
+    let parsedCustomTags: string[] | undefined;
+    if (customTags && customTags[0] && typeof customTags[0] === 'string') {
+      try {
+        parsedCustomTags = JSON.parse(customTags[0]);
+      } catch {
+        parsedCustomTags = undefined;
+      }
+    }
+
+    const itemData: CreateWardrobeItemDto = {
+      name: name[0],
+      type: type[0] as any,
+      imageUrl: removedBgUrl || originalResult.secure_url,
+      originalImageUrl: originalResult.secure_url,
+      colors: colors?.[0] ? JSON.parse(colors[0]) : [],
+      season: season?.[0] as any || 'all-season',
+      style: style?.[0] as any,
+      material: material?.[0] as any,
+      pattern: pattern?.[0] as any,
+      occasions: parsedOccasions,
+      source: 'upload',
+      customTags: parsedCustomTags,
+      purchased: purchased?.[0] === 'true',
+    };
+
+    const wardrobeItem = await createWardrobeItem(userId, itemData);
+    
+    const processingTime = (Date.now() - startTime) / 1000;
+    console.log(`Total processing time: ${processingTime.toFixed(2)}s`);
+
+    // 4. Return enhanced response
+    return res.status(201).json({
+      success: true,
+      wardrobeItem,
+      originalUrl: originalResult.secure_url,
+      removedBgUrl,
+      backgroundRemoved,
+      width: originalResult.width,
+      height: originalResult.height,
+      format: originalResult.format,
+      processingTime,
+    });
 
   } catch (error: any) {
     console.error('Upload API error:', error);

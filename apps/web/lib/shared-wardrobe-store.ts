@@ -13,10 +13,11 @@ export type UpdateWardrobeItemDto = Partial<Omit<WardrobeItem, 'id' | 'userId' |
 export function createWardrobeItem(userId: string, dto: CreateWardrobeItemDto): WardrobeItem {
   const id = randomUUID();
   const newItem: WardrobeItem = {
-    ...dto,
     id,
     userId,
     createdAt: new Date(),
+    ...dto,
+    colors: dto.colors || [],  // 🔥 如果 undefined 則使用空陣列
   };
   inMemoryWardrobeItems.set(id, newItem);
   return newItem;
@@ -82,7 +83,7 @@ export function getItemsByTag(userId: string, tag: string): WardrobeItem[] {
   const userItems = Array.from(inMemoryWardrobeItems.values()).filter(
     (item) => item.userId === userId
   );
-  return userItems.filter((item) => item.tags?.includes(tag));
+  return userItems.filter((item) => item.customTags?.includes(tag));
 }
 
 /**
@@ -94,7 +95,7 @@ export function getUserTags(userId: string): string[] {
   const userItems = Array.from(inMemoryWardrobeItems.values()).filter(
     (item) => item.userId === userId
   );
-  const allTags = userItems.flatMap((item) => item.tags || []);
+  const allTags = userItems.flatMap((item) => item.customTags || []);
   return [...new Set(allTags)];
 }
 
@@ -109,14 +110,14 @@ export function addTagToItem(userId: string, itemId: string, tag: string): Wardr
   const item = inMemoryWardrobeItems.get(itemId);
   if (!item || item.userId !== userId) return null;
 
-  const tags = item.tags || [];
-  if (tags.includes(tag)) {
+  const customTags = item.customTags || [];
+  if (customTags.includes(tag)) {
     return item; // Tag already exists, no changes needed
   }
 
   const updatedItem: WardrobeItem = {
     ...item,
-    tags: [...tags, tag],
+    customTags: [...customTags, tag],
     updatedAt: new Date(),
   };
 
@@ -135,13 +136,13 @@ export function removeTagFromItem(userId: string, itemId: string, tag: string): 
   const item = inMemoryWardrobeItems.get(itemId);
   if (!item || item.userId !== userId) return null;
 
-  if (!item.tags || !item.tags.includes(tag)) {
+  if (!item.customTags || !item.customTags.includes(tag)) {
     return item; // Tag doesn't exist, no changes needed
   }
 
   const updatedItem: WardrobeItem = {
     ...item,
-    tags: item.tags.filter((t) => t !== tag),
+    customTags: item.customTags.filter((t) => t !== tag),
     updatedAt: new Date(),
   };
 
