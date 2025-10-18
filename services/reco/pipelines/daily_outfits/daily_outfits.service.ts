@@ -1,64 +1,88 @@
-import { Injectable } from '@nestjs/common';
-import { WardrobeItem, Style } from '@/packages/types/src/wardrobe';
-import { DailyOutfitRequest, DailyOutfitRecommendation, DailyOutfitResponse } from '@/packages/types/src/daily';
-import { ItemsService } from '../../../wardrobe/modules/items/items.service';
-import { getCurrentWeather } from '../../../weather/weather.service';
-import { weatherFitFilter, scoreOccasion, scoreCompatibility } from '../../modules/scoring/rules';
-import { generateOutfitCombinations } from '../../modules/retrieval/simple';
-import { Weather } from '../../../weather/weather.types';
+
+import { WardrobeItem, Occasion, Style } from '@/packages/types/src/wardrobe';
+import { OutfitCombination } from '@/packages/types/src/basket';
 import { WeatherSummary } from '@/packages/types/src/weather';
+import { WardrobeService } from '../../../wardrobe/items.service';
+import { Location } from '../../../weather/weather.types';
+import { generateOutfitCombinations } from '../../modules/retrieval/simple';
+import { weatherFitFilter, scoreCompatibility } from '../../modules/scoring/rules';
 
-@Injectable()
+/**
+ * Service for generating daily outfit recommendations.
+ */
 export class DailyOutfitsService {
-  private readonly itemsService = new ItemsService();
+    /**
+     * @param wardrobeService - An instance of WardrobeService to access user's items.
+     * @param getWeather - An async function that returns weather summary for a location.
+     */
+    constructor(
+        private wardrobeService: WardrobeService,
+        private getWeather: (location: Location) => Promise<WeatherSummary>
+    ) {}
 
-  private toWeatherSummary(weather: Weather): WeatherSummary {
-    const conditionMap: { [key: string]: WeatherSummary['condition'] } = {
-      clear: 'sunny',
-      clouds: 'cloudy',
-      rain: 'rainy',
-      drizzle: 'rainy',
-      snow: 'snowy',
-    };
+    /**
+     * Generates daily outfit recommendations for a user based on location and occasion.
+     * @param userId - The ID of the user.
+     * @param location - The user's current location (latitude and longitude).
+     * @param occasion - The occasion for the outfits (e.g., work, casual).
+     * @returns A promise that resolves to an array of recommended outfit combinations.
+     */
+    async generateDailyOutfits(
+        userId: string,
+        location: Location,
+        occasion: Occasion
+    ): Promise<OutfitCombination[]> {
+        // 1. Load user's wardrobe
+        const allItems = this.wardrobeService.getItems(userId);
+        if (allItems.length === 0) {
+            return []; // Cannot generate outfits without items
+        }
 
-    return {
-      temperature: weather.temperature,
-      condition: conditionMap[weather.condition] || 'sunny',
-      windSpeed: weather.windSpeed,
-    };
-  }
+        // 2. Get current weather summary
+        const weatherSummary = await this.getWeather(location);
 
-  async generate(request: DailyOutfitRequest): Promise<DailyOutfitResponse> {
-    const { userId, latitude, longitude, occasion } = request;
+        // 3. Filter items based on weather
+        // Note: weatherFitFilter is a placeholder and needs a proper implementation
+        const suitableItems = weatherFitFilter(allItems, weatherSummary);
 
-    const wardrobe = await this.itemsService.findAll(userId);
-    const weather = await getCurrentWeather({ lat: latitude, lon: longitude });
-    const weatherSummary = this.toWeatherSummary(weather);
+        // 4. Generate candidate outfits
+        const candidateOutfits = generateOutfitCombinations(suitableItems);
+        if (candidateOutfits.length === 0) {
+            return [];
+        }
 
-    const weatherFilteredItems = weatherFitFilter(wardrobe, weatherSummary);
+        // 5. Score and rank outfits
+        const scoredOutfits = candidateOutfits.map(outfit => {
+            const score = scoreCompatibility(outfit, occasion, weatherSummary, undefined);
+            return { outfit, score };
+        });
 
-    const combinations = generateOutfitCombinations(weatherFilteredItems);
+        // Sort by highest score
+        scoredOutfits.sort((a, b) => b.score - a.score);
 
-    const recommendations: DailyOutfitRecommendation[] = combinations.map(outfit => {
-      const weatherFit = 1; // Placeholder for actual weather fit score
-      const occasionMatch = scoreOccasion(outfit.top, occasion);
-      const compatibility = scoreCompatibility();
-      const total = weatherFit + occasionMatch + compatibility;
+        // 6. Select top 2 diverse outfits
+        const finalOutfits: OutfitCombination[] = [];
+        if (scoredOutfits.length > 0) {
+            finalOutfits.push(scoredOutfits[0].outfit);
+        }
 
-      return {
-        outfit,
-        reasons: ['Good for current weather', 'Matches your style'],
-        scores: {
-          weatherFit,
-          occasionMatch,
-          compatibility,
-          total,
-        },
-      };
-    });
+        if (scoredOutfits.length > 1) {
+            // Find a second outfit that is sufficiently different from the first
+            const firstOutfitStyle = scoredOutfits[0].outfit.top.style;
+            for (let i = 1; i < scoredOutfits.length; i++) {
+                const candidateOutfit = scoredOutfits[i].outfit;
+                // Diversity check: prefer a different style or at least a different top
+                if (candidateOutfit.top.style !== firstOutfitStyle || candidateOutfit.top.id !== finalOutfits[0].top.id) {
+                    finalOutfits.push(candidateOutfit);
+                    break;
+                }
+            }
+            // If no "diverse" outfit was found, just add the second-best one
+            if (finalOutfits.length < 2) {
+                finalOutfits.push(scoredOutfits[1].outfit);
+            }
+        }
 
-    recommendations.sort((a, b) => b.scores.total - a.scores.total);
-
-    return { recommendations: recommendations.slice(0, 5) };
-  }
+        return finalOutfits;
+    }
 }

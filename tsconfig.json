@@ -13,5 +13,9 @@
     "strict": true,
     "skipLibCheck": true,
     "types": ["vitest/globals", "node"]
-  }
+  },
+  "exclude": [
+    "ai-recommendation-review",
+    "shopping-module-review"
+  ]
 }

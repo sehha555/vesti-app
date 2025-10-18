@@ -32,7 +32,7 @@ export class BasketMixmatchService {
     const combinations = Array.from(uniqueCombinations.values());
 
     const recommendations: BasketMixmatchRecommendation[] = combinations.map(outfit => {
-      const compatibility = scoreCompatibility();
+      const compatibility = scoreCompatibility(outfit);
       const occasion = scoreOccasion(outfit.top, 'casual');
       const rules = { occasion };
       const total = compatibility + occasion;

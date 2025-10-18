@@ -1,10 +1,11 @@
 import handler from './route';
-import { DailyOutfitRequest } from '@/packages/types/src/daily';
+import { DailyOutfitRequest, DailyOutfitResponse } from '@/packages/types/src/daily';
 import { SaveDailyOutfitRequest } from '@/packages/types/src/persistence';
 import { createMocks } from 'node-mocks-http';
 import { beforeEach, vi } from 'vitest';
 import { DailyOutfitsService } from './daily_outfits.service';
-import { WardrobeItem, ClothingType } from '@/packages/types/src/wardrobe'; // Import WardrobeItem and ClothingType
+import { WardrobeItem, ClothingType } from '@/packages/types/src/wardrobe';
+import { OutfitCombination } from '@/packages/types/src/basket';
 
 vi.mock('./daily_outfits.service');
 
@@ -28,17 +29,17 @@ it('should return 5 outfits for a valid request', async () => {
     createdAt: new Date(),
   });
 
-  const mockRecommendations = [
-    { outfit: { top: createMockWardrobeItem('t1', 'top'), bottom: createMockWardrobeItem('b1', 'bottom'), shoes: createMockWardrobeItem('s1', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: createMockWardrobeItem('t2', 'top'), bottom: createMockWardrobeItem('b2', 'bottom'), shoes: createMockWardrobeItem('s2', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: createMockWardrobeItem('t3', 'top'), bottom: createMockWardrobeItem('b3', 'bottom'), shoes: createMockWardrobeItem('s3', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: createMockWardrobeItem('t4', 'top'), bottom: createMockWardrobeItem('b4', 'bottom'), shoes: createMockWardrobeItem('s4', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
-    { outfit: { top: createMockWardrobeItem('t5', 'top'), bottom: createMockWardrobeItem('b5', 'bottom'), shoes: createMockWardrobeItem('s5', 'shoes') }, reasons: ['test'], scores: { weatherFit: 1, occasionMatch: 1, compatibility: 1, total: 3 } },
+  const mockOutfits: OutfitCombination[] = [
+    { top: createMockWardrobeItem('t1', 'top'), bottom: createMockWardrobeItem('b1', 'bottom'), shoes: createMockWardrobeItem('s1', 'shoes') },
+    { top: createMockWardrobeItem('t2', 'top'), bottom: createMockWardrobeItem('b2', 'bottom'), shoes: createMockWardrobeItem('s2', 'shoes') },
+    { top: createMockWardrobeItem('t3', 'top'), bottom: createMockWardrobeItem('b3', 'bottom'), shoes: createMockWardrobeItem('s3', 'shoes') },
+    { top: createMockWardrobeItem('t4', 'top'), bottom: createMockWardrobeItem('b4', 'bottom'), shoes: createMockWardrobeItem('s4', 'shoes') },
+    { top: createMockWardrobeItem('t5', 'top'), bottom: createMockWardrobeItem('b5', 'bottom'), shoes: createMockWardrobeItem('s5', 'shoes') },
   ];
 
-  vi.mocked(DailyOutfitsService.prototype.generate).mockResolvedValue({
-    recommendations: mockRecommendations,
-  });
+  vi.mocked(DailyOutfitsService.prototype.generateDailyOutfits).mockResolvedValue(
+    mockOutfits
+  );
 
   const { req, res } = createMocks({
     method: 'POST',
@@ -54,11 +55,11 @@ it('should return 5 outfits for a valid request', async () => {
   await handler(req, res);
 
   expect(res._getStatusCode()).toBe(200);
-  const result = JSON.parse(res._getData());
-  expect(result.recommendations).toHaveLength(5);
-  expect(result.recommendations[0].outfit).toBeDefined();
-  expect(result.recommendations[0].scores).toBeDefined();
-  expect(DailyOutfitsService.prototype.generate).toHaveBeenCalledTimes(1);
+  const result: OutfitCombination[] = JSON.parse(res._getData());
+  expect(result).toHaveLength(5);
+  expect(result[0].top).toBeDefined();
+  expect(result[0].bottom).toBeDefined();
+  expect(DailyOutfitsService.prototype.generateDailyOutfits).toHaveBeenCalledTimes(1);
 });
 
 it('should save daily outfits', async () => {
