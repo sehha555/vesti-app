@@ -2,10 +2,10 @@
 import { WardrobeItem, Occasion, Style } from '@/packages/types/src/wardrobe';
 import { OutfitCombination } from '@/packages/types/src/basket';
 import { WeatherSummary } from '@/packages/types/src/weather';
-import { WardrobeService } from '../../../wardrobe/items.service';
-import { Location } from '../../../weather/weather.types';
-import { generateOutfitCombinations } from '../../modules/retrieval/simple';
-import { weatherFitFilter, scoreCompatibility } from '../../modules/scoring/rules';
+import { WardrobeService } from '@/services/wardrobe/items.service';
+import { Location } from '@/services/weather/weather.types';
+import { generateOutfitCombinations } from '@/services/reco/modules/retrieval/simple';
+import { weatherFitFilter, scoreCompatibility } from '@/services/reco/modules/scoring/rules';
 
 /**
  * Service for generating daily outfit recommendations.
@@ -34,15 +34,14 @@ export class DailyOutfitsService {
     ): Promise<OutfitCombination[]> {
         // 1. Load user's wardrobe
         const allItems = this.wardrobeService.getItems(userId);
-        if (allItems.length === 0) {
-            return []; // Cannot generate outfits without items
+        if (allItems.length < 3) { // Need at least a top, bottom, and shoes
+            return [];
         }
 
         // 2. Get current weather summary
         const weatherSummary = await this.getWeather(location);
 
         // 3. Filter items based on weather
-        // Note: weatherFitFilter is a placeholder and needs a proper implementation
         const suitableItems = weatherFitFilter(allItems, weatherSummary);
 
         // 4. Generate candidate outfits
@@ -60,26 +59,28 @@ export class DailyOutfitsService {
         // Sort by highest score
         scoredOutfits.sort((a, b) => b.score - a.score);
 
-        // 6. Select top 2 diverse outfits
+        // 6. Select up to 2 non-overlapping outfits
         const finalOutfits: OutfitCombination[] = [];
-        if (scoredOutfits.length > 0) {
-            finalOutfits.push(scoredOutfits[0].outfit);
-        }
+        const usedItemIds = new Set<string>();
 
-        if (scoredOutfits.length > 1) {
-            // Find a second outfit that is sufficiently different from the first
-            const firstOutfitStyle = scoredOutfits[0].outfit.top.style;
-            for (let i = 1; i < scoredOutfits.length; i++) {
-                const candidateOutfit = scoredOutfits[i].outfit;
-                // Diversity check: prefer a different style or at least a different top
-                if (candidateOutfit.top.style !== firstOutfitStyle || candidateOutfit.top.id !== finalOutfits[0].top.id) {
-                    finalOutfits.push(candidateOutfit);
+        for (const { outfit } of scoredOutfits) {
+            const outfitItems = [outfit.top, outfit.bottom, outfit.shoes, outfit.outerwear].filter(Boolean) as WardrobeItem[];
+            const outfitItemIds = outfitItems.map(item => item.id);
+
+            // Check if any item in this outfit has already been used
+            const hasOverlap = outfitItemIds.some(id => usedItemIds.has(id));
+
+            if (!hasOverlap) {
+                // If no overlap, add this outfit to the results
+                finalOutfits.push(outfit);
+
+                // And add its items to the used set
+                outfitItemIds.forEach(id => usedItemIds.add(id));
+
+                // Stop when we have found 2 outfits
+                if (finalOutfits.length === 2) {
                     break;
                 }
-            }
-            // If no "diverse" outfit was found, just add the second-best one
-            if (finalOutfits.length < 2) {
-                finalOutfits.push(scoredOutfits[1].outfit);
             }
         }
 
