@@ -1,83 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { wardrobeServicePromise } from '@/services/wardrobe/items.service';
-import { CreateWardrobeItemDto } from '@/packages/types/src/wardrobe';
+import { createClient } from '@supabase/supabase-js';
 
-/**
- * @swagger
- * /api/wardrobe/items:
- *   get:
- *     summary: Get wardrobe items for a user
- *     parameters:
- *       - in: query
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: A list of wardrobe items
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/WardrobeItem'
- */
+// 直接在這裡初始化 supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
+
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
+    const userId = request.nextUrl.searchParams.get('userId');
 
-    if (!userId) {
-      return NextResponse.json({ message: 'userId is required' }, { status: 400 });
+    if (!userId || typeof userId !== 'string') {
+      return NextResponse.json({ message: '請求中缺少有效的 userId 參數。' }, { status: 400 });
     }
 
-    const wardrobeService = await wardrobeServicePromise;
-    const items = wardrobeService.getItems(userId);
+    const { data, error } = await supabase
+      .from('clothing_items')
+      .select('*')
+      .eq('user_id', userId);
 
-    return NextResponse.json(items);
-  } catch (error) {
-    console.error('Error fetching wardrobe items:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (error: any) {
+    console.error('Supabase GET 錯誤:', error);
+    return NextResponse.json({ message: '讀取衣物資料時發生錯誤。', error: error.message }, { status: 500 });
   }
 }
 
-/**
- * @swagger
- * /api/wardrobe/items:
- *   post:
- *     summary: Create a new wardrobe item
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateWardrobeItemDto'
- *     responses:
- *       201:
- *         description: The created wardrobe item
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/WardrobeItem'
- */
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    // The DTO might be nested under a userId property, handle both cases
-    const { userId, ...itemData } = body.userId ? body : { userId: body.userId, ...body };
+    const newItem = await request.json();
+    const { user_id, name, type, colors } = newItem;
 
-    if (!userId || !itemData.name || !itemData.type) {
-      return NextResponse.json({ message: 'userId, name, and type are required' }, { status: 400 });
+    if (!user_id || !name || !type || !colors) {
+      return NextResponse.json({ message: '請求中缺少必要的欄位 (user_id, name, type, colors)。' }, { status: 400 });
     }
 
-    const wardrobeService = await wardrobeServicePromise;
-    const newItem = await wardrobeService.createItem(userId, itemData as CreateWardrobeItemDto);
+    const { data, error } = await supabase
+      .from('clothing_items')
+      .insert([newItem])
+      .select()
+      .single();
 
-    return NextResponse.json(newItem, { status: 201 });
-  } catch (error) {
-    console.error('Error creating wardrobe item:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ message: 'Internal Server Error', error: errorMessage }, { status: 500 });
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(data, { status: 201 });
+  } catch (error: any) {
+    console.error('Supabase POST 錯誤:', error);
+    return NextResponse.json({ message: '新增衣物時發生錯誤。', error: error.message }, { status: 500 });
+  }
+}
+
+
+export async function PUT(request: Request) {
+  try {
+    const { id, ...updateData } = await request.json();
+
+    if (!id) {
+      return NextResponse.json({ message: '缺少 id 參數' }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('clothing_items')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (error: any) {
+    console.error('Supabase PUT 錯誤:', error);
+    return NextResponse.json({ message: '更新衣物時發生錯誤', error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ message: '缺少 id 參數' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('clothing_items')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ message: '刪除成功' }, { status: 200 });
+  } catch (error: any) {
+    console.error('Supabase DELETE 錯誤:', error);
+    return NextResponse.json({ message: '刪除衣物時發生錯誤', error: error.message }, { status: 500 });
   }
 }

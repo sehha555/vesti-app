@@ -3,8 +3,7 @@ import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import formidable from 'formidable';
 import { removeBackgroundFromImageUrl } from 'remove.bg';
 import { Readable } from 'stream';
-import { createWardrobeItem } from '../../lib/shared-wardrobe-store';
-import type { CreateWardrobeItemDto, Occasion, WardrobeItem } from '../../../../packages/types/src/wardrobe';
+import type { Occasion, WardrobeItem } from '../../../../packages/types/src/wardrobe';
 
 // Disable Next.js body parser
 export const config = {
@@ -161,23 +160,36 @@ export default async function handler(
       }
     }
 
-    const itemData: CreateWardrobeItemDto = {
-      name: name[0],
-      type: type[0] as any,
-      imageUrl: removedBgUrl || originalResult.secure_url,
-      originalImageUrl: originalResult.secure_url,
-      colors: colors?.[0] ? JSON.parse(colors[0]) : [],
-      season: season?.[0] as any || 'all-season',
-      style: style?.[0] as any,
-      material: material?.[0] as any,
-      pattern: pattern?.[0] as any,
-      occasions: parsedOccasions,
-      source: 'upload',
-      customTags: parsedCustomTags,
-      purchased: purchased?.[0] === 'true',
-    };
+    const response = await fetch('http://localhost:3000/api/wardrobe/items', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        name: name[0],
+        type: type[0].toLowerCase(),
+        source: 'upload',
+        image_url: removedBgUrl || originalResult.secure_url,
+        original_image_url: originalResult.secure_url,
+        colors: colors?.[0] ? JSON.parse(colors[0]) : [],
+        season: season?.[0] || 'allseason',
+        style: style?.[0],
+        material: material?.[0],
+        pattern: pattern?.[0],
+        occasion: parsedOccasions,
+        custom_tags: parsedCustomTags,
+        purchased: purchased?.[0] === 'true',
+      }),
+    });
 
-    const wardrobeItem = await createWardrobeItem(userId, itemData);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Failed to create wardrobe item:', errorData);
+      throw new Error('Failed to create wardrobe item');
+    }
+
+    const wardrobeItem = await response.json();
     
     const processingTime = (Date.now() - startTime) / 1000;
     console.log(`Total processing time: ${processingTime.toFixed(2)}s`);

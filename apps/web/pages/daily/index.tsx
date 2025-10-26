@@ -87,6 +87,9 @@ const DailyOutfitsPage = () => {
           <div key={index} className="bg-white shadow-lg rounded-lg overflow-hidden">
             <div className="p-4">
               <h2 className="text-xl font-semibold mb-2">Outfit #{index + 1}</h2>
+              <div className="mt-2 text-sm text-gray-600">
+                相性分數: {rec.scores.total}/100
+              </div>
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <img src={rec.top.imageUrl} alt={rec.top.name} className="w-24 h-24 object-cover rounded" />

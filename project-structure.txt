@@ -1,492 +1,157 @@
-列出磁碟區 Windows-SSD 的資料夾 PATH
-磁碟區序號為 0A5B-9A92
-C:.
-│  .env.example
-│  .geminiignore
-│  .gitignore
-│  eslint.config.js
-│  jest.setup.js
-│  package-lock.json
-│  package.json
-│  project-structure.txt
-│  README.md
-│  tsconfig.json
-│  vitest.config.ts
-│  
-├─.github
-│  └─workflows
-├─.next
-├─.turbo
-│  ├─cache
-│  ├─cookies
-│  └─daemon
-├─apps
-│  ├─admin
-│  ├─mobile
-│  └─web
-│      │  .env.local
-│      │  next-env.d.ts
-│      │  next.config.js
-│      │  tsconfig.json
-│      │  
-│      ├─.next
-│      │  │  build-manifest.json
-│      │  │  package.json
-│      │  │  prerender-manifest.json
-│      │  │  react-loadable-manifest.json
-│      │  │  routes-manifest.json
-│      │  │  trace
-│      │  │  
-│      │  ├─cache
-│      │  │  │  .rscinfo
-│      │  │  │  chrome-devtools-workspace-uuid
-│      │  │  │  next-devtools-config.json
-│      │  │  │  
-│      │  │  ├─swc
-│      │  │  │  └─plugins
-│      │  │  │      └─windows_x86_64_18.0.0
-│      │  │  └─webpack
-│      │  │      ├─client-development
-│      │  │      │      0.pack.gz
-│      │  │      │      1.pack.gz
-│      │  │      │      2.pack.gz
-│      │  │      │      index.pack.gz
-│      │  │      │      index.pack.gz.old
-│      │  │      │      
-│      │  │      ├─client-development-fallback
-│      │  │      └─server-development
-│      │  │              0.pack.gz
-│      │  │              1.pack.gz
-│      │  │              2.pack.gz
-│      │  │              3.pack.gz
-│      │  │              4.pack.gz
-│      │  │              5.pack.gz
-│      │  │              6.pack.gz
-│      │  │              index.pack.gz
-│      │  │              index.pack.gz.old
-│      │  │              
-│      │  ├─server
-│      │  │  │  interception-route-rewrite-manifest.js
-│      │  │  │  middleware-build-manifest.js
-│      │  │  │  middleware-manifest.json
-│      │  │  │  middleware-react-loadable-manifest.js
-│      │  │  │  next-font-manifest.js
-│      │  │  │  next-font-manifest.json
-│      │  │  │  pages-manifest.json
-│      │  │  │  webpack-api-runtime.js
-│      │  │  │  webpack-runtime.js
-│      │  │  │  _error.js
-│      │  │  │  
-│      │  │  ├─pages
-│      │  │  │  │  _app.js
-│      │  │  │  │  _document.js
-│      │  │  │  │  _error.js
-│      │  │  │  │  
-│      │  │  │  └─api
-│      │  │  │          upload.js
-│      │  │  │          
-│      │  │  └─vendor-chunks
-│      │  │          @swc.js
-│      │  │          next.js
-│      │  │          
-│      │  ├─static
-│      │  │  ├─chunks
-│      │  │  │  │  main.js
-│      │  │  │  │  polyfills.js
-│      │  │  │  │  react-refresh.js
-│      │  │  │  │  webpack.js
-│      │  │  │  │  _error.js
-│      │  │  │  │  _pages-dir-browser_node_modules_next_dist_pages__app_js.js
-│      │  │  │  │  _pages-dir-browser_node_modules_next_dist_pages__error_js.js
-│      │  │  │  │  
-│      │  │  │  └─pages
-│      │  │  │          _app.js
-│      │  │  │          _error.js
-│      │  │  │          
-│      │  │  ├─development
-│      │  │  │      _buildManifest.js
-│      │  │  │      _ssgManifest.js
-│      │  │  │      
-│      │  │  └─webpack
-│      │  │          633457081244afec._.hot-update.json
-│      │  │          
-│      │  └─types
-│      │          routes.d.ts
-│      │          validator.ts
-│      │          
-│      ├─.turbo
-│      │  ├─cookies
-│      │  └─daemon
-│      ├─lib
-│      │      api.ts
-│      │      shared-outfit-store.ts
-│      │      shared-wardrobe-store.ts
-│      │      
-│      ├─pages
-│      │  ├─api
-│      │  │  │  test-cloudinary.ts
-│      │  │  │  upload.ts
-│      │  │  │  
-│      │  │  ├─outfits
-│      │  │  │      index.ts
-│      │  │  │      [id].ts
-│      │  │  │      
-│      │  │  ├─reco
-│      │  │  │  │  basket-mixmatch.ts
-│      │  │  │  │  closet-gap-fill.ts
-│      │  │  │  │  daily-outfits.ts
-│      │  │  │  │  
-│      │  │  │  ├─basket-mixmatch
-│      │  │  │  │      save.ts
-│      │  │  │  │      
-│      │  │  │  └─daily-outfits
-│      │  │  │          save.ts
-│      │  │  │          
-│      │  │  └─wardrobe
-│      │  │      │  items.ts
-│      │  │      │  tags.ts
-│      │  │      │  [id].ts
-│      │  │      │  
-│      │  │      └─items
-│      │  │              [id].ts
-│      │  │              
-│      │  ├─basket
-│      │  │      index.tsx
-│      │  │      
-│      │  ├─cart
-│      │  │      index.tsx
-│      │  │      
-│      │  ├─daily
-│      │  │      index.tsx
-│      │  │      
-│      │  └─gap-fill
-│      │          index.tsx
-│      │          
-│      └─public
-│              test-api.html
-│              
-├─coverage
-│  │  base.css
-│  │  block-navigation.js
-│  │  clover.xml
-│  │  coverage-final.json
-│  │  favicon.png
-│  │  index.html
-│  │  prettify.css
-│  │  prettify.js
-│  │  sort-arrow-sprite.png
-│  │  sorter.js
-│  │  
-│  └─style
-│      │  index.html
-│      │  jest.setup.js.html
-│      │  
-│      ├─apps
-│      │  └─web
-│      │      ├─lib
-│      │      │      api.ts.html
-│      │      │      index.html
-│      │      │      
-│      │      └─pages
-│      │          ├─api
-│      │          │  └─reco
-│      │          │      │  basket-mixmatch.ts.html
-│      │          │      │  closet-gap-fill.ts.html
-│      │          │      │  daily-outfits.ts.html
-│      │          │      │  index.html
-│      │          │      │  
-│      │          │      ├─basket-mixmatch
-│      │          │      │      index.html
-│      │          │      │      save.ts.html
-│      │          │      │      
-│      │          │      └─daily-outfits
-│      │          │              index.html
-│      │          │              save.ts.html
-│      │          │              
-│      │          ├─basket
-│      │          │      index.html
-│      │          │      index.tsx.html
-│      │          │      
-│      │          ├─cart
-│      │          │      index.html
-│      │          │      index.tsx.html
-│      │          │      
-│      │          ├─daily
-│      │          │      index.html
-│      │          │      index.tsx.html
-│      │          │      
-│      │          └─gap-fill
-│      │                  index.html
-│      │                  index.tsx.html
-│      │                  
-│      ├─packages
-│      │  ├─prompts
-│      │  │  └─src
-│      │  │          index.html
-│      │  │          vqa-prompts.ts.html
-│      │  │          
-│      │  └─types
-│      │      │  index.html
-│      │      │  reco.ts.html
-│      │      │  
-│      │      └─src
-│      │              basket.ts.html
-│      │              cart.ts.html
-│      │              daily.ts.html
-│      │              gap.ts.html
-│      │              index.html
-│      │              outfit.ts.html
-│      │              payments.ts.html
-│      │              persistence.ts.html
-│      │              reco.ts.html
-│      │              tryon.ts.html
-│      │              wardrobe.ts.html
-│      │              weather.ts.html
-│      │              
-│      └─services
-│          ├─api-gateway
-│          │      index.html
-│          │      index.ts.html
-│          │      
-│          ├─cart-payments
-│          │  │  index.html
-│          │  │  index.ts.html
-│          │  │  
-│          │  └─payments
-│          │          index.html
-│          │          mock.ts.html
-│          │          
-│          ├─catalog
-│          │      index.html
-│          │      index.ts.html
-│          │      
-│          ├─reco
-│          │  ├─modules
-│          │  │  ├─preference
-│          │  │  │      index.html
-│          │  │  │      logger.ts.html
-│          │  │  │      persistence.api.ts.html
-│          │  │  │      persistence.ts.html
-│          │  │  │      
-│          │  │  ├─retrieval
-│          │  │  │      filter.ts.html
-│          │  │  │      index.html
-│          │  │  │      lruCache.ts.html
-│          │  │  │      simple.ts.html
-│          │  │  │      
-│          │  │  └─scoring
-│          │  │          index.html
-│          │  │          rules.ts.html
-│          │  │          
-│          │  ├─persistence
-│          │  │      index.html
-│          │  │      inMemoryAdapter.ts.html
-│          │  │      interface.ts.html
-│          │  │      
-│          │  └─pipelines
-│          │      ├─basket_mixmatch
-│          │      │      index.html
-│          │      │      index.ts.html
-│          │      │      persistence.ts.html
-│          │      │      route.ts.html
-│          │      │      
-│          │      ├─closet_gap_fill
-│          │      │      index.html
-│          │      │      index.ts.html
-│          │      │      persistence.ts.html
-│          │      │      route.ts.html
-│          │      │      
-│          │      ├─daily_outfits
-│          │      │      daily_outfits.service.ts.html
-│          │      │      index.html
-│          │      │      index.ts.html
-│          │      │      persistence.ts.html
-│          │      │      route.ts.html
-│          │      │      
-│          │      └─events
-│          │              index.html
-│          │              index.ts.html
-│          │              route.ts.html
-│          │              
-│          ├─tryon
-│          │      index.html
-│          │      index.ts.html
-│          │      
-│          ├─wardrobe
-│          │  └─modules
-│          │      ├─image_features
-│          │      │      cache.ts.html
-│          │      │      extractor.ts.html
-│          │      │      index.html
-│          │      │      
-│          │      └─items
-│          │              index.html
-│          │              items.service.ts.html
-│          │              
-│          └─weather
-│                  index.html
-│                  index.ts.html
-│                  weather.service.ts.html
-│                  weather.types.ts.html
-│                  
-├─data
-├─docs
-│  │  architecture.md
-│  │  git-github-guide.md
-│  │  milestone-mvp.md
-│  │  
-│  ├─adr
-│  ├─api
-│  ├─evals
-│  │      metrics.md
-│  │      
-│  ├─reco
-│  │      compatibility.md
-│  │      preference-loop.md
-│  │      sequential.md
-│  │      
-│  └─vibe
-│          guide.md
-│          
-├─infra
-│  │  docker-compose.yml
-│  │  
-│  ├─ci
-│  ├─k8s
-│  └─terraform
-├─node_modules
-│  (omitted)
-├─packages
-│  ├─config
-│  ├─prompts
-│  │  │  vqa_outfit_keywords.md
-│  │  │  
-│  │  └─src
-│  │          vqa-prompts.ts
-│  │          
-│  ├─types
-│  │  │  reco.ts
-│  │  │  
-│  │  └─src
-│  │          basket.ts
-│  │          cart.ts
-│  │          daily.ts
-│  │          gap.ts
-│  │          outfit.ts
-│  │          payments.ts
-│  │          persistence.ts
-│  │          reco.ts
-│  │          tryon.ts
-│  │          wardrobe.ts
-│  │          weather.ts
-│  │          
-│  └─ui
-├─scripts
-│      dev.sh
-│      eval.sh
-│      seed.sh
-│      smoke.sh
-│      
-└─services
-    ├─api-gateway
-    │      index.ts
-    │      
-    ├─auth
-    ├─cart-payments
-    │  │  index.ts
-    │  │  
-    │  └─payments
-    │          mock.ts
-    │          
-    ├─catalog
-    │      index.ts
-    │      
-    ├─notifications
-    ├─reco
-    │  ├─api
-    │  ├─evals
-    │  │  │  .gitkeep
-    │  │  │  
-    │  │  ├─datasets
-    │  │  │      .gitkeep
-    │  │  │      
-    │  │  └─offline_metrics
-    │  │          .gitkeep
-    │  │          
-    │  ├─modules
-    │  │  ├─compatibility
-    │  │  ├─image_features
-    │  │  ├─preference
-    │  │  │      logger.test.ts
-    │  │  │      logger.ts
-    │  │  │      persistence.api.ts
-    │  │  │      persistence.ts
-    │  │  │      
-    │  │  ├─retrieval
-    │  │  │      filter.test.ts
-    │  │  │      filter.ts
-    │  │  │      lruCache.test.ts
-    │  │  │      lruCache.ts
-    │  │  │      simple.test.ts
-    │  │  │      simple.ts
-    │  │  │      
-    │  │  ├─scoring
-    │  │  │      rules.test.ts
-    │  │  │      rules.ts
-    │  │  │      
-    │  │  └─seq_memory
-    │  ├─persistence
-    │  │      inMemoryAdapter.test.ts
-    │  │      inMemoryAdapter.ts
-    │  │      interface.ts
-    │  │      
-    │  └─pipelines
-    │      ├─basket_mixmatch
-    │      │      index.ts
-    │      │      persistence.ts
-    │      │      route.contract.test.ts
-    │      │      route.ts
-    │      │      
-    │      ├─closet_gap_fill
-    │      │      core.test.ts
-    │      │      index.ts
-    │      │      persistence.ts
-    │      │      route.contract.test.ts
-    │      │      route.ts
-    │      │      
-    │      ├─daily_outfits
-    │      │      daily_outfits.service.ts
-    │      │      index.ts
-    │      │      persistence.ts
-    │      │      route.test.ts
-    │      │      route.ts
-    │      │      
-    │      └─events
-    │              index.ts
-    │              route.test.ts
-    │              route.ts
-    │              
-    ├─tryon
-    │      index.ts
-    │      
-    ├─wardrobe
-    │  │  items.service.test.ts
-    │  │  items.service.ts
-    │  │  persistence.test.ts
-    │  │  persistence.ts
-    │  │  
-    │  ├─modules
-    │  │  ├─image_features
-    │  │  │      cache.ts
-    │  │  │      extractor.test.ts
-    │  │  │      extractor.ts
-    │  │  │      
-    │  │  └─items
-    │  │          items.service.ts
-    │  │          
-    │  └─workers
-    └─weather
-            index.ts
-            weather.service.test.ts
-            weather.service.ts
-            weather.types.ts
+C:\Users\a6050\OneDrive\桌面\style\
+├───apps
+│   └───web
+│       ├───app
+│       │   ├───api
+│       │   │   ├───daily-outfits
+│       │   │   │   └───route.ts
+│       │   │   └───wardrobe
+│       │   │       └───items
+│       │   │           ├───[id]
+│       │   │           │   └───route.ts
+│       │   │           └───route.ts
+│       │   ├───layout.tsx
+│       │   └───page.tsx
+│       ├───data
+│       │   └───wardrobe-items.json
+│       ├───lib
+│       │   ├───api.ts
+│       │   ├───shared-outfit-store.ts
+│       │   ├───shared-wardrobe-store.ts
+│       │   └───supabaseClient.ts
+│       ├───next.config.js
+│       ├───pages
+│       │   ├───api
+│       │   │   ├───outfits
+│       │   │   │   ├───[id].ts
+│       │   │   │   └───index.ts
+│       │   │   ├───reco
+│       │   │   │   ├───basket-mixmatch
+│       │   │   │   │   └───save.ts
+│       │   │   │   ├───basket-mixmatch.ts
+│       │   │   │   ├───closet-gap-fill.ts
+│       │   │   │   ├───daily-outfits
+│       │   │   │   │   └───save.ts
+│       │   │   │   └───daily-outfits.ts
+│       │   │   ├───test-cloudinary.ts
+│       │   │   └───upload.ts
+│       │   ├───basket
+│       │   │   └───index.tsx
+│       │   ├───cart
+│       │   │   └───index.tsx
+│       │   ├───daily
+│       │   │   └───index.tsx
+│       │   └───gap-fill
+│       │       └───index.tsx
+│       └───tsconfig.json
+├───docs
+│   ├───architecture.md
+│   ├───evals
+│   │   └───metrics.md
+│   ├───git-github-guide.md
+│   ├───milestone-mvp.md
+│   ├───reco
+│   │   ├───compatibility.md
+│   │   ├───preference-loop.md
+│   │   └───sequential.md
+│   └───vibe
+│       └───guide.md
+├───eslint.config.js
+├───jest.setup.js
+├───package-lock.json
+├───package.json
+├───packages
+│   ├───prompts
+│   │   ├───src
+│   │   │   └───vqa-prompts.ts
+│   │   └───vqa_outfit_keywords.md
+│   └───types
+│       ├───reco.ts
+│       └───src
+│           ├───basket.ts
+│           ├───cart.ts
+│           ├───daily.ts
+│           ├───gap.ts
+│           ├───outfit.ts
+│           ├───payments.ts
+│           ├───persistence.ts
+│           ├───reco.ts
+│           ├───tryon.ts
+│           ├───wardrobe.ts
+│           └───weather.ts
+├───README.md
+├───services
+│   ├───api-gateway
+│   │   └───index.ts
+│   ├───cart-payments
+│   │   ├───index.ts
+│   │   └───payments
+│   │       └───mock.ts
+│   ├───catalog
+│   │   └───index.ts
+│   ├───reco
+│   │   ├───modules
+│   │   │   ├───preference
+│   │   │   │   ├───logger.test.ts
+│   │   │   │   ├───logger.ts
+│   │   │   │   ├───persistence.api.ts
+│   │   │   │   └───persistence.ts
+│   │   │   ├───retrieval
+│   │   │   │   ├───filter.test.ts
+│   │   │   │   ├───filter.ts
+│   │   │   │   ├───lruCache.test.ts
+│   │   │   │   ├───lruCache.ts
+│   │   │   │   ├───simple.test.ts
+│   │   │   │   └───simple.ts
+│   │   │   └───scoring
+│   │   │       ├───rules.test.ts
+│   │   │       └───rules.ts
+│   │   ├───persistence
+│   │   │   ├───inMemoryAdapter.test.ts
+│   │   │   ├───inMemoryAdapter.ts
+│   │   │   └───interface.ts
+│   │   └───pipelines
+│   │       ├───basket_mixmatch
+│   │       │   ├───index.ts
+│   │       │   ├───persistence.ts
+│   │       │   ├───route.contract.test.ts
+│   │       │   └───route.ts
+│   │       ├───closet_gap_fill
+│   │       │   ├───core.test.ts
+│   │       │   ├───index.ts
+│   │       │   ├───persistence.ts
+│   │       │   ├───route.contract.test.ts
+│   │       │   └───route.ts
+│   │       ├───daily_outfits
+│   │       │   ├───daily_outfits.service.ts
+│   │       │   ├───index.ts
+│   │       │   ├───persistence.ts
+│   │       │   ├───route.test.ts
+│   │       │   └───route.ts
+│   │       └───events
+│   │           ├───index.ts
+│   │           ├───route.test.ts
+│   │           └───route.ts
+│   ├───tryon
+│   │   └───index.ts
+│   ├───wardrobe
+│   │   ├───items.service.test.ts
+│   │   ├───items.service.ts
+│   │   ├───modules
+│   │   │   ├───image_features
+│   │   │   │   ├───cache.ts
+│   │   │   │   ├───extractor.test.ts
+│   │   │   │   └───extractor.ts
+│   │   │   └───items
+│   │   │       └───items.service.ts
+│   │   ├───persistence.test.ts
+│   │   └───persistence.ts
+│   └───weather
+│       ├───index.ts
+│       ├───weather.service.test.ts
+│       ├───weather.service.ts
+│       └───weather.types.ts
+├───test-api.js
+├───test-qwen-vl.js
+├───tsconfig.json
+└───vitest.config.ts
