@@ -1,0 +1,680 @@
+[
+  {
+    "id": "e6aeb60c-d469-4df6-a216-0b6fbf24df8d",
+    "userId": "user-1760785862304",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "http://example.com/White-T-shirt.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T11:11:02.418Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "19a21f8a-9505-47d2-91c7-7833fc019485",
+    "userId": "user-1760785862304",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "http://example.com/Blue-Jeans.jpg",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T11:11:02.473Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "d4b877d1-982c-48be-a9db-d8282195287c",
+    "userId": "user-1760785862304",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "http://example.com/White-Sneakers.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T11:11:02.511Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "dc00c228-e9b4-4824-a0bf-84773e87340c",
+    "userId": "user-1760795858612",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "http://example.com/White-T-shirt.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T13:57:39.148Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "4b80151d-1cb3-4fd7-a8e9-f896e068e399",
+    "userId": "user-1760795858612",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "http://example.com/Blue-Jeans.jpg",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T13:57:39.198Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "e66c8042-28e8-4667-ba1d-63d1313b756b",
+    "userId": "user-1760795858612",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "http://example.com/White-Sneakers.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T13:57:39.233Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "20a2462c-aad7-4538-973a-252a65bcfd94",
+    "userId": "user-1760795881245",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "http://example.com/White-T-shirt.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T13:58:06.970Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "98f36093-353a-4d41-a513-5357e17e45ff",
+    "userId": "user-1760795881245",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "http://example.com/Blue-Jeans.jpg",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T13:58:07.042Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "e90fbdb2-4e19-4771-af7b-0db3c56e8785",
+    "userId": "user-1760795881245",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "http://example.com/White-Sneakers.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T13:58:07.086Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "683e236f-f0d5-41ab-b1e7-d65417e80213",
+    "userId": "user-1760796675537",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "http://example.com/White-T-shirt.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:11:16.431Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "a336840e-724e-4ea9-8f38-471fbf884b2b",
+    "userId": "user-1760796675537",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "http://example.com/Blue-Jeans.jpg",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:11:16.490Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "15c25efe-16c7-4289-be6f-d667d11ac4bd",
+    "userId": "user-1760796675537",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "http://example.com/White-Sneakers.jpg",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:11:16.528Z",
+    "style": "casual",
+    "occasions": [
+      "casual",
+      "daily"
+    ]
+  },
+  {
+    "id": "0f23eb18-0ccd-4d28-ade2-f964a2aa1860",
+    "userId": "demo-user",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:30:59.168Z",
+    "style": "casual"
+  },
+  {
+    "id": "5b12b9a7-8a9d-46bf-89e4-eca33f80b0ef",
+    "userId": "demo-user",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:30:59.420Z",
+    "style": "casual"
+  },
+  {
+    "id": "ddc33157-bea5-4330-9385-79c25c7c9f3c",
+    "userId": "demo-user",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:30:59.465Z",
+    "style": "casual"
+  },
+  {
+    "id": "e2985684-3ec9-422e-a910-6518dc242d88",
+    "userId": "demo-user",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:31:09.784Z",
+    "style": "casual"
+  },
+  {
+    "id": "53eee734-1047-4e1b-ba81-100bad5b9b84",
+    "userId": "demo-user",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:31:09.825Z",
+    "style": "casual"
+  },
+  {
+    "id": "b2500bc2-bdc9-4b56-bfae-2dbf18336fcc",
+    "userId": "demo-user",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:31:09.870Z",
+    "style": "casual"
+  },
+  {
+    "id": "2eeccb23-0206-4110-b87b-c0a6b71356dd",
+    "userId": "test-user-1760798162147",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:36:02.509Z",
+    "style": "casual"
+  },
+  {
+    "id": "d99520bf-5c2a-41b1-98bc-a264b8c25200",
+    "userId": "test-user-1760798162147",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:36:02.570Z",
+    "style": "casual"
+  },
+  {
+    "id": "6c704c7c-1b2b-4a6a-b9c6-36f775aa7c46",
+    "userId": "test-user-1760798162147",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:36:02.626Z",
+    "style": "casual"
+  },
+  {
+    "id": "5cde06a9-869b-4b51-904a-1ef3ccf5e8da",
+    "userId": "test-user-1760798173893",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:36:13.957Z",
+    "style": "casual"
+  },
+  {
+    "id": "a7d53381-5cf9-4642-93fd-ad767f1126f4",
+    "userId": "test-user-1760798173893",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:36:14.062Z",
+    "style": "casual"
+  },
+  {
+    "id": "ba84613b-c7cb-4c8b-bd37-fecd597ac548",
+    "userId": "test-user-1760798173893",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:36:14.145Z",
+    "style": "casual"
+  },
+  {
+    "id": "3b626c2e-ba56-4033-b389-c8392b90398c",
+    "userId": "test-user-1760798243968",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:37:28.196Z",
+    "style": "casual"
+  },
+  {
+    "id": "0e114a90-c1f3-40bc-a965-f6b817627b99",
+    "userId": "test-user-1760798243968",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:37:28.302Z",
+    "style": "casual"
+  },
+  {
+    "id": "56d2ec8d-6ed2-442a-be0a-af4201c17574",
+    "userId": "test-user-1760798243968",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:37:28.353Z",
+    "style": "casual"
+  },
+  {
+    "id": "f263131e-3ec3-4659-b580-954dc237c9be",
+    "userId": "test-user-1760798698852",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:44:58.951Z",
+    "style": "casual"
+  },
+  {
+    "id": "f462e42c-4f9b-46e0-b953-62daa3eea40d",
+    "userId": "test-user-1760798698852",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:44:59.040Z",
+    "style": "casual"
+  },
+  {
+    "id": "6f4dd01f-0c42-4523-87ac-8a0f3998ea8e",
+    "userId": "test-user-1760798698852",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:44:59.089Z",
+    "style": "casual"
+  },
+  {
+    "id": "2477d55d-6149-4065-bf54-572d3b6ffe6e",
+    "userId": "test-user-1760798866819",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:47:47.378Z",
+    "style": "casual"
+  },
+  {
+    "id": "9a8b4c4c-667e-4b45-958b-175b3b4f9892",
+    "userId": "test-user-1760798866819",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:47:47.472Z",
+    "style": "casual"
+  },
+  {
+    "id": "793fa863-0f47-4333-90ce-2cfb251e73b9",
+    "userId": "test-user-1760798866819",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:47:47.567Z",
+    "style": "casual"
+  },
+  {
+    "id": "96a0cd4c-3318-4232-9979-f515475c5b03",
+    "userId": "test-user-1760799388745",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:56:29.271Z",
+    "style": "casual"
+  },
+  {
+    "id": "145f6350-bc3e-4b7e-b7b4-0cb19e58e85f",
+    "userId": "test-user-1760799388745",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:56:29.320Z",
+    "style": "casual"
+  },
+  {
+    "id": "6c10f1c6-82f8-4f54-9f99-abacad74cd7e",
+    "userId": "test-user-1760799388745",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-18T14:56:29.368Z",
+    "style": "casual"
+  },
+  {
+    "id": "30906e7e-fa57-41fc-b906-16a79843683c",
+    "userId": "test-user-1760851732117",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-19T05:28:53.584Z",
+    "style": "casual"
+  },
+  {
+    "id": "f4551b50-9d22-4c30-b0f4-8080c17544ad",
+    "userId": "test-user-1760851732117",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-19T05:28:53.849Z",
+    "style": "casual"
+  },
+  {
+    "id": "d6a8adbf-23f0-4f15-94e4-f95aad360e55",
+    "userId": "test-user-1760851732117",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-19T05:28:54.408Z",
+    "style": "casual"
+  },
+  {
+    "id": "9e866e26-ffb7-4ae5-b959-e9bc1ae30c24",
+    "userId": "test-user-1760851736085",
+    "name": "White T-shirt",
+    "type": "top",
+    "imageUrl": "https://via.placeholder.com/150/FFFFFF/000000?text=Top",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-19T05:28:56.119Z",
+    "style": "casual"
+  },
+  {
+    "id": "cf30522b-4895-4b15-b5f2-fba3990f29c0",
+    "userId": "test-user-1760851736085",
+    "name": "Blue Jeans",
+    "type": "bottom",
+    "imageUrl": "https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom",
+    "colors": [
+      "blue"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-19T05:28:56.157Z",
+    "style": "casual"
+  },
+  {
+    "id": "2e78e015-368f-420c-a8e0-a42b7d30d914",
+    "userId": "test-user-1760851736085",
+    "name": "White Sneakers",
+    "type": "shoes",
+    "imageUrl": "https://via.placeholder.com/150/CCCCCC/000000?text=Shoes",
+    "colors": [
+      "white"
+    ],
+    "season": "all-season",
+    "source": "upload",
+    "purchased": false,
+    "createdAt": "2025-10-19T05:28:56.194Z",
+    "style": "casual"
+  }
+]
