@@ -3,12 +3,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
-  // Mock 建議購買的單品清單
-  // In a real application, you would process req.json() here
-  // const body = await req.json();
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get('userId');
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: '缺少必要參數：userId' },
+      { status: 400 },
+    );
+  }
 
   return NextResponse.json({
+    userId,
     recommendations: [
       {
         item: { id: 'item-1', name: '時尚外套', category: 'outerwear', imageUrl: '/placeholder.jpg' },

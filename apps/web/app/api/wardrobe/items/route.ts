@@ -35,9 +35,27 @@ export async function POST(request: Request) {
   try {
     const newItem = await request.json();
     const { user_id, name, type, colors } = newItem;
+    const imageUrl: string | undefined = newItem.image_url ?? newItem.imageUrl;
 
     if (!user_id || !name || !type || !colors) {
       return NextResponse.json({ message: '請求中缺少必要的欄位 (user_id, name, type, colors)。' }, { status: 400 });
+    }
+
+    if (imageUrl) {
+      const { data: existing, error: existingError } = await supabase
+        .from('clothing_items')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('image_url', imageUrl)
+        .maybeSingle();
+
+      if (existingError && existingError.code !== 'PGRST116') {
+        throw existingError;
+      }
+
+      if (existing) {
+        return NextResponse.json(existing, { status: 200 });
+      }
     }
 
     const { data, error } = await supabase
