@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // ✨ 新增 useEffect
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { motion } from 'motion/react';
@@ -8,6 +8,11 @@ import { ClothingDetailModal } from './ClothingDetailModal';
 import { UploadOptionsDialog } from './UploadOptionsDialog';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
+import type { WardrobeItem } from '@/packages/types/src/wardrobe'; // ✨ 匯入後端型別
+
+// 🔐 真實的 Supabase 使用者 UUID
+// TODO: 未來改成從認證系統 (如 Supabase Auth) 取得 userId
+const REAL_USER_ID = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
 
 interface ClothingItem {
   id: number;
@@ -235,6 +240,80 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
+  // ✨ 新增 API 相關狀態
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // ✨ 轉換後端 WardrobeItem 到前端 Layer 結構
+  const convertWardrobeItemsToLayers = (items: WardrobeItem[]): Layer[] => {
+    const layerMap: Record<string, { name: string; items: ClothingItem[] }> = {
+      top: { name: '上衣', items: [] },
+      bottom: { name: '下身', items: [] },
+      outerwear: { name: '外套', items: [] },
+      shoes: { name: '鞋子', items: [] },
+      accessory: { name: '配件', items: [] },
+    };
+
+    items.forEach((item) => {
+      const type = item.type;
+      if (layerMap[type]) {
+        layerMap[type].items.push({
+          id: parseInt(item.id) || Math.random(), // 轉換 string id 為 number
+          imageUrl: item.imageUrl,
+          name: item.name,
+          category: type,
+          source: item.source === 'shop' ? 'merchant' : 'user-upload',
+          isPurchased: item.purchased,
+          material: item.material,
+          tags: item.customTags,
+        });
+      }
+    });
+
+    return Object.entries(layerMap)
+      .filter(([_, layer]) => layer.items.length > 0) // 只保留有衣物的層
+      .map(([key, layer], index) => ({
+        id: `layer-${key}`,
+        name: layer.name,
+        items: layer.items,
+      }));
+  };
+
+  // ✨ 載入衣櫃資料
+  useEffect(() => {
+    const fetchWardrobeItems = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/wardrobe/items?userId=${REAL_USER_ID}`);
+
+        if (!response.ok) {
+          throw new Error(`API 錯誤: ${response.status}`);
+        }
+
+        const data: WardrobeItem[] = await response.json();
+
+        // 將後端資料轉換成 Layer 結構
+        const convertedLayers = convertWardrobeItemsToLayers(data);
+
+        // 如果後端有資料就用後端的，沒有就保留 mock data
+        if (convertedLayers.length > 0) {
+          setLayers(convertedLayers);
+        }
+
+      } catch (err) {
+        console.error('載入衣櫃失敗:', err);
+        setError(err instanceof Error ? err.message : '載入失敗');
+        // 發生錯誤時保留 mock data，讓使用者仍可看到畫面
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWardrobeItems();
+  }, []); // 元件載入時執行一次
+
   const handleLike = (id: number) => {
     toast.success('已加入最愛 ❤️');
   };
@@ -416,7 +495,26 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
           transition={{ duration: 0.15 }}
           className="px-0 pt-4"
         >
-          {viewMode === 'items' ? (
+          {/* ✨ Loading 狀態 */}
+          {isLoading && (
+            <div className="flex min-h-[60vh] items-center justify-center px-5">
+              <div className="text-center">
+                <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[var(--vesti-secondary)] border-t-[var(--vesti-primary)] mx-auto" />
+                <p className="text-sm text-[var(--vesti-gray-mid)]">載入衣櫃中...</p>
+              </div>
+            </div>
+          )}
+
+          {/* ✨ Error 狀態 */}
+          {!isLoading && error && (
+            <div className="mx-5 rounded-xl bg-red-50 border border-red-200 p-4">
+              <p className="text-sm text-red-600">⚠️ {error}</p>
+              <p className="text-xs text-red-500 mt-1">將顯示範例資料</p>
+            </div>
+          )}
+
+          {/* ✨ 正常內容（只在非 loading 時顯示） */}
+          {!isLoading && viewMode === 'items' ? (
             <>
               {/* 衣櫃層列表 */}
               {layers.map((layer) => (
@@ -451,7 +549,10 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
                 </motion.button>
               </div>
             </>
-          ) : (
+          ) : null}
+
+          {/* ✨ 整套搭配模式（只在非 loading 時顯示） */}
+          {!isLoading && viewMode === 'outfits' && (
             <div className="flex min-h-[60vh] items-center justify-center px-5">
               <div className="text-center">
                 <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--vesti-secondary)] mx-auto">

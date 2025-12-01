@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react' // ✨ 新增 useEffect
 import { motion } from 'motion/react'
 import { WeatherCard } from './components/figma/WeatherCard'
 import { QuickActions } from './components/figma/QuickActions'
@@ -22,6 +22,11 @@ import { EstimatedDelivery } from './components/figma/EstimatedDelivery'
 import { BottomNav } from './components/figma/BottomNav'
 import { Toaster } from './components/figma/ui/sonner'
 import { LoginPage } from './components/figma/LoginPage'
+import type { OutfitCombination } from '@/packages/types/src/basket' // ✨ 新增後端型別
+
+// 🔐 真實的 Supabase 使用者 UUID
+// TODO: 未來改成從認證系統 (如 Supabase Auth) 取得 userId
+const REAL_USER_ID = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
 
 type PageType =
   | 'home'
@@ -44,7 +49,8 @@ interface Outfit {
   description: string
 }
 
-const outfits: Outfit[] = [
+// ✨ Mock outfits 作為 fallback（當 API 失敗或無資料時使用）
+const mockOutfits: Outfit[] = [
   {
     id: 1,
     imageUrl:
@@ -71,6 +77,43 @@ const outfits: Outfit[] = [
   },
 ]
 
+// ✨ 將後端 OutfitCombination 轉換成前端 Outfit 格式
+const convertOutfitCombinations = (combinations: OutfitCombination[]): Outfit[] => {
+  return combinations.map((combo, index) => {
+    // 收集所有單品名稱
+    const itemNames = [
+      combo.top?.name,
+      combo.bottom?.name,
+      combo.outerwear?.name,
+      combo.shoes?.name,
+    ].filter(Boolean)
+
+    // 生成 styleName（使用第一個單品的 style 或預設值）
+    const styleName = combo.top?.style
+      ? `${combo.top.style.charAt(0).toUpperCase() + combo.top.style.slice(1)} Style`
+      : `穿搭推薦 ${index + 1}`
+
+    // 生成 description
+    const description = itemNames.length > 0
+      ? `搭配 ${itemNames.join('、')}`
+      : '根據天氣和場合為您精選的穿搭組合'
+
+    // 使用第一個有效的圖片（優先使用上衣）
+    const imageUrl = combo.top?.imageUrl ||
+                     combo.outerwear?.imageUrl ||
+                     combo.bottom?.imageUrl ||
+                     combo.shoes?.imageUrl ||
+                     mockOutfits[index % mockOutfits.length].imageUrl
+
+    return {
+      id: index + 1,
+      imageUrl,
+      styleName,
+      description,
+    }
+  })
+}
+
 export default function HomePage() {
   const [currentPage, setCurrentPage] = useState<PageType>('home')
   const [previousPage, setPreviousPage] = useState<PageType>('home')
@@ -78,6 +121,61 @@ export default function HomePage() {
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
+
+  // ✨ 新增每日穿搭推薦相關狀態
+  const [outfits, setOutfits] = useState<Outfit[]>(mockOutfits)
+  const [isLoadingOutfits, setIsLoadingOutfits] = useState(true)
+  const [outfitsError, setOutfitsError] = useState<string | null>(null)
+  const [useMockData, setUseMockData] = useState(false)
+
+  // ✨ 載入每日穿搭推薦
+  useEffect(() => {
+    const fetchDailyOutfits = async () => {
+      try {
+        setIsLoadingOutfits(true)
+        setOutfitsError(null)
+
+        // 固定參數（可以之後從使用者設定或地理位置取得）
+        const latitude = 25.0330 // 台北經緯度
+        const longitude = 121.5654
+        const occasion = 'casual'
+
+        const response = await fetch(
+          `/api/daily-outfits?userId=${REAL_USER_ID}&latitude=${latitude}&longitude=${longitude}&occasion=${occasion}`
+        )
+
+        if (!response.ok) {
+          throw new Error(`API 錯誤: ${response.status}`)
+        }
+
+        const data: OutfitCombination[] = await response.json()
+
+        // 如果 API 有回傳資料，轉換並設定
+        if (data && data.length > 0) {
+          const convertedOutfits = convertOutfitCombinations(data)
+          setOutfits(convertedOutfits)
+          setUseMockData(false)
+        } else {
+          // 如果沒有資料，使用 mock
+          setOutfits(mockOutfits)
+          setUseMockData(true)
+        }
+      } catch (err) {
+        console.error('載入每日穿搭失敗:', err)
+        setOutfitsError(err instanceof Error ? err.message : '載入失敗')
+        // 發生錯誤時 fallback 到 mock data
+        setOutfits(mockOutfits)
+        setUseMockData(true)
+      } finally {
+        setIsLoadingOutfits(false)
+      }
+    }
+
+    // 只在首頁時載入
+    if (currentPage === 'home') {
+      fetchDailyOutfits()
+    }
+  }, [currentPage]) // 當頁面切換到首頁時重新載入
 
   const navigateToTryOn = () => {
     setPreviousPage(currentPage)
@@ -189,20 +287,58 @@ export default function HomePage() {
               transition={{ duration: 0.2 }}
               className="mb-3 px-5"
             >
-              <h2 className="text-[var(--vesti-dark)] not-italic font-[Inter]">
-                今日穿搭推薦
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-[var(--vesti-dark)] not-italic font-[Inter]">
+                  今日穿搭推薦
+                </h2>
+                {/* ✨ 顯示資料來源標記 */}
+                {useMockData && !isLoadingOutfits && (
+                  <span className="text-xs text-[var(--vesti-gray-mid)] bg-[var(--vesti-secondary)] px-2 py-1 rounded">
+                    示範資料
+                  </span>
+                )}
+              </div>
             </motion.div>
 
-            {/* Stacked Cards */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
-              className="mb-16"
-            >
-              <StackedCards outfits={outfits} onCardClick={handleCardClick} />
-            </motion.div>
+            {/* ✨ Loading 狀態 */}
+            {isLoadingOutfits ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="mb-16 flex h-[400px] items-center justify-center px-5"
+              >
+                <div className="text-center">
+                  <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[var(--vesti-secondary)] border-t-[var(--vesti-primary)] mx-auto" />
+                  <p className="text-sm text-[var(--vesti-gray-mid)]">載入穿搭推薦中...</p>
+                </div>
+              </motion.div>
+            ) : (
+              <>
+                {/* ✨ Error 狀態 */}
+                {outfitsError && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="mx-5 mb-3 rounded-xl bg-orange-50 border border-orange-200 p-3"
+                  >
+                    <p className="text-xs text-orange-600">⚠️ {outfitsError}</p>
+                    <p className="text-xs text-orange-500 mt-1">已顯示示範穿搭</p>
+                  </motion.div>
+                )}
+
+                {/* Stacked Cards */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="mb-16"
+                >
+                  <StackedCards outfits={outfits} onCardClick={handleCardClick} />
+                </motion.div>
+              </>
+            )}
 
             {/* Wardrobe Utilization */}
             <WardrobeUtilization />

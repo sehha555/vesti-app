@@ -229,7 +229,7 @@
   },
   {
     "id": "0f23eb18-0ccd-4d28-ade2-f964a2aa1860",
-    "userId": "demo-user",
+    "userId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "name": "White T-shirt",
     "type": "top",
     "imageUrl": "https://via.placeholder.com/150",
@@ -244,7 +244,7 @@
   },
   {
     "id": "5b12b9a7-8a9d-46bf-89e4-eca33f80b0ef",
-    "userId": "demo-user",
+    "userId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "name": "Blue Jeans",
     "type": "bottom",
     "imageUrl": "https://via.placeholder.com/150",
@@ -259,7 +259,7 @@
   },
   {
     "id": "ddc33157-bea5-4330-9385-79c25c7c9f3c",
-    "userId": "demo-user",
+    "userId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "name": "White Sneakers",
     "type": "shoes",
     "imageUrl": "https://via.placeholder.com/150",
@@ -274,7 +274,7 @@
   },
   {
     "id": "e2985684-3ec9-422e-a910-6518dc242d88",
-    "userId": "demo-user",
+    "userId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "name": "White T-shirt",
     "type": "top",
     "imageUrl": "https://via.placeholder.com/150",
@@ -289,7 +289,7 @@
   },
   {
     "id": "53eee734-1047-4e1b-ba81-100bad5b9b84",
-    "userId": "demo-user",
+    "userId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "name": "Blue Jeans",
     "type": "bottom",
     "imageUrl": "https://via.placeholder.com/150",
@@ -304,7 +304,7 @@
   },
   {
     "id": "b2500bc2-bdc9-4b56-bfae-2dbf18336fcc",
-    "userId": "demo-user",
+    "userId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "name": "White Sneakers",
     "type": "shoes",
     "imageUrl": "https://via.placeholder.com/150",
