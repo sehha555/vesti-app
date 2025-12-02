@@ -42,14 +42,22 @@ type PageType =
   | 'upload'
   | 'login'
 
+// 🎨 Instagram 穿搭風格的 Outfit 型別
 interface Outfit {
   id: number
-  imageUrl: string
+  imageUrl: string // 保留作為 fallback
   styleName: string
   description: string
+  heroImageUrl?: string // 新增：整體穿搭照（右側大圖）
+  items?: {            // 新增：單品列表（左側展示）
+    id: string
+    name: string
+    imageUrl: string
+  }[]
 }
 
 // ✨ Mock outfits 作為 fallback（當 API 失敗或無資料時使用）
+// 🎨 包含 Instagram 風格的 heroImageUrl 與 items
 const mockOutfits: Outfit[] = [
   {
     id: 1,
@@ -58,6 +66,12 @@ const mockOutfits: Outfit[] = [
     styleName: 'Casual Comfort',
     description:
       'Perfect for a cool, breezy day. Layer a light sweater with comfortable chinos and soft sneakers for effortless style.',
+    heroImageUrl: 'https://images.unsplash.com/photo-1762343287340-8aa94082e98b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    items: [
+      { id: '1-1', name: '白色T恤', imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300' },
+      { id: '1-2', name: '卡其褲', imageUrl: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=300' },
+      { id: '1-3', name: '白色球鞋', imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300' },
+    ],
   },
   {
     id: 2,
@@ -66,6 +80,12 @@ const mockOutfits: Outfit[] = [
     styleName: 'Business Elegant',
     description:
       'Sophisticated and polished look that transitions seamlessly from office meetings to evening events.',
+    heroImageUrl: 'https://images.unsplash.com/photo-1704775990327-90f7c43436fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    items: [
+      { id: '2-1', name: '藍色襯衫', imageUrl: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=300' },
+      { id: '2-2', name: '西裝褲', imageUrl: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300' },
+      { id: '2-3', name: '皮鞋', imageUrl: 'https://images.unsplash.com/photo-1614252369475-531eba835eb1?w=300' },
+    ],
   },
   {
     id: 3,
@@ -74,10 +94,15 @@ const mockOutfits: Outfit[] = [
     styleName: 'Summer Breeze',
     description:
       'Light and airy outfit perfect for warm weather. Stay cool while looking stylish with breathable fabrics.',
+    heroImageUrl: 'https://images.unsplash.com/photo-1762114468792-ced36e281323?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    items: [
+      { id: '3-1', name: '亞麻襯衫', imageUrl: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300' },
+      { id: '3-2', name: '短褲', imageUrl: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=300' },
+    ],
   },
 ]
 
-// ✨ 將後端 OutfitCombination 轉換成前端 Outfit 格式
+// ✨ 將後端 OutfitCombination 轉換成前端 Outfit 格式（Instagram 風格）
 const convertOutfitCombinations = (combinations: OutfitCombination[]): Outfit[] => {
   return combinations.map((combo, index) => {
     // 收集所有單品名稱
@@ -98,18 +123,28 @@ const convertOutfitCombinations = (combinations: OutfitCombination[]): Outfit[] 
       ? `搭配 ${itemNames.join('、')}`
       : '根據天氣和場合為您精選的穿搭組合'
 
-    // 使用第一個有效的圖片（優先使用上衣）
-    const imageUrl = combo.top?.imageUrl ||
-                     combo.outerwear?.imageUrl ||
-                     combo.bottom?.imageUrl ||
-                     combo.shoes?.imageUrl ||
-                     mockOutfits[index % mockOutfits.length].imageUrl
+    // 🎨 提取單品列表（最多 3 個）
+    const items = [
+      combo.top && { id: combo.top.id, name: combo.top.name, imageUrl: combo.top.imageUrl },
+      combo.bottom && { id: combo.bottom.id, name: combo.bottom.name, imageUrl: combo.bottom.imageUrl },
+      combo.outerwear && { id: combo.outerwear.id, name: combo.outerwear.name, imageUrl: combo.outerwear.imageUrl },
+      combo.shoes && { id: combo.shoes.id, name: combo.shoes.name, imageUrl: combo.shoes.imageUrl },
+    ].filter(Boolean).slice(0, 3) as { id: string; name: string; imageUrl: string }[]
+
+    // 🎨 heroImageUrl：使用上衣圖作為整體穿搭照（實際應用中這裡應該是 lookbook 照片）
+    // 暫時用第一個單品的圖片，實際上應該從後端取得整體照
+    const heroImageUrl = combo.top?.imageUrl || combo.outerwear?.imageUrl || combo.bottom?.imageUrl
+
+    // fallback imageUrl（如果沒有 heroImageUrl 時使用）
+    const imageUrl = heroImageUrl || mockOutfits[index % mockOutfits.length].imageUrl
 
     return {
       id: index + 1,
       imageUrl,
       styleName,
       description,
+      heroImageUrl,
+      items,
     }
   })
 }

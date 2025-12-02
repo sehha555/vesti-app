@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; // ✨ 新增 useEffect
+import { useState, useEffect, useRef } from 'react'; // ✨ 新增 useEffect, useRef
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { motion } from 'motion/react';
@@ -6,6 +6,7 @@ import { DroppableClothingRow } from './DroppableClothingRow';
 import { CreateLayerDialog } from './CreateLayerDialog';
 import { ClothingDetailModal } from './ClothingDetailModal';
 import { UploadOptionsDialog } from './UploadOptionsDialog';
+import { BatchUploadDialog } from './BatchUploadDialog'; // ✨ 批次上傳 Dialog
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import type { WardrobeItem } from '@/packages/types/src/wardrobe'; // ✨ 匯入後端型別
@@ -240,6 +241,11 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
+  // ✨ 批次上傳相關狀態
+  const [isBatchUploadDialogOpen, setIsBatchUploadDialogOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // ✨ 新增 API 相關狀態
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -280,37 +286,37 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
   };
 
   // ✨ 載入衣櫃資料
-  useEffect(() => {
-    const fetchWardrobeItems = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const fetchWardrobeItems = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        const response = await fetch(`/api/wardrobe/items?userId=${REAL_USER_ID}`);
+      const response = await fetch(`/api/wardrobe/items?userId=${REAL_USER_ID}`);
 
-        if (!response.ok) {
-          throw new Error(`API 錯誤: ${response.status}`);
-        }
-
-        const data: WardrobeItem[] = await response.json();
-
-        // 將後端資料轉換成 Layer 結構
-        const convertedLayers = convertWardrobeItemsToLayers(data);
-
-        // 如果後端有資料就用後端的，沒有就保留 mock data
-        if (convertedLayers.length > 0) {
-          setLayers(convertedLayers);
-        }
-
-      } catch (err) {
-        console.error('載入衣櫃失敗:', err);
-        setError(err instanceof Error ? err.message : '載入失敗');
-        // 發生錯誤時保留 mock data，讓使用者仍可看到畫面
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        throw new Error(`API 錯誤: ${response.status}`);
       }
-    };
 
+      const data: WardrobeItem[] = await response.json();
+
+      // 將後端資料轉換成 Layer 結構
+      const convertedLayers = convertWardrobeItemsToLayers(data);
+
+      // 如果後端有資料就用後端的，沒有就保留 mock data
+      if (convertedLayers.length > 0) {
+        setLayers(convertedLayers);
+      }
+
+    } catch (err) {
+      console.error('載入衣櫃失敗:', err);
+      setError(err instanceof Error ? err.message : '載入失敗');
+      // 發生錯誤時保留 mock data，讓使用者仍可看到畫面
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchWardrobeItems();
   }, []); // 元件載入時執行一次
 
@@ -436,18 +442,69 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
     }, 300);
   };
 
+  // ✨ 處理檔案選擇
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    // 轉換 FileList 為 Array
+    const fileArray = Array.from(files);
+
+    // 過濾：只接受圖片，且小於 10MB
+    const validFiles = fileArray.filter((file) => {
+      const isImage = file.type.startsWith('image/');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+
+      if (!isImage) {
+        toast.error(`${file.name} 不是圖片檔案`);
+        return false;
+      }
+      if (!isValidSize) {
+        toast.error(`${file.name} 超過 10MB 限制`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) {
+      toast.error('沒有選擇有效的圖片');
+      return;
+    }
+
+    // 設定選擇的檔案並打開批次上傳 Dialog
+    setSelectedFiles(validFiles);
+    setIsBatchUploadDialogOpen(true);
+
+    // 清空 input，讓下次選擇相同檔案也能觸發 onChange
+    event.target.value = '';
+  };
+
   const handleGalleryUpload = () => {
     setIsUploadDialogOpen(false);
-    // 模擬相簿選擇
-    toast.success('開啟相簿中...');
-    setTimeout(() => {
-      onNavigateToUpload?.();
-    }, 300);
+    // ✨ 觸發隱藏的 file input
+    fileInputRef.current?.click();
+  };
+
+  // ✨ 批次上傳完成後的回調
+  const handleBatchUploadComplete = async () => {
+    // 重新載入衣櫃列表
+    await fetchWardrobeItems();
+    toast.success('衣櫃已更新 ✨');
   };
 
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
+        {/* ✨ 隱藏的 file input（支援多選） */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
         {/* Header */}
         <div className="sticky top-0 z-30 bg-[var(--vesti-background)]/95 backdrop-blur-sm">
           <div className="flex h-16 items-center px-5">
@@ -596,6 +653,17 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
           onClose={() => setIsUploadDialogOpen(false)}
           onSelectCamera={handleCameraUpload}
           onSelectGallery={handleGalleryUpload}
+        />
+
+        {/* ✨ 批次上傳設定對話框 */}
+        <BatchUploadDialog
+          isOpen={isBatchUploadDialogOpen}
+          files={selectedFiles}
+          onClose={() => {
+            setIsBatchUploadDialogOpen(false);
+            setSelectedFiles([]);
+          }}
+          onComplete={handleBatchUploadComplete}
         />
       </div>
     </DndProvider>

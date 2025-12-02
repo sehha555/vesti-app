@@ -4,11 +4,18 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
+// 🎨 Instagram 穿搭風格的 Outfit 型別
 interface Outfit {
   id: number;
-  imageUrl: string;
+  imageUrl: string; // fallback
   styleName: string;
   description: string;
+  heroImageUrl?: string; // 整體穿搭照（右側大圖）
+  items?: {             // 單品列表（左側展示）
+    id: string;
+    name: string;
+    imageUrl: string;
+  }[];
 }
 
 interface StackedCardsProps {
@@ -25,11 +32,11 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
 
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 80;
-    
+
     // 向左滑動 = 下一張
     if (info.offset.x < -threshold) {
       setExitX(-400);
-      
+
       setTimeout(() => {
         setCards((prev) => {
           const newCards = [...prev];
@@ -82,18 +89,22 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
   };
 
   return (
-    <div className="relative h-[400px] w-auto px-4">
-      <div className="relative h-full w-full max-w-[300px] mx-auto">
-        <AnimatePresence mode="popLayout">
+    <div className="relative h-[480px] w-auto px-4">
+      <div className="relative h-full w-full max-w-[340px] mx-auto">
+        <AnimatePresence>
           {cards.slice(0, 3).map((card, index) => {
             const isTop = index === 0;
             const isSaved = savedCards.has(card.id);
             const isConfirmed = confirmedCards.has(card.id);
-            
+
             // 水平堆疊參數 - 右側露出
             const xOffset = index === 0 ? 0 : index === 1 ? 15 : 30;
             const scale = 1 - index * 0.04;
             const opacity = 1 - index * 0.15;
+
+            // 🎨 Instagram 風格：判斷是否有單品資料
+            const hasItems = card.items && card.items.length > 0;
+            const displayHeroImage = card.heroImageUrl || card.imageUrl;
 
             return (
               <motion.div
@@ -144,67 +155,142 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
                 <motion.div
                   className="overflow-hidden rounded-[24px] bg-card shadow-[0_8px_32px_rgba(41,108,125,0.18)] border-2 border-white cursor-pointer select-none h-full"
                   whileHover={isTop && !isDragging ? { scale: 1.02 } : undefined}
-                  transition={{ 
-                    type: 'spring', 
-                    stiffness: 400, 
+                  transition={{
+                    type: 'spring',
+                    stiffness: 400,
                     damping: 20,
                     mass: 0.8
                   }}
                 >
-                  {/* 圖片區域 */}
-                  <div className="relative h-full overflow-hidden">
-                    <ImageWithFallback
-                      src={card.imageUrl}
-                      alt={card.styleName}
-                      className="h-full w-full object-cover"
-                    />
-                    
-                    {/* 漸層遮罩 */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                    
-                    {/* 右上角按鈕組 */}
-                    {isTop && (
-                      <div className="absolute right-3 top-3 flex gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => handleSave(e, card.id)}
-                          className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${
-                            isSaved
-                              ? 'bg-[var(--vesti-primary)] shadow-lg'
-                              : 'bg-white/20 hover:bg-white/30'
-                          }`}
-                        >
-                          <Bookmark
-                            className={`h-4 w-4 ${isSaved ? 'fill-white text-white' : 'text-white'}`}
-                            strokeWidth={2}
-                          />
-                        </motion.button>
+                  {/* 🎨 Instagram 風格 Layout */}
+                  <div className="relative h-full overflow-hidden flex">
+                    {/* 左側：單品列表 (40% 寬度) */}
+                    {hasItems ? (
+                      <div className="w-[40%] bg-gradient-to-br from-[var(--vesti-secondary)] to-white/50 relative flex items-center justify-center p-4">
+                        {/* 單品疊放展示 */}
+                        <div className="relative w-full h-full flex flex-col justify-center gap-3">
+                          {card.items!.slice(0, 3).map((item, itemIndex) => (
+                            <motion.div
+                              key={item.id}
+                              className="relative"
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: itemIndex * 0.1 }}
+                            >
+                              {/* 單品圖片容器 */}
+                              <div className="relative bg-white rounded-xl shadow-md overflow-hidden aspect-square">
+                                <ImageWithFallback
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                                {/* 單品名稱標籤 */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                  <p className="text-white text-[10px] font-medium truncate">
+                                    {item.name}
+                                  </p>
+                                </div>
+                              </div>
 
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => handleConfirm(e, card.id)}
-                          className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${
-                            isConfirmed
-                              ? 'bg-[var(--vesti-accent)] shadow-lg'
-                              : 'bg-white/20 hover:bg-white/30'
-                          }`}
-                        >
-                          <Check
-                            className="h-4 w-4 text-white"
-                            strokeWidth={2.5}
-                          />
-                        </motion.button>
+                              {/* 🎨 連接線的圓點起點 */}
+                              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 bg-white rounded-full border-2 border-[var(--vesti-primary)] shadow-sm z-10" />
+                            </motion.div>
+                          ))}
+                        </div>
                       </div>
+                    ) : null}
+
+                    {/* 🎨 連接線區域（SVG） */}
+                    {hasItems && (
+                      <svg
+                        className="absolute left-[40%] top-0 h-full w-[20%] pointer-events-none z-5"
+                        style={{ overflow: 'visible' }}
+                      >
+                        {card.items!.slice(0, 3).map((item, itemIndex) => {
+                          const startY = 50 + (itemIndex * 33.33); // 根據單品位置計算起點
+                          const endY = 50; // 終點固定在中間
+
+                          return (
+                            <g key={item.id}>
+                              {/* 貝茲曲線 */}
+                              <path
+                                d={`M 0 ${startY}% Q 50 ${(startY + endY) / 2}% 100 ${endY}%`}
+                                stroke="white"
+                                strokeWidth="2"
+                                fill="none"
+                                strokeDasharray="4 4"
+                                opacity="0.6"
+                              />
+                              {/* 終點圓點 */}
+                              <circle
+                                cx="100%"
+                                cy={`${endY}%`}
+                                r="4"
+                                fill="white"
+                                stroke="var(--vesti-primary)"
+                                strokeWidth="2"
+                              />
+                            </g>
+                          );
+                        })}
+                      </svg>
                     )}
-                    
-                    {/* 卡片資訊 */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                      <h3 className="mb-1.5 drop-shadow-lg">{card.styleName}</h3>
-                      <p className="line-clamp-2 text-sm opacity-90 drop-shadow-lg" style={{ fontWeight: 400 }}>
-                        {card.description}
-                      </p>
+
+                    {/* 右側：整體穿搭照 (60% 寬度) */}
+                    <div className={`${hasItems ? 'w-[60%]' : 'w-full'} relative`}>
+                      <ImageWithFallback
+                        src={displayHeroImage}
+                        alt={card.styleName}
+                        className="h-full w-full object-cover"
+                      />
+
+                      {/* 漸層遮罩 */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+                      {/* 右上角按鈕組 */}
+                      {isTop && (
+                        <div className="absolute right-3 top-3 flex gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => handleSave(e, card.id)}
+                            className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${
+                              isSaved
+                                ? 'bg-[var(--vesti-primary)] shadow-lg'
+                                : 'bg-white/20 hover:bg-white/30'
+                            }`}
+                          >
+                            <Bookmark
+                              className={`h-4 w-4 ${isSaved ? 'fill-white text-white' : 'text-white'}`}
+                              strokeWidth={2}
+                            />
+                          </motion.button>
+
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => handleConfirm(e, card.id)}
+                            className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${
+                              isConfirmed
+                                ? 'bg-[var(--vesti-accent)] shadow-lg'
+                                : 'bg-white/20 hover:bg-white/30'
+                            }`}
+                          >
+                            <Check
+                              className="h-4 w-4 text-white"
+                              strokeWidth={2.5}
+                            />
+                          </motion.button>
+                        </div>
+                      )}
+
+                      {/* 卡片資訊 */}
+                      <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                        <h3 className="mb-1 drop-shadow-lg text-sm font-semibold">{card.styleName}</h3>
+                        <p className="line-clamp-2 text-xs opacity-90 drop-shadow-lg" style={{ fontWeight: 400 }}>
+                          {card.description}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
