@@ -18,17 +18,38 @@ interface Outfit {
   }[];
 }
 
+// 天氣資訊型別
+interface WeatherInfo {
+  temp_c: number;
+  condition: string;
+  description: string;
+  iconUrl?: string;
+  humidity: number;
+  feels_like: number;
+  locationName?: string;
+}
+
 interface StackedCardsProps {
   outfits: Outfit[];
   onCardClick: (outfit: Outfit) => void;
+  userId?: string;        // 使用者 ID（用於儲存穿搭）
+  weather?: WeatherInfo;  // 當前天氣資訊（用於儲存穿搭）
+  occasion?: string;      // 當前場合（用於儲存穿搭）
 }
 
-export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
+export function StackedCards({
+  outfits,
+  onCardClick,
+  userId,
+  weather,
+  occasion = 'casual'
+}: StackedCardsProps) {
   const [cards, setCards] = useState(outfits);
   const [isDragging, setIsDragging] = useState(false);
   const [exitX, setExitX] = useState(0);
   const [savedCards, setSavedCards] = useState<Set<number>>(new Set());
   const [confirmedCards, setConfirmedCards] = useState<Set<number>>(new Set());
+  const [isSaving, setIsSaving] = useState(false); // 儲存中狀態
 
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 80;
@@ -58,34 +79,126 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
     setIsDragging(true);
   };
 
-  const handleSave = (e: React.MouseEvent, cardId: number) => {
-    e.stopPropagation();
-    setSavedCards(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(cardId)) {
-        newSet.delete(cardId);
-        toast('已取消收藏');
-      } else {
-        newSet.add(cardId);
-        toast.success('已收藏穿搭靈感 🔖');
+  /**
+   * 儲存穿搭到後端
+   */
+  const saveOutfitToBackend = async (card: Outfit, outfitType: 'saved' | 'confirmed') => {
+    // 檢查必要資料
+    if (!userId || !weather) {
+      console.warn('[StackedCards] Missing userId or weather, cannot save outfit');
+      return false;
+    }
+
+    // 提取單品 ID 列表
+    const itemIds = card.items?.map(item => item.id) || [];
+    if (itemIds.length === 0) {
+      console.warn('[StackedCards] No items in outfit, cannot save');
+      return false;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const response = await fetch('/api/saved-outfits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          items: itemIds,
+          weather,
+          occasion,
+          outfitType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`儲存失敗: ${response.status}`);
       }
-      return newSet;
-    });
+
+      const result = await response.json();
+      console.log('[StackedCards] Outfit saved:', result);
+      return true;
+    } catch (error) {
+      console.error('[StackedCards] Failed to save outfit:', error);
+      toast.error('儲存失敗，請稍後再試');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleConfirm = (e: React.MouseEvent, cardId: number) => {
+  const handleSave = async (e: React.MouseEvent, cardId: number) => {
     e.stopPropagation();
-    setConfirmedCards(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(cardId)) {
+
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    const isCurrentlySaved = savedCards.has(cardId);
+
+    if (isCurrentlySaved) {
+      // 取消收藏（本地狀態更新，暫不刪除後端資料）
+      setSavedCards(prev => {
+        const newSet = new Set(prev);
         newSet.delete(cardId);
-        toast('已取消選定');
+        return newSet;
+      });
+      toast('已取消收藏');
+    } else {
+      // 新增收藏
+      setSavedCards(prev => new Set(prev).add(cardId));
+
+      // 儲存到後端
+      const success = await saveOutfitToBackend(card, 'saved');
+
+      if (success) {
+        toast.success('已收藏穿搭靈感 🔖');
       } else {
-        newSet.add(cardId);
-        toast.success('已加入今日穿搭計畫 ✓');
+        // 如果儲存失敗，回復本地狀態
+        setSavedCards(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(cardId);
+          return newSet;
+        });
       }
-      return newSet;
-    });
+    }
+  };
+
+  const handleConfirm = async (e: React.MouseEvent, cardId: number) => {
+    e.stopPropagation();
+
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    const isCurrentlyConfirmed = confirmedCards.has(cardId);
+
+    if (isCurrentlyConfirmed) {
+      // 取消確認（本地狀態更新）
+      setConfirmedCards(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cardId);
+        return newSet;
+      });
+      toast('已取消選定');
+    } else {
+      // 確認穿搭
+      setConfirmedCards(prev => new Set(prev).add(cardId));
+
+      // 儲存到後端
+      const success = await saveOutfitToBackend(card, 'confirmed');
+
+      if (success) {
+        toast.success('已加入今日穿搭計畫 ✓');
+      } else {
+        // 如果儲存失敗，回復本地狀態
+        setConfirmedCards(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(cardId);
+          return newSet;
+        });
+      }
+    }
   };
 
   return (

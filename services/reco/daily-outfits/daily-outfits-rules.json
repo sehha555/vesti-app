@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "每日穿搭推薦引擎的 JSON 規則檔",
+  "version": "1.0.0",
+
+  "temperature_rules": [
+    {
+      "condition": {
+        "temp_min": -999,
+        "temp_max": 10
+      },
+      "filters": {
+        "required_types": ["top", "bottom", "outerwear"],
+        "optional_types": ["accessory"],
+        "seasons": ["winter"],
+        "materials": ["wool", "fleece", "down"],
+        "avoid_materials": ["linen", "cotton"]
+      },
+      "description": "寒冷天氣，需要保暖外套與厚實材質"
+    },
+    {
+      "condition": {
+        "temp_min": 10,
+        "temp_max": 20
+      },
+      "filters": {
+        "required_types": ["top", "bottom"],
+        "optional_types": ["outerwear"],
+        "seasons": ["spring", "autumn", "all-season"],
+        "materials": ["cotton", "wool", "polyester"],
+        "avoid_materials": []
+      },
+      "description": "微涼天氣，適合層次搭配"
+    },
+    {
+      "condition": {
+        "temp_min": 20,
+        "temp_max": 28
+      },
+      "filters": {
+        "required_types": ["top", "bottom"],
+        "optional_types": [],
+        "seasons": ["spring", "summer", "all-season"],
+        "materials": ["cotton", "linen", "polyester"],
+        "avoid_materials": ["wool", "down", "fleece"]
+      },
+      "description": "舒適天氣，輕薄透氣材質"
+    },
+    {
+      "condition": {
+        "temp_min": 28,
+        "temp_max": 999
+      },
+      "filters": {
+        "required_types": ["top", "bottom"],
+        "optional_types": [],
+        "seasons": ["summer", "all-season"],
+        "materials": ["linen", "cotton", "breathable"],
+        "avoid_materials": ["wool", "down", "fleece", "leather"]
+      },
+      "description": "炎熱天氣，需要透氣排汗材質"
+    }
+  ],
+
+  "occasion_rules": {
+    "casual": {
+      "preferred_styles": ["casual", "streetwear", "sporty"],
+      "avoid_styles": ["formal", "business"],
+      "color_preference": "any",
+      "description": "休閒場合，舒適自在為主"
+    },
+    "work": {
+      "preferred_styles": ["business", "smart-casual", "minimalist"],
+      "avoid_styles": ["sporty", "streetwear"],
+      "color_preference": "neutral",
+      "avoid_colors": ["neon", "bright"],
+      "description": "工作場合，專業得體"
+    },
+    "date": {
+      "preferred_styles": ["elegant", "romantic", "smart-casual"],
+      "avoid_styles": ["sporty"],
+      "color_preference": "coordinated",
+      "description": "約會場合，展現個人風格"
+    },
+    "formal": {
+      "preferred_styles": ["formal", "elegant"],
+      "avoid_styles": ["casual", "sporty", "streetwear"],
+      "color_preference": "classic",
+      "required_colors": ["black", "white", "navy", "gray"],
+      "description": "正式場合，典雅莊重"
+    },
+    "outdoor": {
+      "preferred_styles": ["sporty", "casual", "outdoor"],
+      "avoid_styles": ["formal", "elegant"],
+      "color_preference": "any",
+      "description": "戶外活動，機能性優先"
+    }
+  },
+
+  "color_compatibility": {
+    "black": ["white", "gray", "red", "blue", "yellow", "green", "beige", "brown"],
+    "white": ["black", "gray", "blue", "red", "green", "beige", "brown", "navy"],
+    "gray": ["black", "white", "blue", "red", "yellow", "pink", "beige"],
+    "navy": ["white", "beige", "gray", "red", "yellow", "brown"],
+    "blue": ["white", "black", "gray", "beige", "brown", "yellow"],
+    "red": ["black", "white", "gray", "navy", "beige"],
+    "green": ["white", "black", "beige", "brown", "gray"],
+    "yellow": ["black", "white", "navy", "gray", "blue"],
+    "beige": ["white", "black", "navy", "brown", "blue", "green"],
+    "brown": ["white", "beige", "green", "blue", "black"],
+    "pink": ["white", "gray", "black", "beige"]
+  },
+
+  "style_compatibility": {
+    "casual": ["casual", "streetwear", "minimalist"],
+    "formal": ["formal", "elegant", "business"],
+    "sporty": ["sporty", "casual", "outdoor"],
+    "elegant": ["elegant", "formal", "romantic"],
+    "business": ["business", "formal", "smart-casual"],
+    "streetwear": ["streetwear", "casual"],
+    "minimalist": ["minimalist", "casual", "smart-casual"],
+    "romantic": ["romantic", "elegant"],
+    "outdoor": ["outdoor", "sporty", "casual"]
+  },
+
+  "scoring_weights": {
+    "weather_match": 0.35,
+    "occasion_match": 0.25,
+    "color_harmony": 0.20,
+    "style_consistency": 0.15,
+    "variety": 0.05
+  },
+
+  "output_settings": {
+    "max_recommendations": 5,
+    "min_items_per_outfit": 2,
+    "max_items_per_outfit": 4,
+    "max_color_variety": 3,
+    "prefer_complete_outfits": true
+  }
+}

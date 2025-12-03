@@ -163,6 +163,20 @@ export default function HomePage() {
   const [outfitsError, setOutfitsError] = useState<string | null>(null)
   const [useMockData, setUseMockData] = useState(false)
 
+  // ✨ 天氣資訊狀態
+  const [weather, setWeather] = useState<{
+    temp_c: number
+    condition: string
+    description: string
+    iconUrl?: string
+    humidity: number
+    feels_like: number
+    locationName?: string
+  } | null>(null)
+
+  // ✨ 當前場合（用於儲存穿搭）
+  const [currentOccasion] = useState('casual')
+
   // ✨ 載入每日穿搭推薦
   useEffect(() => {
     const fetchDailyOutfits = async () => {
@@ -183,11 +197,17 @@ export default function HomePage() {
           throw new Error(`API 錯誤: ${response.status}`)
         }
 
-        const data: OutfitCombination[] = await response.json()
+        // ✨ API 現在回傳 { weather, outfits }
+        const data: { weather: any; outfits: OutfitCombination[] } = await response.json()
 
-        // 如果 API 有回傳資料，轉換並設定
-        if (data && data.length > 0) {
-          const convertedOutfits = convertOutfitCombinations(data)
+        // 設定天氣資訊
+        if (data.weather) {
+          setWeather(data.weather)
+        }
+
+        // 如果 API 有回傳穿搭資料，轉換並設定
+        if (data.outfits && data.outfits.length > 0) {
+          const convertedOutfits = convertOutfitCombinations(data.outfits)
           setOutfits(convertedOutfits)
           setUseMockData(false)
         } else {
@@ -299,7 +319,7 @@ export default function HomePage() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2 }}
             >
-              <WeatherCard />
+              <WeatherCard weather={weather} />
             </motion.div>
 
             {/* Quick Actions */}
@@ -370,7 +390,13 @@ export default function HomePage() {
                   transition={{ duration: 0.2 }}
                   className="mb-16"
                 >
-                  <StackedCards outfits={outfits} onCardClick={handleCardClick} />
+                  <StackedCards
+                    outfits={outfits}
+                    onCardClick={handleCardClick}
+                    userId={REAL_USER_ID}
+                    weather={weather || undefined}
+                    occasion={currentOccasion}
+                  />
                 </motion.div>
               </>
             )}
