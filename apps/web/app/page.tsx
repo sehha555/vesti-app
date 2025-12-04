@@ -413,7 +413,12 @@ export default function HomePage() {
         )
 
       case 'wardrobe':
-        return <WardrobePage onNavigateToUpload={navigateToUpload} />
+        return (
+          <WardrobePage
+            onNavigateToUpload={navigateToUpload}
+            onNavigateToDailyOutfits={() => setCurrentPage('home')}
+          />
+        )
 
       case 'collection':
         return <OutfitCollectionPage />

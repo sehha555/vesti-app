@@ -7,7 +7,7 @@ import { CreateLayerDialog } from './CreateLayerDialog';
 import { ClothingDetailModal } from './ClothingDetailModal';
 import { UploadOptionsDialog } from './UploadOptionsDialog';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ClothingItem {
   id: number;
@@ -224,13 +224,25 @@ type ViewMode = 'items' | 'outfits';
 
 interface WardrobePageProps {
   onNavigateToUpload?: (imageUrl?: string) => void;
+  onNavigateToDailyOutfits?: () => void; // 導回首頁每日穿搭
+  userId?: string; // 使用者 ID（用於載入 saved outfits）
 }
 
-export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as WardrobePageProps) {
+export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, userId }: WardrobePageProps = {} as WardrobePageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('items');
   const [layers, setLayers] = useState<Layer[]>(initialLayers);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLayer, setEditingLayer] = useState<{ id: string; name: string } | null>(null);
+
+  // 整套搭配 Carousel 相關 state
+  const [savedOutfits, setSavedOutfits] = useState<Array<{
+    id: string;
+    title: string;
+    imageUrl: string;
+    items: string[];
+  }>>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isLoadingSavedOutfits, setIsLoadingSavedOutfits] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -452,17 +464,144 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
               </div>
             </>
           ) : (
-            <div className="flex min-h-[60vh] items-center justify-center px-5">
-              <div className="text-center">
-                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--vesti-secondary)] mx-auto">
-                  <Plus className="h-10 w-10 text-[var(--vesti-gray-mid)]" strokeWidth={1.5} />
+            <>
+              {/* 整套搭配：空狀態或 Cinematic Carousel */}
+              {savedOutfits.length === 0 ? (
+                // 空狀態：顯示加號按鈕
+                <div className="flex min-h-[60vh] items-center justify-center px-5">
+                  <div className="text-center">
+                    <motion.button
+                      onClick={() => {
+                        if (onNavigateToDailyOutfits) {
+                          onNavigateToDailyOutfits();
+                        }
+                      }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--vesti-secondary)] mx-auto cursor-pointer transition-all hover:bg-[var(--vesti-primary)]/10 hover:shadow-md"
+                    >
+                      <Plus className="h-10 w-10 text-[var(--vesti-gray-mid)]" strokeWidth={1.5} />
+                    </motion.button>
+                    <h3 className="mb-2 text-[var(--vesti-dark)]">整套搭配功能</h3>
+                    <p className="text-sm text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
+                      點擊加號查看每日穿搭推薦
+                    </p>
+                  </div>
                 </div>
-                <h3 className="mb-2 text-[var(--vesti-dark)]">整套搭配功能</h3>
-                <p className="text-sm text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
-                  從單品衣櫃中選擇搭配，創建您的完整造型
-                </p>
-              </div>
-            </div>
+              ) : (
+                // 有資料：顯示 Cinematic Carousel
+                <div className="min-h-[60vh] py-8">
+                  <div className="relative mt-6 flex h-80 items-center justify-center overflow-hidden px-4">
+                    {/* 卡片輪播 */}
+                    {savedOutfits.map((outfit, index) => {
+                      const offset = ((index - activeIndex + savedOutfits.length) % savedOutfits.length);
+
+                      let x = 0;
+                      let scale = 0.85;
+                      let opacity = 0;
+                      let zIndex = 10;
+                      let pointerEvents: 'auto' | 'none' = 'none';
+
+                      if (offset === 0) {
+                        // 中間卡片
+                        x = 0;
+                        scale = 1;
+                        opacity = 1;
+                        zIndex = 20;
+                        pointerEvents = 'auto';
+                      } else if (offset === 1) {
+                        // 右邊卡片
+                        x = 120;
+                        scale = 0.85;
+                        opacity = 0.6;
+                        zIndex = 10;
+                        pointerEvents = 'auto';
+                      } else if (offset === savedOutfits.length - 1) {
+                        // 左邊卡片
+                        x = -120;
+                        scale = 0.85;
+                        opacity = 0.6;
+                        zIndex = 10;
+                        pointerEvents = 'auto';
+                      } else {
+                        // 其他卡片（隱藏）
+                        opacity = 0;
+                        pointerEvents = 'none';
+                      }
+
+                      return (
+                        <motion.div
+                          key={outfit.id}
+                          className="absolute w-64 rounded-3xl overflow-hidden bg-black shadow-2xl"
+                          style={{
+                            boxShadow: '0 0 40px rgba(0,0,0,0.6)',
+                            zIndex,
+                            pointerEvents,
+                          }}
+                          animate={{ x, scale, opacity }}
+                          transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                        >
+                          {/* 穿搭圖片 */}
+                          <div className="relative h-40 w-full">
+                            <img
+                              src={outfit.imageUrl}
+                              alt={outfit.title}
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/70" />
+                          </div>
+
+                          {/* 穿搭資訊 */}
+                          <div className="p-3">
+                            <p className="text-xs text-white/70 mb-1" style={{ fontWeight: 500 }}>
+                              {outfit.title}
+                            </p>
+                            <p className="text-[10px] text-white/60 truncate" style={{ fontWeight: 400 }}>
+                              {outfit.items.join(' · ')}
+                            </p>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+
+                    {/* 左導航按鈕 */}
+                    <motion.button
+                      onClick={() => setActiveIndex((prev) => (prev - 1 + savedOutfits.length) % savedOutfits.length)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="absolute left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm transition-all hover:bg-white"
+                    >
+                      <ChevronLeft className="h-5 w-5 text-[var(--vesti-dark)]" strokeWidth={2.5} />
+                    </motion.button>
+
+                    {/* 右導航按鈕 */}
+                    <motion.button
+                      onClick={() => setActiveIndex((prev) => (prev + 1) % savedOutfits.length)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="absolute right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm transition-all hover:bg-white"
+                    >
+                      <ChevronRight className="h-5 w-5 text-[var(--vesti-dark)]" strokeWidth={2.5} />
+                    </motion.button>
+                  </div>
+
+                  {/* 指示器 */}
+                  <div className="mt-6 flex justify-center gap-2">
+                    {savedOutfits.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setActiveIndex(index)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          index === activeIndex
+                            ? 'w-6 bg-[var(--vesti-primary)]'
+                            : 'w-1.5 bg-[var(--vesti-gray-mid)]/30'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </motion.div>
 
