@@ -123,17 +123,17 @@ export class DailyOutfitRuleEngine {
     for (const filepath of possiblePaths) {
       try {
         if (fs.existsSync(filepath)) {
-          console.log('[DailyOutfitRuleEngine] ✅ Found rules at:', filepath);
+          console.log('[DailyOutfitRuleEngine] Found rules at:', filepath);
           return filepath;
         } else {
-          console.log('[DailyOutfitRuleEngine] ❌ Not found:', filepath);
+          console.log('[DailyOutfitRuleEngine] Not found:', filepath);
         }
       } catch (error) {
-        console.log('[DailyOutfitRuleEngine] ⚠️  Error checking:', filepath, error);
+        console.log('[DailyOutfitRuleEngine] Error checking:', filepath, error);
       }
     }
 
-    console.error('[DailyOutfitRuleEngine] ❌ Failed to find rules file in any of the following locations:');
+    console.error('[DailyOutfitRuleEngine] Failed to find rules file in any of the following locations:');
     possiblePaths.forEach((p, i) => {
       console.error(`  ${i + 1}. ${p}`);
     });
@@ -159,7 +159,7 @@ export class DailyOutfitRuleEngine {
       const rulesPath = this.findRulesPath();
 
       if (!rulesPath) {
-        console.warn('[DailyOutfitRuleEngine] ⚠️  Rules file not found, using default rules');
+        console.warn('[DailyOutfitRuleEngine] Rules file not found, using default rules');
         this.rules = this.getDefaultRules();
         return this.rules;
       }
@@ -169,20 +169,20 @@ export class DailyOutfitRuleEngine {
       const rulesContent = fs.readFileSync(rulesPath, 'utf-8');
       this.rules = JSON.parse(rulesContent) as DailyOutfitRules;
 
-      console.log('[DailyOutfitRuleEngine] ✅ Rules loaded successfully');
+      console.log('[DailyOutfitRuleEngine]  Rules loaded successfully');
       console.log('[DailyOutfitRuleEngine] Temperature rules:', this.rules.temperature_rules.length);
       console.log('[DailyOutfitRuleEngine] Occasion rules:', Object.keys(this.rules.occasion_rules).join(', '));
 
       return this.rules;
     } catch (error) {
-      console.error('[DailyOutfitRuleEngine] ❌ Failed to load daily outfit rules:', error);
+      console.error('[DailyOutfitRuleEngine]  Failed to load daily outfit rules:', error);
 
       if (error instanceof Error) {
         console.error('[DailyOutfitRuleEngine] Error details:', error.message);
         console.error('[DailyOutfitRuleEngine] Stack trace:', error.stack);
       }
 
-      console.warn('[DailyOutfitRuleEngine] ⚠️  Falling back to default rules');
+      console.warn('[DailyOutfitRuleEngine]   Falling back to default rules');
 
       // 回傳預設規則以避免 API crash
       this.rules = this.getDefaultRules();

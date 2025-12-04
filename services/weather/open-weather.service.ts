@@ -52,7 +52,7 @@ interface OWMResponse {
  */
 export class OpenWeatherService {
   // 快取有效期：3 小時
-  private static readonly CACHE_DURATION = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+  private static readonly CACHE_DURATION = 3 * 60 * 60 * 1000
 
   // 記憶體快取（Module-level，在 Node.js 環境下跨請求共用）
   private static cache = new Map<string, CacheEntry>();
@@ -63,7 +63,7 @@ export class OpenWeatherService {
   constructor() {
     const key = process.env.OPENWEATHER_API_KEY;
     if (!key) {
-      console.warn('⚠️  OPENWEATHER_API_KEY not found in environment variables');
+      console.warn('OPENWEATHER_API_KEY not found in environment variables');
     }
     this.apiKey = key || '';
   }
@@ -82,12 +82,12 @@ export class OpenWeatherService {
     // 步驟 2: 檢查 Cache 是否存在且未過期
     const cached = OpenWeatherService.cache.get(cacheKey);
     if (cached && this.isCacheValid(cached)) {
-      console.log(`🎯 Weather Cache Hit: ${cacheKey}`);
+      console.log(`Weather Cache Hit: ${cacheKey}`);
       return cached.data;
     }
 
     // 步驟 3: Cache 無效或不存在，呼叫 OWM API
-    console.log(`🌍 Fetching OWM API for: ${cacheKey} (lat=${lat}, lon=${lon})`);
+    console.log(`Fetching OWM API for: ${cacheKey} (lat=${lat}, lon=${lon})`);
 
     try {
       const weatherData = await this.fetchFromAPI(lat, lon);
@@ -99,12 +99,12 @@ export class OpenWeatherService {
       };
       OpenWeatherService.cache.set(cacheKey, cacheEntry);
 
-      console.log(`✅ Weather data cached: ${cacheKey}`);
+      console.log(`Weather data cached: ${cacheKey}`);
 
       // 步驟 5: 回傳結果
       return weatherData;
     } catch (error) {
-      console.error(`❌ Failed to fetch weather from OWM API:`, error);
+      console.error(`Failed to fetch weather from OWM API:`, error);
 
       // 錯誤處理：回傳安全預設值
       return this.getDefaultWeather();
@@ -166,6 +166,7 @@ export class OpenWeatherService {
    * 轉換 OWM API Response 為 WeatherInfo
    */
   private transformResponse(data: OWMResponse): WeatherInfo {
+     console.log('OWM raw name:', data.name);
     const mainWeather = data.weather[0];
 
     return {
@@ -175,8 +176,34 @@ export class OpenWeatherService {
       iconUrl: `https://openweathermap.org/img/wn/${mainWeather.icon}@2x.png`,
       humidity: data.main.humidity,
       feels_like: Math.round(data.main.feels_like * 10) / 10,
-      locationName: data.name,
+      locationName: this.translateCityName(data.name),
     };
+  }
+
+  /**
+   * 將 OpenWeatherMap 回傳的地名翻譯為台灣行政區中文名稱
+   *
+   * 使用手寫對照表進行比對
+   *
+   * @param name - API 回傳的地名（如 "Xianqibu", "Banqiao"）
+   * @returns 中文行政區名稱（如 "新北市 信義區", "新北市 板橋區"）
+   */
+  private translateCityName(name: string): string {
+    const cityMap: Record<string, string> = {
+      Taipei: '台北市',
+      'Taipei City': '台北市',
+      Xianeibu: '新北市 信義區',
+      'Xinyi District': '新北市 信義區',
+      Banqiao: '新北市 板橋區',
+      'Banqiao District': '新北市 板橋區',
+      Zhonghe: '新北市 中和區',
+      Yonghe: '新北市 永和區',
+      Taichung: '台中市',
+      Kaohsiung: '高雄市',
+      Tainan: '台南市',
+    };
+
+    return cityMap[name] || name;
   }
 
   /**
