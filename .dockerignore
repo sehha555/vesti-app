@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Build outputs
+.next
+dist
+build
+.turbo
+
+# Git
+.git
+
+# Local secrets
+apps/web/.env.local
+*.log
+
+# Docker config
+docker-config/
+
+# OS-specific
+.DS_Store
+
+# Cloud providers
+.vercel
+
+# Editor/Tool specific
+.claude
+.gemini
