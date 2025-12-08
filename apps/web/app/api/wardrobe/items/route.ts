@@ -1,13 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// 直接在這裡初始化 supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-);
+// Helper function for initialization to avoid repetition
+function initializeSupabaseOrReturnError() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return { 
+      supabase: null, 
+      error: NextResponse.json(
+        { error: 'Supabase configuration missing in environment variables.' },
+        { status: 500 }
+      ) 
+    };
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  return { supabase, error: null };
+}
 
 export async function GET(request: NextRequest) {
+  const { supabase, error: initError } = initializeSupabaseOrReturnError();
+  if (initError) return initError;
+
   try {
     const userId = request.nextUrl.searchParams.get('userId');
 
@@ -15,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: '請求中缺少有效的 userId 參數。' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('clothing_items')
       .select('*')
       .eq('user_id', userId);
@@ -31,7 +47,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const { supabase, error: initError } = initializeSupabaseOrReturnError();
+  if (initError) return initError;
+
   try {
     const newItem = await request.json();
     const { user_id, name, type, colors } = newItem;
@@ -42,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     if (imageUrl) {
-      const { data: existing, error: existingError } = await supabase
+      const { data: existing, error: existingError } = await supabase!
         .from('clothing_items')
         .select('id')
         .eq('user_id', user_id)
@@ -58,7 +77,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('clothing_items')
       .insert([newItem])
       .select()
@@ -76,7 +95,10 @@ export async function POST(request: Request) {
 }
 
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
+  const { supabase, error: initError } = initializeSupabaseOrReturnError();
+  if (initError) return initError;
+
   try {
     const { id, ...updateData } = await request.json();
 
@@ -84,7 +106,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ message: '缺少 id 參數' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('clothing_items')
       .update(updateData)
       .eq('id', id)
@@ -102,7 +124,10 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  const { supabase, error: initError } = initializeSupabaseOrReturnError();
+  if (initError) return initError;
+  
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -111,7 +136,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ message: '缺少 id 參數' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('clothing_items')
       .delete()
       .eq('id', id);

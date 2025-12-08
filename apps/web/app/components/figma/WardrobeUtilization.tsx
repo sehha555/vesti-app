@@ -10,7 +10,7 @@ export function WardrobeUtilization() {
   const COLORS = ['var(--vesti-primary)', 'var(--vesti-gray-light)'];
 
   return (
-    <div className="px-5 mb-6">
+    <div className="px-5 mb-6 mt-8">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

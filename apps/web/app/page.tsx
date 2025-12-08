@@ -177,17 +177,79 @@ export default function HomePage() {
   // ✨ 當前場合（用於儲存穿搭）
   const [currentOccasion] = useState('casual')
 
+  // ✨ 使用者位置狀態（用於天氣 API）
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number
+    longitude: number
+  } | null>(null)
+  const [geolocationError, setGeolocationError] = useState<string | null>(null)
+
+  // ✨ 取得使用者地理位置
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      console.warn('[Geolocation] 瀏覽器不支援 Geolocation API')
+      setGeolocationError('您的瀏覽器不支援定位功能')
+      // Fallback 到中和區
+      setUserLocation({ latitude: 24.9917, longitude: 121.4950 })
+      return
+    }
+
+    console.log('[Geolocation] 正在請求定位權限...')
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        console.log('[Geolocation] ✅ 成功取得位置:', { latitude, longitude })
+        setUserLocation({ latitude, longitude })
+        setGeolocationError(null)
+      },
+      (error) => {
+        console.error('[Geolocation] ❌ 定位失敗:', error.message)
+        let errorMessage = '無法取得您的位置'
+
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = '定位權限被拒絕，使用預設位置'
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = '位置資訊無法取得，使用預設位置'
+            break
+          case error.TIMEOUT:
+            errorMessage = '定位請求逾時，使用預設位置'
+            break
+        }
+
+        setGeolocationError(errorMessage)
+        // Fallback 到中和區
+        console.log('[Geolocation] 📍 使用 Fallback 位置: 中和區 (24.9917, 121.4950)')
+        setUserLocation({ latitude: 24.9917, longitude: 121.4950 })
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      }
+    )
+  }, [])
+
   // ✨ 載入每日穿搭推薦
   useEffect(() => {
     const fetchDailyOutfits = async () => {
+      // 🔍 等待位置取得後才呼叫 API
+      if (!userLocation) {
+        console.log('[DailyOutfits] ⏳ 等待位置資訊...')
+        return
+      }
+
       try {
         setIsLoadingOutfits(true)
         setOutfitsError(null)
 
-        // 固定參數（可以之後從使用者設定或地理位置取得）
-        const latitude = 25.0330 // 台北經緯度
-        const longitude = 121.5654
+        // 🌍 使用動態地理位置
+        const { latitude, longitude } = userLocation
         const occasion = 'casual'
+
+        console.log('[DailyOutfits] 📍 使用座標:', { latitude, longitude })
 
         const response = await fetch(
           `/api/daily-outfits?userId=${REAL_USER_ID}&latitude=${latitude}&longitude=${longitude}&occasion=${occasion}`
@@ -230,7 +292,7 @@ export default function HomePage() {
     if (currentPage === 'home') {
       fetchDailyOutfits()
     }
-  }, [currentPage]) // 當頁面切換到首頁時重新載入
+  }, [currentPage, userLocation]) // 當頁面切換到首頁或位置改變時重新載入
 
   const navigateToTryOn = () => {
     setPreviousPage(currentPage)
@@ -310,6 +372,21 @@ export default function HomePage() {
                 <p className="text-sm text-[var(--vesti-gray-mid)]">
                   正在更新推薦穿搭...
                 </p>
+              </motion.div>
+            )}
+
+            {/* Geolocation Error Message */}
+            {geolocationError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="px-5 mb-3"
+              >
+                <div className="rounded-xl bg-orange-50 border border-orange-200 p-3 flex items-start gap-2">
+                  <span className="text-orange-500 text-sm">⚠️</span>
+                  <p className="text-xs text-orange-700 flex-1">{geolocationError}</p>
+                </div>
               </motion.div>
             )}
 
@@ -402,7 +479,14 @@ export default function HomePage() {
             )}
 
             {/* Wardrobe Utilization */}
-            <WardrobeUtilization />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="mt-12"
+            >
+              <WardrobeUtilization />
+            </motion.div>
 
             {/* CPW Ranking */}
             <CPWRanking />
@@ -417,6 +501,8 @@ export default function HomePage() {
           <WardrobePage
             onNavigateToUpload={navigateToUpload}
             onNavigateToDailyOutfits={() => setCurrentPage('home')}
+            onNavigateToTryOn={navigateToTryOn}
+            userId={REAL_USER_ID}
           />
         )
 

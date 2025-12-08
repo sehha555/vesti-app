@@ -1,6 +1,6 @@
 import { Home, Archive, Compass, Store, User, Bookmark } from 'lucide-react';
 
-type PageType = 'home' | 'wardrobe' | 'collection' | 'explore' | 'store' | 'profile';
+type PageType = 'home' | 'wardrobe' | 'collection' | 'explore' | 'store' | 'profile' | 'tryon' | 'checkout' | 'discount' | 'trending' | 'upload' | 'login';
 
 interface NavItemProps {
   icon: React.ReactNode;

@@ -8,12 +8,6 @@ import { Readable } from 'stream';
 import type { Occasion, WardrobeItem } from '../../../../../packages/types/src/wardrobe';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client directly
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-);
-
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -38,6 +32,18 @@ const uploadStream = (buffer: Buffer, options: object): Promise<UploadApiRespons
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+
+  // Initialize Supabase client inside the handler
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.json(
+      { error: 'Supabase configuration missing in environment variables.' },
+      { status: 500 }
+    );
+  }
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {

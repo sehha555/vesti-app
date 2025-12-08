@@ -1,11 +1,15 @@
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Plus, Heart, Trash2, Calendar } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
+// 🔐 真實的 Supabase 使用者 UUID
+// TODO: 未來改成從認證系統取得 userId
+const REAL_USER_ID = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+
 interface SavedOutfit {
-  id: number;
+  id: string;
   name: string;
   date: string;
   imageUrl: string;
@@ -13,42 +17,48 @@ interface SavedOutfit {
   isLiked?: boolean;
 }
 
-const mockSavedOutfits: SavedOutfit[] = [
-  {
-    id: 1,
-    name: '週末休閒風',
-    date: '2024-11-06',
-    imageUrl: 'https://images.unsplash.com/photo-1762343287340-8aa94082e98b?w=400',
-    items: ['白色 T-shirt', '牛仔褲', '運動鞋'],
-  },
-  {
-    id: 2,
-    name: '商務正裝',
-    date: '2024-11-05',
-    imageUrl: 'https://images.unsplash.com/photo-1704775990327-90f7c43436fc?w=400',
-    items: ['白襯衫', '西裝褲', '皮鞋', '西裝外套'],
-  },
-  {
-    id: 3,
-    name: '夏日輕盈',
-    date: '2024-11-04',
-    imageUrl: 'https://images.unsplash.com/photo-1762114468792-ced36e281323?w=400',
-    items: ['亞麻襯衫', '淺色短褲', '涼鞋'],
-  },
-  {
-    id: 4,
-    name: '街頭潮流',
-    date: '2024-11-03',
-    imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400',
-    items: ['衛衣', '工裝褲', '球鞋'],
-  },
-];
-
 export function OutfitCollectionPage() {
-  const [outfits, setOutfits] = useState(mockSavedOutfits);
+  const [outfits, setOutfits] = useState<SavedOutfit[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleLike = (id: number) => {
-    setOutfits(prev => prev.map(outfit => 
+  // 載入儲存的穿搭
+  useEffect(() => {
+    const fetchSavedOutfits = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/saved-outfits?userId=${REAL_USER_ID}&outfitType=saved`);
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || '載入失敗');
+        }
+
+        // 轉換 API 資料格式
+        const convertedOutfits: SavedOutfit[] = (data.outfits || []).map((outfit: any) => ({
+          id: outfit.id,
+          name: outfit.outfit_data?.styleName || '未命名穿搭',
+          date: new Date(outfit.created_at).toLocaleDateString('zh-TW'),
+          imageUrl: outfit.outfit_data?.imageUrl || outfit.outfit_data?.heroImageUrl || '',
+          items: outfit.outfit_data?.items?.map((item: any) => item.name) || [],
+          isLiked: false,
+        }));
+
+        setOutfits(convertedOutfits);
+        console.log(`[OutfitCollectionPage] 載入 ${convertedOutfits.length} 套穿搭`);
+      } catch (error) {
+        console.error('載入穿搭失敗:', error);
+        toast.error(error instanceof Error ? error.message : '載入穿搭失敗');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSavedOutfits();
+  }, []);
+
+  const handleLike = (id: string) => {
+    setOutfits(prev => prev.map(outfit =>
       outfit.id === id ? { ...outfit, isLiked: !outfit.isLiked } : outfit
     ));
     const outfit = outfits.find(o => o.id === id);
@@ -57,7 +67,7 @@ export function OutfitCollectionPage() {
     }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     setOutfits(prev => prev.filter(outfit => outfit.id !== id));
     toast('已移除搭配');
   };
@@ -83,8 +93,38 @@ export function OutfitCollectionPage() {
         </div>
       </div>
 
-      {/* 搭配網格 */}
-      <div className="grid grid-cols-2 gap-4 p-5">
+      {/* 載入狀態 */}
+      {isLoading ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="flex h-[400px] items-center justify-center px-5"
+        >
+          <div className="text-center">
+            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[var(--vesti-secondary)] border-t-[var(--vesti-primary)] mx-auto" />
+            <p className="text-sm text-[var(--vesti-gray-mid)]">載入穿搭中...</p>
+          </div>
+        </motion.div>
+      ) : outfits.length === 0 ? (
+        /* 空狀態 */
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col items-center justify-center px-5 pt-20"
+        >
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--vesti-secondary)]">
+            <Plus className="h-10 w-10 text-[var(--vesti-gray-mid)]" strokeWidth={1.5} />
+          </div>
+          <h3 className="mb-2 text-[var(--vesti-dark)]">尚未儲存任何穿搭</h3>
+          <p className="mb-6 text-center text-sm text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
+            在主頁推薦卡片點擊書籤圖示<br />即可儲存喜歡的穿搭
+          </p>
+        </motion.div>
+      ) : (
+        /* 搭配網格 */
+        <div className="grid grid-cols-2 gap-4 p-5">
         {outfits.map((outfit, index) => (
           <motion.div
             key={outfit.id}
@@ -168,31 +208,7 @@ export function OutfitCollectionPage() {
             </div>
           </motion.div>
         ))}
-      </div>
-
-      {/* 空狀態 */}
-      {outfits.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2 }}
-          className="flex flex-col items-center justify-center px-5 pt-20"
-        >
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--vesti-secondary)]">
-            <Plus className="h-10 w-10 text-[var(--vesti-gray-mid)]" strokeWidth={1.5} />
-          </div>
-          <h3 className="mb-2 text-[var(--vesti-dark)]">還沒有保存的搭配</h3>
-          <p className="mb-6 text-center text-sm text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
-            開始創建您的第一套穿搭吧！
-          </p>
-          <motion.button
-            onClick={handleCreateNew}
-            whileTap={{ scale: 0.95 }}
-            className="rounded-full bg-[var(--vesti-primary)] px-6 py-3 text-white shadow-md transition-all hover:shadow-lg"
-          >
-            創建新搭配
-          </motion.button>
-        </motion.div>
+        </div>
       )}
     </div>
   );

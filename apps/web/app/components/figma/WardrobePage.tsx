@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { motion } from 'motion/react';
+import { motion, useScroll, useMotionValueEvent } from 'motion/react';
 import { DroppableClothingRow } from './DroppableClothingRow';
 import { CreateLayerDialog } from './CreateLayerDialog';
 import { ClothingDetailModal } from './ClothingDetailModal';
@@ -225,10 +225,11 @@ type ViewMode = 'items' | 'outfits';
 interface WardrobePageProps {
   onNavigateToUpload?: (imageUrl?: string) => void;
   onNavigateToDailyOutfits?: () => void; // 導回首頁每日穿搭
+  onNavigateToTryOn?: () => void; // 導航到試穿頁面
   userId?: string; // 使用者 ID（用於載入 saved outfits）
 }
 
-export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, userId }: WardrobePageProps = {} as WardrobePageProps) {
+export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, onNavigateToTryOn, userId }: WardrobePageProps = {} as WardrobePageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('items');
   const [layers, setLayers] = useState<Layer[]>(initialLayers);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -247,8 +248,67 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, use
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
+  // Header 滑動隱藏邏輯
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = lastScrollY.current;
+    const diff = latest - previous;
+
+    // 向下滾動且超過 100px → 隱藏
+    if (diff > 0 && latest > 100) {
+      setIsHeaderHidden(true);
+    }
+    // 向上滾動 → 顯示
+    else if (diff < 0) {
+      setIsHeaderHidden(false);
+    }
+
+    lastScrollY.current = latest;
+  });
+
+  // 載入整套搭配資料
+  useEffect(() => {
+    if (viewMode !== 'outfits') return;
+
+    const fetchSavedOutfits = async () => {
+      if (!userId) {
+        console.warn('No userId provided, skipping saved outfits fetch');
+        return;
+      }
+
+      setIsLoadingSavedOutfits(true);
+      try {
+        const response = await fetch(`/api/saved-outfits?userId=${userId}&outfitType=saved`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch saved outfits: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        setSavedOutfits(
+          (data.outfits || []).map((o: any) => ({
+            id: o.id,
+            title: o.occasion ? `${o.occasion} 穿搭` : '已儲存穿搭',
+            imageUrl: o.preview_image_url || 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400',
+            items: Array.isArray(o.items) ? o.items : [],
+          }))
+        );
+      } catch (error) {
+        console.warn('Failed to load saved outfits, showing empty state:', error);
+        setSavedOutfits([]);
+      } finally {
+        setIsLoadingSavedOutfits(false);
+      }
+    };
+
+    fetchSavedOutfits();
+  }, [viewMode, userId]);
+
   const handleLike = (id: number) => {
-    toast.success('已加入最愛 ❤️');
+    toast.success('已加入最愛 ');
   };
 
   const handleItemClick = (id: number) => {
@@ -289,9 +349,11 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, use
       // 添加到目標層
       return newLayers.map(layer => {
         if (layer.id === targetLayerId) {
+          // 移除 sourceLayerId 属性，只保留 ClothingItem 的属性
+          const { sourceLayerId, ...clothingItemProps } = item;
           return {
             ...layer,
-            items: [...layer.items, { id: item.id, imageUrl: item.imageUrl, name: item.name, category: item.category }],
+            items: [...layer.items, clothingItemProps],
           };
         }
         return layer;
@@ -347,12 +409,12 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, use
   };
 
   const handleCreateOutfit = () => {
-    toast.success('已加入穿搭組合 ✨');
+    toast.success('已加入穿搭組合 ');
     setIsDetailModalOpen(false);
   };
 
   const handleShareItem = () => {
-    toast.success('已複製分享連結 🔗');
+    toast.success('已複製分享連結 ');
     setIsDetailModalOpen(false);
   };
 
@@ -381,43 +443,51 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, use
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
-        {/* Header */}
-        <div className="sticky top-0 z-30 bg-[var(--vesti-background)]/95 backdrop-blur-sm">
-          <div className="flex h-16 items-center px-5">
-            <h1 className="tracking-widest text-[var(--vesti-primary)]">衣櫃</h1>
+        {/* Header with slide animation */}
+        <motion.div
+          className="sticky top-0 z-30 bg-[var(--vesti-background)]/95 backdrop-blur-sm shadow-sm"
+          initial={{ y: 0 }}
+          animate={{ y: isHeaderHidden ? '-100%' : '0%' }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        >
+          {/* 標題列 */}
+          <div className="flex h-16 items-center px-5 justify-between">
+            <h1 className="tracking-widest text-[var(--vesti-primary)] font-bold">衣櫃</h1>
           </div>
 
           {/* 視圖模式切換 */}
-          <div className="mb-4 flex gap-3 px-5">
-            <motion.button
-              onClick={() => setViewMode('items')}
-              whileTap={{ scale: 0.95 }}
-              className={`flex flex-1 items-center justify-center rounded-xl border-2 py-2.5 transition-all ${
-                viewMode === 'items'
-                  ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)] text-white shadow-md'
-                  : 'border-border bg-card text-[var(--vesti-gray-mid)] hover:border-[var(--vesti-primary)]/30'
-              }`}
-            >
-              <span style={{ fontWeight: viewMode === 'items' ? 600 : 400 }}>
-                單品衣櫃
-              </span>
-            </motion.button>
+          <div className="px-5 pb-4">
+            <div className="flex gap-3">
+              <motion.button
+                onClick={() => setViewMode('items')}
+                whileTap={{ scale: 0.95 }}
+                className={`flex flex-1 items-center justify-center rounded-xl border-2 py-2.5 transition-all ${
+                  viewMode === 'items'
+                    ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)] text-white shadow-md'
+                    : 'border-border bg-card text-[var(--vesti-gray-mid)] hover:border-[var(--vesti-primary)]/30'
+                }`}
+              >
+                <span style={{ fontWeight: viewMode === 'items' ? 600 : 400 }}>
+                  單品衣櫃
+                </span>
+              </motion.button>
 
-            <motion.button
-              onClick={() => setViewMode('outfits')}
-              whileTap={{ scale: 0.95 }}
-              className={`flex flex-1 items-center justify-center rounded-xl border-2 py-2.5 transition-all ${
-                viewMode === 'outfits'
-                  ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)] text-white shadow-md'
-                  : 'border-border bg-card text-[var(--vesti-gray-mid)] hover:border-[var(--vesti-primary)]/30'
-              }`}
-            >
-              <span style={{ fontWeight: viewMode === 'outfits' ? 600 : 400 }}>
-                整套搭配
-              </span>
-            </motion.button>
+              <motion.button
+                onClick={() => setViewMode('outfits')}
+                whileTap={{ scale: 0.95 }}
+                className={`flex flex-1 items-center justify-center rounded-xl border-2 py-2.5 transition-all ${
+                  viewMode === 'outfits'
+                    ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)] text-white shadow-md'
+                    : 'border-border bg-card text-[var(--vesti-gray-mid)] hover:border-[var(--vesti-primary)]/30'
+                }`}
+              >
+                <span style={{ fontWeight: viewMode === 'outfits' ? 600 : 400 }}>
+                  整套搭配
+                </span>
+              </motion.button>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* 內容區域 */}
         <motion.div
@@ -466,14 +536,23 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, use
           ) : (
             <>
               {/* 整套搭配：空狀態或 Cinematic Carousel */}
-              {savedOutfits.length === 0 ? (
-                // 空狀態：顯示加號按鈕
+              
+              {isLoadingSavedOutfits ? (
+                // 載入中：顯示 Spinner
+                <div className="flex min-h-[60vh] items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--vesti-gray-light)] border-t-[var(--vesti-dark)]" />
+                    <p className="text-sm text-[var(--vesti-gray-mid)]">載入整套搭配中...</p>
+                  </div>
+                </div>
+              ) : savedOutfits.length === 0 ? (
+                                // 空狀態：顯示加號按鈕
                 <div className="flex min-h-[60vh] items-center justify-center px-5">
                   <div className="text-center">
                     <motion.button
                       onClick={() => {
-                        if (onNavigateToDailyOutfits) {
-                          onNavigateToDailyOutfits();
+                        if (onNavigateToTryOn) {
+                          onNavigateToTryOn();
                         }
                       }}
                       whileHover={{ scale: 1.05 }}
@@ -484,7 +563,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToDailyOutfits, use
                     </motion.button>
                     <h3 className="mb-2 text-[var(--vesti-dark)]">整套搭配功能</h3>
                     <p className="text-sm text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
-                      點擊加號查看每日穿搭推薦
+                      點擊加號開始搭配穿搭
                     </p>
                   </div>
                 </div>
