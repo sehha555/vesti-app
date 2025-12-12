@@ -7,7 +7,7 @@
 # ======================================================
 
 API_URL="http://localhost:3000/api/saved-outfits"
-TEST_USER_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+TEST_USER_ID="123e4567-e89b-12d3-a456-426614174000"
 
 echo "======================================================="
 echo "📋 Saved Outfits API 測試"

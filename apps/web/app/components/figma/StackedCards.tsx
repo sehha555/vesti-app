@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Bookmark, Check } from 'lucide-react';
+import { Bookmark, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Outfit {
@@ -27,12 +27,15 @@ interface StackedCardsProps {
   occasion?: string;
 }
 
-export function StackedCards({ outfits, onCardClick, userId, weather, occasion }: StackedCardsProps) {
+export function StackedCards({ outfits, onCardClick, weather, occasion }: StackedCardsProps) {
+  const userId = "123e4567-e89b-12d3-a456-426614174000";
   const [cards, setCards] = useState(outfits);
   const [isDragging, setIsDragging] = useState(false);
   const [exitX, setExitX] = useState(0);
   const [savedCards, setSavedCards] = useState<Set<number>>(new Set());
   const [confirmedCards, setConfirmedCards] = useState<Set<number>>(new Set());
+  const [savingCards, setSavingCards] = useState<Set<number>>(new Set());
+  const [successCards, setSuccessCards] = useState<Set<number>>(new Set());
 
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 80;
@@ -83,6 +86,15 @@ export function StackedCards({ outfits, onCardClick, userId, weather, occasion }
         return;
       }
 
+      // 開始儲存 - 設定 loading 狀態
+      setSavingCards(prev => {
+        const newSet = new Set(prev);
+        newSet.add(cardId);
+        return newSet;
+      });
+
+      const toastId = toast.loading('正在儲存穿搭...');
+
       try {
         const response = await fetch('/api/saved-outfits', {
           method: 'POST',
@@ -122,15 +134,38 @@ export function StackedCards({ outfits, onCardClick, userId, weather, occasion }
           return newSet;
         });
 
+        // 顯示成功動畫
+        setSuccessCards(prev => {
+          const newSet = new Set(prev);
+          newSet.add(cardId);
+          return newSet;
+        });
+
+        // 200ms 後移除成功動畫狀態
+        setTimeout(() => {
+          setSuccessCards(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(cardId);
+            return newSet;
+          });
+        }, 200);
+
         // 根據狀態碼判斷是新儲存還是已存在
         if (response.status === 201) {
-          toast.success('穿搭已儲存');
+          toast.success('已儲存穿搭 ✓', { id: toastId });
         } else if (response.status === 200) {
-          toast('此穿搭已在收藏中');
+          toast.success('此穿搭已在收藏中', { id: toastId });
         }
       } catch (error) {
         console.error('儲存穿搭失敗:', error);
-        toast.error(error instanceof Error ? error.message : '儲存失敗，請稍後再試');
+        toast.error('儲存失敗，請再試一次', { id: toastId });
+      } finally {
+        // 移除 loading 狀態
+        setSavingCards(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(cardId);
+          return newSet;
+        });
       }
     }
   };
@@ -158,6 +193,8 @@ export function StackedCards({ outfits, onCardClick, userId, weather, occasion }
             const isTop = index === 0;
             const isSaved = savedCards.has(card.id);
             const isConfirmed = confirmedCards.has(card.id);
+            const isSaving = savingCards.has(card.id);
+            const isSuccess = successCards.has(card.id);
             
             // 水平堆疊參數 - 右側露出
             const xOffset = index === 0 ? 0 : index === 1 ? 15 : 30;
@@ -235,19 +272,28 @@ export function StackedCards({ outfits, onCardClick, userId, weather, occasion }
                     {isTop && (
                       <div className="absolute right-3 top-3 flex gap-2">
                         <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => handleSave(e, card.id)}
+                          whileHover={!isSaving ? { scale: 1.1 } : undefined}
+                          whileTap={!isSaving ? { scale: 0.95 } : undefined}
+                          onClick={(e) => !isSaving && handleSave(e, card.id)}
+                          disabled={isSaving}
                           className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${
-                            isSaved
+                            isSuccess
+                              ? 'bg-green-500 shadow-lg'
+                              : isSaved
                               ? 'bg-[var(--vesti-primary)] shadow-lg'
+                              : isSaving
+                              ? 'bg-white/30 opacity-50 cursor-not-allowed'
                               : 'bg-white/20 hover:bg-white/30'
                           }`}
                         >
-                          <Bookmark
-                            className={`h-4 w-4 ${isSaved ? 'fill-white text-white' : 'text-white'}`}
-                            strokeWidth={2}
-                          />
+                          {isSaving ? (
+                            <Loader2 className="h-4 w-4 text-white animate-spin" strokeWidth={2} />
+                          ) : (
+                            <Bookmark
+                              className={`h-4 w-4 ${isSaved || isSuccess ? 'fill-white text-white' : 'text-white'}`}
+                              strokeWidth={2}
+                            />
+                          )}
                         </motion.button>
 
                         <motion.button

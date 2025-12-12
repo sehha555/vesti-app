@@ -26,7 +26,7 @@ import type { OutfitCombination } from '@/packages/types/src/basket' // ✨ 新�
 
 // 🔐 真實的 Supabase 使用者 UUID
 // TODO: 未來改成從認證系統 (如 Supabase Auth) 取得 userId
-const REAL_USER_ID = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+const REAL_USER_ID = "123e4567-e89b-12d3-a456-426614174000";
 
 type PageType =
   | 'home'
@@ -150,7 +150,7 @@ const convertOutfitCombinations = (combinations: OutfitCombination[]): Outfit[] 
 }
 
 export default function HomePage() {
-  const [currentPage, setCurrentPage] = useState<PageType>('home')
+  const [currentPage, setCurrentPage] = useState<PageType>('login')
   const [previousPage, setPreviousPage] = useState<PageType>('home')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null)

@@ -13,6 +13,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,6 +116,30 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                  )}
               </div>
 
+              {!isLogin && (
+                 <div className="space-y-2">
+                    <label className="text-sm font-medium text-[var(--vesti-dark)] ml-1">確認密碼</label>
+                    <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--vesti-gray-mid)] h-5 w-5" />
+                        <input 
+                           type={showConfirmPassword ? "text" : "password"} 
+                           value={confirmPassword}
+                           onChange={e => setConfirmPassword(e.target.value)}
+                           className="w-full bg-transparent border border-[var(--vesti-gray-light)] focus:border-[var(--vesti-primary)] rounded-2xl pl-12 pr-12 py-3 text-[var(--vesti-dark)] outline-none transition-all placeholder:text-[var(--vesti-gray-mid)]/50"
+                           placeholder="再次輸入密碼"
+                           required
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--vesti-gray-mid)] hover:text-[var(--vesti-dark)] transition-colors"
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                    </div>
+                 </div>
+              )}
+
               <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -153,14 +179,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           </p>
        </div>
 
-       {onBack && (
-          <button 
-            onClick={onBack}
-            className="absolute top-6 left-6 p-2 rounded-full bg-white/80 backdrop-blur-sm border border-[var(--vesti-gray-light)] hover:bg-white transition-colors"
-          >
-             <ArrowLeft className="h-5 w-5 text-[var(--vesti-dark)]" />
-          </button>
-       )}
+
     </div>
   );
 }

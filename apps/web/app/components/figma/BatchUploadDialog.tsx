@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 // 🔐 真實的 Supabase 使用者 UUID
 // TODO: 未來改成從認證系統 (如 Supabase Auth) 取得 userId
-const REAL_USER_ID = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+const REAL_USER_ID = "123e4567-e89b-12d3-a456-426614174000";
 
 type UploadStatus = 'pending' | 'uploading' | 'success' | 'error';
 

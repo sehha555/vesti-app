@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 /**
  * 儲存穿搭的請求 body 型別
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // === 檢查是否已存在相同的穿搭（避免重複儲存）===
-    const { data: existingOutfits, error: checkError } = await supabase
+    const { data: existingOutfits, error: checkError } = await supabaseServer
       .from('saved_outfits')
       .select('id, outfit_data, created_at')
       .eq('user_id', body.userId)
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // === 寫入 Supabase ===
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('saved_outfits')
       .insert([
         {
@@ -173,6 +173,72 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * PATCH /api/saved-outfits/like
+ *
+ * 更新穿搭的點讚狀態（樂觀更新）
+ *
+ * Body:
+ * {
+ *   "outfitId": "uuid",
+ *   "userId": "uuid",
+ *   "isLiked": true | false
+ * }
+ *
+ * Response:
+ * - 200: { success: true, message: "點讚狀態已更新" }
+ * - 400: { success: false, error: "..." }
+ * - 500: { success: false, error: "..." }
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json() as {
+      outfitId: string;
+      userId: string;
+      isLiked: boolean;
+    };
+
+    // 驗證必要欄位
+    if (!body.outfitId || !body.userId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields: outfitId, userId' },
+        { status: 400 }
+      );
+    }
+
+    // 更新 Supabase 中的點讚狀態
+    const { error } = await supabaseServer
+      .from('saved_outfits')
+      .update({ is_liked: body.isLiked })
+      .eq('id', body.outfitId)
+      .eq('user_id', body.userId);
+
+    if (error) {
+      console.error('[API /saved-outfits PATCH] Supabase error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to update like status', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[API /saved-outfits PATCH] Like status updated for outfit ${body.outfitId}`);
+
+    return NextResponse.json(
+      { success: true, message: '點讚狀態已更新' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('[API /saved-outfits PATCH] Error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * GET /api/saved-outfits?userId=xxx
  *
  * 取得使用者儲存的穿搭列表
@@ -205,7 +271,7 @@ export async function GET(request: NextRequest) {
     }
 
     // === 建立查詢 ===
-    let query = supabase
+    let query = supabaseServer
       .from('saved_outfits')
       .select('*')
       .eq('user_id', userId)

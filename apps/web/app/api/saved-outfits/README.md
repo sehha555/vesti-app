@@ -18,7 +18,7 @@
 
 ```json
 {
-  "userId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "userId": "123e4567-e89b-12d3-a456-426614174000",
   "outfitData": {
     "imageUrl": "https://...",
     "styleName": "Casual Comfort",

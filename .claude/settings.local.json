@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls -la \"C:\\Users\\User\\Desktop\\vesti\\apps\\web\\app\\api\\outfits\"\" 2>/dev/null || echo \"目錄檢查 \")",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []
