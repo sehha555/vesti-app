@@ -202,6 +202,13 @@ export function TrendingPage({ onBack, onNavigateToTryOn }: TrendingPageProps) {
                     </span>
                     <button
                       onClick={() => handleAddToTryOn(product)}
+<<<<<<< HEAD
+                      className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95 flex-shrink-0"
+                    >
+                      <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
+                      <div className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)] shadow-sm">
+                        <Plus className="h-2.5 w-2.5" strokeWidth={4} />
+=======
                       className="group/btn flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--vesti-primary)] text-white transition-all hover:bg-[var(--vesti-primary)]/90"
                     >
                       <div className="relative">
@@ -209,6 +216,7 @@ export function TrendingPage({ onBack, onNavigateToTryOn }: TrendingPageProps) {
                         <div className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-white border border-[var(--vesti-primary)]">
                           <Plus className="h-2 w-2 text-[var(--vesti-primary)]" strokeWidth={3} />
                         </div>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                       </div>
                     </button>
                   </div>
@@ -223,4 +231,8 @@ export function TrendingPage({ onBack, onNavigateToTryOn }: TrendingPageProps) {
       </section>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

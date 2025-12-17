@@ -1,5 +1,9 @@
 import { motion, AnimatePresence } from 'motion/react';
+<<<<<<< HEAD
+import { ArrowLeft, Search, ShoppingBag, ShoppingCart, Shirt, X, MapPin, Star, Clock, Plus } from 'lucide-react';
+=======
 import { ArrowLeft, Search, ShoppingBag, ShoppingCart, Shirt, X, MapPin, Star, Clock } from 'lucide-react';
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 import { useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailView } from './ProductDetailView';
@@ -96,17 +100,118 @@ export function StoreProfilePage({
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [isFabExpanded, setIsFabExpanded] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+<<<<<<< HEAD
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const categories = ['全部', '上衣', '褲裝', '外套', '裙裝', '配件'];
+
+  // 根據分類和搜尋關鍵字過濾商品
+  const filteredProducts = storeProducts.filter(p => {
+    const matchesCategory = selectedCategory === '全部' || p.category === selectedCategory;
+    const matchesSearch = !searchQuery || 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
+
+  // 處理搜尋開啟/關閉
+  const handleToggleSearch = () => {
+    setIsSearchMode(!isSearchMode);
+    if (isSearchMode) {
+      setSearchQuery('');
+    }
+  };
+=======
   
   const categories = ['全部', '上衣', '褲裝', '外套', '裙裝', '配件'];
 
   const filteredProducts = selectedCategory === '全部' 
     ? storeProducts 
     : storeProducts.filter(p => p.category === selectedCategory);
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
   return (
     <div className="min-h-screen bg-[var(--vesti-background)] pb-32">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm transition-all">
+<<<<<<< HEAD
+        <AnimatePresence mode="wait">
+          {isSearchMode ? (
+            /* 搜尋模式 */
+            <motion.div
+              key="search-mode"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center gap-3 px-5 py-3"
+            >
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--vesti-gray-mid)]" />
+                <input
+                  type="text"
+                  placeholder="搜尋商品、分類..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  className="w-full h-12 pl-12 pr-4 rounded-full bg-white border border-[var(--vesti-gray-light)] text-[var(--vesti-dark)] placeholder:text-[var(--vesti-gray-mid)] focus:outline-none focus:border-[var(--vesti-primary)] transition-colors"
+                  style={{ fontSize: 'var(--text-base)' }}
+                />
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleToggleSearch}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-[var(--vesti-gray-light)] transition-colors flex-shrink-0"
+              >
+                <X className="h-5 w-5 text-[var(--vesti-dark)]" />
+              </motion.button>
+            </motion.div>
+          ) : (
+            /* 正常模式 */
+            <motion.div
+              key="normal-mode"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center justify-between px-5 py-3"
+            >
+              <button 
+                onClick={onBack}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-[var(--vesti-gray-light)] transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5 text-[var(--vesti-dark)]" />
+              </button>
+              <h1 className="text-lg font-bold text-[var(--vesti-dark)] opacity-90">
+                店家資訊
+              </h1>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleToggleSearch}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-[var(--vesti-gray-light)] transition-colors"
+              >
+                <Search className="h-5 w-5 text-[var(--vesti-dark)]" />
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* 搜尋結果數量提示 */}
+        {searchQuery && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-5 pb-3"
+          >
+            <p className="text-[var(--vesti-text-secondary)]" style={{ fontSize: 'var(--text-label)' }}>
+              找到 {filteredProducts.length} 個商品
+            </p>
+          </motion.div>
+        )}
+=======
         <div className="flex items-center justify-between px-5 py-3">
           <button 
             onClick={onBack}
@@ -121,6 +226,7 @@ export function StoreProfilePage({
             <Search className="h-5 w-5 text-[var(--vesti-dark)]" />
           </button>
         </div>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
       </header>
 
       {/* Store Info Section */}
@@ -189,6 +295,84 @@ export function StoreProfilePage({
 
       {/* Product Grid */}
       <div className="px-5">
+<<<<<<< HEAD
+        {filteredProducts.length === 0 ? (
+          /* 搜尋無結果 */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 px-6 text-center"
+          >
+            <div className="w-20 h-20 rounded-full bg-[var(--vesti-light-bg)] flex items-center justify-center mb-4">
+              <Search className="w-10 h-10 text-[var(--vesti-gray-mid)]" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-[var(--vesti-dark)] mb-2" style={{ fontSize: 'var(--text-h3)' }}>
+              找不到相關商品
+            </h3>
+            <p className="text-[var(--vesti-text-secondary)] mb-4" style={{ fontSize: 'var(--text-base)' }}>
+              {searchQuery ? `沒有符合「${searchQuery}」的商品` : '此分類目前沒有商品'}
+            </p>
+            {searchQuery && (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('全部');
+                }}
+                className="px-6 py-2.5 rounded-full bg-[var(--vesti-primary)] text-white hover:bg-[var(--vesti-primary)]/90 transition-colors"
+                style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}
+              >
+                清除搜尋
+              </motion.button>
+            )}
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {filteredProducts.map((product) => (
+              <motion.div
+                key={product.id}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSelectedProduct(product)}
+                className="overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] cursor-pointer flex flex-col h-full"
+              >
+                <div className="aspect-[4/5] overflow-hidden">
+                  <ImageWithFallback
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+                <div className="flex items-center gap-2 p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="mb-1 text-[var(--vesti-primary)] truncate" style={{ fontSize: 'var(--text-label)' }}>
+                      {product.brand}
+                    </p>
+                    <h4 className="mb-2 text-[var(--vesti-dark)] line-clamp-1" style={{ lineHeight: 1.3 }}>{product.name}</h4>
+                    <p className="text-[var(--vesti-primary)] whitespace-nowrap" style={{ fontWeight: 700, fontSize: '15px' }}>
+                      NT$ {product.price.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="mr-1 flex-shrink-0">
+                    <button 
+                      className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95 flex-shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddToBag();
+                        toast.success(`已將 ${product.name} 加入試穿籃`);
+                      }}
+                    >
+                      <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
+                      <div className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)] shadow-sm">
+                        <Plus className="h-2.5 w-2.5" strokeWidth={4} />
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+=======
         <div className="grid grid-cols-2 gap-3">
           {filteredProducts.map((product) => (
             <motion.div
@@ -233,6 +417,7 @@ export function StoreProfilePage({
             </motion.div>
           ))}
         </div>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
       </div>
 
       {/* Product Detail Modal */}
@@ -375,4 +560,8 @@ export function StoreProfilePage({
       )}
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

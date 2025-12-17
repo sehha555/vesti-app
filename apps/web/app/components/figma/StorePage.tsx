@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+<<<<<<< HEAD
+import { Search, Sparkles, ShoppingBag, Grid3x3, LayoutGrid, Shirt, ShoppingCart, X, Plus, ChevronLeft } from 'lucide-react';
+import { StoreOutfitCard } from './StoreOutfitCard';
+import { OutfitPackCard } from './OutfitPackCard';
+import { AIOutfitRecommendation } from './AIOutfitRecommendation';
+=======
 import { Search, Sparkles, ShoppingBag, Grid3x3, LayoutGrid, Shirt, ShoppingCart, X } from 'lucide-react';
 import { StoreOutfitCard } from './StoreOutfitCard';
 import { OutfitPackCard } from './OutfitPackCard';
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 import { QuizModal } from './QuizModal';
 import { ProductDetailView } from './ProductDetailView';
 import { StoreProfilePage } from './StoreProfilePage';
@@ -49,6 +56,45 @@ const featuredStores: Store[] = [
     imageUrl: 'https://images.unsplash.com/photo-1634316164986-3d65b05f123f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwZmFzaGlvbiUyMGJvdXRpcXVlfGVufDF8fHx8MTc2MjYwMjk2OXww&ixlib=rb-4.1.0&q=80&w=1080',
     category: '極簡風格',
   },
+<<<<<<< HEAD
+  {
+    id: 3,
+    name: 'Vintage Treasures',
+    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjbG90aGluZyUyMHN0b3JlfGVufDF8fHx8MTc2MjYwMjk2OXww&ixlib=rb-4.1.0&q=80&w=1080',
+    category: '復古風尚',
+  },
+  {
+    id: 4,
+    name: 'Sport Life',
+    imageUrl: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBzdG9yZXxlbnwxfHx8fDE3NjI2MDI5Njl8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    category: '運動休閒',
+  },
+  {
+    id: 5,
+    name: 'Elegant Closet',
+    imageUrl: 'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXNoaW9uJTIwYm91dGlxdWV8ZW58MXx8fHwxNzYyNjAyOTY5fDA&ixlib=rb-4.1.0&q=80&w=1080',
+    category: '優雅正裝',
+  },
+  {
+    id: 6,
+    name: 'Street Beat',
+    imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHJlZXR3ZWFyfGVufDF8fHx8MTc2MjYwMjk2OXww&ixlib=rb-4.1.0&q=80&w=1080',
+    category: '街頭風格',
+  },
+  {
+    id: 7,
+    name: 'Natural Threads',
+    imageUrl: 'https://images.unsplash.com/photo-1445205170230-053b83016050?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjbG90aGluZyUyMHJhY2t8ZW58MXx8fHwxNzYyNjAyOTY5fDA&ixlib=rb-4.1.0&q=80&w=1080',
+    category: '自然風尚',
+  },
+  {
+    id: 8,
+    name: 'Modern Edge',
+    imageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBmYXNoaW9ufGVufDF8fHx8MTc2MjYwMjk2OXww&ixlib=rb-4.1.0&q=80&w=1080',
+    category: '現代時尚',
+  },
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 ];
 
 const featuredProducts: Product[] = [
@@ -100,6 +146,73 @@ const featuredProducts: Product[] = [
     tags: ['折扣'],
     originalPrice: 1680,
   },
+<<<<<<< HEAD
+  {
+    id: 6,
+    name: '條紋襯衫',
+    price: 1190,
+    imageUrl: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHJpcGVkJTIwc2hpcnR8ZW58MXx8fHwxNzYyNjAyOTcwfDA&ixlib=rb-4.1.0&q=80&w=1080',
+    brand: 'ClassicFit',
+    category: '上衣',
+    tags: ['新品'],
+  },
+  {
+    id: 7,
+    name: '針織開襟外套',
+    price: 2180,
+    imageUrl: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXJkaWdhbnxlbnwxfHx8fDE3NjI2MDI5NzB8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    brand: 'CozyKnit',
+    category: '外套',
+    tags: ['熱銷'],
+  },
+  {
+    id: 8,
+    name: '高腰闊腿褲',
+    price: 1490,
+    imageUrl: 'https://images.unsplash.com/photo-1594633313593-bab3825d0caf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aWRlJTIwbGVnJTIwcGFudHN8ZW58MXx8fHwxNzYyNjAyOTcwfDA&ixlib=rb-4.1.0&q=80&w=1080',
+    brand: 'TrendLine',
+    category: '褲裝',
+    tags: ['新品', '熱銷'],
+  },
+  {
+    id: 9,
+    name: '輕量羽絨背心',
+    price: 2680,
+    imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkb3duJTIwdmVzdHxlbnwxfHx8fDE3NjI2MDI5NzB8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    brand: 'WarmLayer',
+    category: '外套',
+    tags: ['新品'],
+  },
+  {
+    id: 10,
+    name: '棉質工作褲',
+    price: 1390,
+    imageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXJnbyUyMHBhbnRzfGVufDF8fHx8MTc2MjYwMjk3MHww&ixlib=rb-4.1.0&q=80&w=1080',
+    brand: 'UrbanWork',
+    category: '褲裝',
+    tags: ['折扣'],
+    originalPrice: 1790,
+  },
+  {
+    id: 11,
+    name: '絲質印花洋裝',
+    price: 2890,
+    imageUrl: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWxrJTIwZHJlc3N8ZW58MXx8fHwxNzYyNjAyOTcwfDA&ixlib=rb-4.1.0&q=80&w=1080',
+    brand: 'SilkGrace',
+    category: '裙裝',
+    tags: ['新品', '熱銷'],
+  },
+  {
+    id: 12,
+    name: '皮革托特包',
+    price: 3580,
+    imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsZWF0aGVyJTIwYmFnfGVufDF8fHx8MTc2MjYwMjk3MHww&ixlib=rb-4.1.0&q=80&w=1080',
+    brand: 'LeatherCraft',
+    category: '配件',
+    tags: ['熱銷'],
+  },
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 ];
 
 const outfitSets = [
@@ -118,6 +231,12 @@ const outfitSets = [
       matchScore: 85,
       matchingItems: 7,
     },
+<<<<<<< HEAD
+    storeCount: 2,
+    occasions: ['休閒', '約會'],
+    styleTag: '休閒',
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     items: [
       {
         id: 1,
@@ -160,6 +279,12 @@ const outfitSets = [
       matchScore: 72,
       matchingItems: 5,
     },
+<<<<<<< HEAD
+    storeCount: 1,
+    occasions: ['工作', '正式'],
+    styleTag: '正式',
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     items: [
       {
         id: 4,
@@ -202,6 +327,12 @@ const outfitSets = [
       matchScore: 93,
       matchingItems: 12,
     },
+<<<<<<< HEAD
+    storeCount: 3,
+    occasions: ['運動', '休閒'],
+    styleTag: '運動',
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     items: [
       {
         id: 7,
@@ -249,6 +380,11 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
   const [isFabExpanded, setIsFabExpanded] = useState(false); // FAB 展開狀態
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+<<<<<<< HEAD
+  const [showAllStores, setShowAllStores] = useState(false); // 顯示全部商家頁面
+  const [showAllProducts, setShowAllProducts] = useState(false); // 顯示全部商品頁面
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   
   // If a store is selected, render the store profile page
   if (selectedStore) {
@@ -277,6 +413,199 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
     toast.success('正在為您尋找最適合的商品 ✨');
   };
 
+<<<<<<< HEAD
+  // 如果顯示全部商家頁面
+  if (showAllStores) {
+    return (
+      <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
+        {/* Header */}
+        <motion.header
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm px-5 pt-5 pb-4"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => setShowAllStores(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-[var(--vesti-gray-mid)]/30 text-[var(--vesti-dark)] transition-all hover:border-[var(--vesti-primary)] hover:text-[var(--vesti-primary)]"
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
+            </button>
+            <h1 className="text-[var(--vesti-primary)]">全部商家</h1>
+          </div>
+
+          {/* 搜索欄 */}
+          <div className="relative">
+            <Search
+              className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--vesti-gray-mid)]"
+              strokeWidth={2}
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜尋商家..."
+              className="w-full rounded-xl border-2 border-[var(--vesti-gray-mid)]/30 bg-white py-3 pl-12 pr-4 shadow-sm transition-all focus:border-[var(--vesti-primary)] focus:outline-none"
+            />
+          </div>
+        </motion.header>
+
+        {/* 商家網格 */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="px-5"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            {featuredStores
+              .filter(store => 
+                searchQuery === '' || 
+                store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                store.category.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((store, index) => (
+                <motion.div
+                  key={store.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setShowAllStores(false);
+                    setSelectedStore(store);
+                  }}
+                >
+                  <div className="overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+                    <div className="aspect-[4/3] overflow-hidden">
+                      <ImageWithFallback
+                        src={store.imageUrl}
+                        alt={store.name}
+                        className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <h4 className="mb-1 text-[var(--vesti-dark)] truncate">{store.name}</h4>
+                      <p className="text-[var(--vesti-gray-mid)] truncate" style={{ fontSize: 'var(--text-label)' }}>
+                        {store.category}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // 如果顯示全部商品頁面
+  if (showAllProducts) {
+    return (
+      <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
+        {/* Header */}
+        <motion.header
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm px-5 pt-5 pb-4"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => setShowAllProducts(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-[var(--vesti-gray-mid)]/30 text-[var(--vesti-dark)] transition-all hover:border-[var(--vesti-primary)] hover:text-[var(--vesti-primary)]"
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
+            </button>
+            <h1 className="text-[var(--vesti-primary)]">全部商品</h1>
+          </div>
+
+          {/* 搜索欄 */}
+          <div className="relative">
+            <Search
+              className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--vesti-gray-mid)]"
+              strokeWidth={2}
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜尋款式、品牌..."
+              className="w-full rounded-xl border-2 border-[var(--vesti-gray-mid)]/30 bg-white py-3 pl-12 pr-4 shadow-sm transition-all focus:border-[var(--vesti-primary)] focus:outline-none"
+            />
+          </div>
+        </motion.header>
+
+        {/* 商品網格 */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="px-5"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            {featuredProducts
+              .filter(product => 
+                searchQuery === '' || 
+                product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                product.category.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowAllProducts(false);
+                    setSelectedProduct(product);
+                  }}
+                  className="relative overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] cursor-pointer"
+                >
+                  <div className="aspect-[4/5] overflow-hidden">
+                    <ImageWithFallback
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="mb-1 text-[var(--vesti-primary)] truncate" style={{ fontSize: 'var(--text-label)' }}>
+                        {product.brand}
+                      </p>
+                      <h4 className="mb-2 text-[var(--vesti-dark)] truncate">{product.name}</h4>
+                      <p className="text-[var(--vesti-primary)]" style={{ fontWeight: 700 }}>
+                        NT$ {product.price.toLocaleString()}
+                      </p>
+                    </div>
+                    {/* 加入試穿籃按鈕 - 位於右側 */}
+                    <div className="mr-1 flex-shrink-0">
+                      <button 
+                        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95 flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTryOnCount(c => c + 1);
+                          toast.success(`已將 ${product.name} 加入試穿籃`);
+                        }}
+                      >
+                        <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
+                        <div className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)] shadow-sm">
+                          <Plus className="h-2.5 w-2.5" strokeWidth={4} />
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   return (
     <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
       {/* Header */}
@@ -413,7 +742,15 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
             <section className="mb-6 px-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[var(--vesti-dark)]">推薦店家</h2>
+<<<<<<< HEAD
+                <button 
+                  onClick={() => setShowAllStores(true)}
+                  className="text-[var(--vesti-dark)]" 
+                  style={{ fontSize: 'var(--text-label)' }}
+                >
+=======
                 <button className="text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)' }}>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                   查看全部
                 </button>
               </div>
@@ -427,7 +764,11 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                     onClick={() => setSelectedStore(store)}
                   >
                     <div className="w-40 overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+<<<<<<< HEAD
+                      <div className="aspect-[4/3] overflow-hidden">
+=======
                       <div className="h-28 overflow-hidden">
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                         <ImageWithFallback
                           src={store.imageUrl}
                           alt={store.name}
@@ -435,8 +776,13 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                         />
                       </div>
                       <div className="p-3">
+<<<<<<< HEAD
+                        <h4 className="mb-1 text-[var(--vesti-dark)] truncate">{store.name}</h4>
+                        <p className="text-[var(--vesti-gray-mid)] truncate" style={{ fontSize: 'var(--text-label)' }}>
+=======
                         <h4 className="mb-1 text-[var(--vesti-dark)]">{store.name}</h4>
                         <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                           {store.category}
                         </p>
                       </div>
@@ -450,7 +796,15 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
             <section className="px-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[var(--vesti-dark)]">精選單品</h2>
+<<<<<<< HEAD
+                <button 
+                  onClick={() => setShowAllProducts(true)}
+                  className="text-[var(--vesti-dark)]" 
+                  style={{ fontSize: 'var(--text-label)' }}
+                >
+=======
                 <button className="text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)' }}>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                   查看全部
                 </button>
               </div>
@@ -461,9 +815,15 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                     key={product.id}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setSelectedProduct(product)}
+<<<<<<< HEAD
+                    className="relative overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] cursor-pointer"
+                  >
+                    <div className="aspect-[4/5] overflow-hidden">
+=======
                     className="overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] cursor-pointer"
                   >
                     <div className="aspect-square overflow-hidden">
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                       <ImageWithFallback
                         src={product.imageUrl}
                         alt={product.name}
@@ -471,28 +831,48 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                       />
                     </div>
                     <div className="flex items-center gap-2 p-3">
+<<<<<<< HEAD
+                      <div className="flex-1 min-w-0">
+                        <p className="mb-1 text-[var(--vesti-primary)] truncate" style={{ fontSize: 'var(--text-label)' }}>
+                          {product.brand}
+                        </p>
+                        <h4 className="mb-2 text-[var(--vesti-dark)] line-clamp-1" style={{ lineHeight: 1.3 }}>{product.name}</h4>
+                        <p className="text-[var(--vesti-primary)] whitespace-nowrap" style={{ fontWeight: 700, fontSize: '15px' }}>
+=======
                       <div className="flex-1">
                         <p className="mb-1 text-[var(--vesti-primary)]" style={{ fontSize: 'var(--text-label)' }}>
                           {product.brand}
                         </p>
                         <h4 className="mb-2 text-[var(--vesti-dark)]">{product.name}</h4>
                         <p className="text-[var(--vesti-primary)]" style={{ fontWeight: 700 }}>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                           NT$ {product.price.toLocaleString()}
                         </p>
                       </div>
                       {/* 加入試穿籃按鈕 - 位於右側 */}
                       <div className="mr-1 flex-shrink-0">
                         <button 
+<<<<<<< HEAD
+                          className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95 flex-shrink-0"
+=======
                           className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-md transition-all hover:scale-110 hover:shadow-lg"
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                           onClick={(e) => {
                             e.stopPropagation();
                             toast.success(`已將 ${product.name} 加入試穿籃`);
                           }}
                         >
+<<<<<<< HEAD
+                          <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
+                          <div className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)] shadow-sm">
+                            <Plus className="h-2.5 w-2.5" strokeWidth={4} />
+                          </div>
+=======
                           <ShoppingBag className="h-4 w-4" />
                           <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)]" style={{ fontSize: '13px', fontWeight: 700 }}>
                             +
                           </span>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                         </button>
                       </div>
                     </div>
@@ -509,12 +889,18 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
+<<<<<<< HEAD
+            {/* 整套推薦 - AI 搭配推薦 */}
+            <section>
+              <AIOutfitRecommendation outfits={outfitSets} />
+=======
             {/* 整套推薦 - 卡包模式 */}
             <section>
               <OutfitPackCard 
                 outfits={outfitSets} 
                 onSwitchToShopping={() => setViewMode('shopping')}
               />
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
             </section>
           </motion.div>
         )}
@@ -665,4 +1051,8 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
       )}
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

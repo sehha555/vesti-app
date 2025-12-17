@@ -11,9 +11,23 @@ import {
   ChevronRight,
   Truck,
   ShieldCheck,
+<<<<<<< HEAD
+  Star,
+  Store,
+  Package,
+  Home,
+  Edit3,
+  X,
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
+import { AddPaymentCardModal, PaymentCard } from './AddPaymentCardModal';
+import { AddressModal, Address as AddressType } from './AddressModal';
+=======
+} from 'lucide-react';
+import { ImageWithFallback } from './figma/ImageWithFallback';
+import { toast } from 'sonner';
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
 interface CartItem {
   id: number;
@@ -26,6 +40,17 @@ interface CartItem {
   color?: string;
 }
 
+<<<<<<< HEAD
+interface Address {
+  id: number;
+  name: string;
+  phone: string;
+  address: string;
+  isDefault: boolean;
+}
+
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 interface CheckoutPageProps {
   onBack: () => void;
 }
@@ -68,7 +93,11 @@ const mockCartItems: CartItem[] = [
 ];
 
 // 模擬地址
+<<<<<<< HEAD
+const mockAddresses: Address[] = [
+=======
 const mockAddresses = [
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   {
     id: 1,
     name: '王小明',
@@ -92,18 +121,86 @@ const paymentMethods = [
   { id: 'cod', name: '貨到付款', icon: Truck },
 ];
 
+<<<<<<< HEAD
+// 物流方式
+const shippingMethods = [
+  { id: '7-11', name: '7-ELEVEN 取貨', icon: Store },
+  { id: 'family', name: '全家便利商店', icon: Store },
+  { id: 'home', name: '宅配到府', icon: Home },
+];
+
+export function CheckoutPage({ onBack }: CheckoutPageProps) {
+  const [cartItems, setCartItems] = useState<CartItem[]>(mockCartItems);
+  const [addresses, setAddresses] = useState<Address[]>(mockAddresses);
+  const [selectedAddress, setSelectedAddress] = useState(mockAddresses[0]);
+  const [selectedPayment, setSelectedPayment] = useState('credit');
+  const [selectedShipping, setSelectedShipping] = useState('home');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [savedCards, setSavedCards] = useState<PaymentCard[]>([]);
+  const [selectedCard, setSelectedCard] = useState<PaymentCard | null>(null);
+  const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<AddressType | null>(null);
+  
+  // ATM 轉帳資訊
+  const [atmBankCode, setAtmBankCode] = useState('');
+  const [atmAccountNumber, setAtmAccountNumber] = useState('');
+  const [atmAccountName, setAtmAccountName] = useState('');
+  
+  // 便利商店門市資訊
+  const [selectedStore, setSelectedStore] = useState('');
+  
+  // 宅配資訊
+  const [homeDeliveryName, setHomeDeliveryName] = useState('');
+  const [homeDeliveryPhone, setHomeDeliveryPhone] = useState('');
+  const [homeDeliveryAddress, setHomeDeliveryAddress] = useState('');
+=======
 export function CheckoutPage({ onBack }: CheckoutPageProps) {
   const [cartItems, setCartItems] = useState<CartItem[]>(mockCartItems);
   const [selectedAddress, setSelectedAddress] = useState(mockAddresses[0]);
   const [selectedPayment, setSelectedPayment] = useState('credit');
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(0);
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
   // 計算總價
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingFee = subtotal >= 1000 ? 0 : 80;
   const total = subtotal + shippingFee - appliedDiscount;
 
+<<<<<<< HEAD
+  // 確認結帳
+  const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      toast.error('購物車是空的');
+      return;
+    }
+    toast.success('訂單已送出！感謝您的購買 ✨');
+    // 這裡可以導航到訂單確認頁面或清空購物車
+  };
+
+  // 按店家分組商品
+  const groupItemsByBrand = (items: CartItem[]) => {
+    const grouped = items.reduce((acc, item) => {
+      if (!acc[item.brand]) {
+        acc[item.brand] = [];
+      }
+      acc[item.brand].push(item);
+      return acc;
+    }, {} as Record<string, CartItem[]>);
+    return Object.entries(grouped);
+  };
+
+  const groupedCartItems = groupItemsByBrand(cartItems);
+
+  // 計算每個店家的小計
+  const getBrandSubtotal = (items: CartItem[]) => {
+    return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  };
+
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   // 增加數量
   const handleIncreaseQuantity = (itemId: number) => {
     setCartItems((items) =>
@@ -136,6 +233,68 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
     }
   };
 
+<<<<<<< HEAD
+  // 新增卡片
+  const handleAddCard = (newCard: PaymentCard) => {
+    // 如果是第一張卡片，設為預設並自動選中
+    if (savedCards.length === 0) {
+      newCard.isDefault = true;
+      setSelectedCard(newCard);
+    }
+    setSavedCards([...savedCards, newCard]);
+  };
+
+  // 新增或編輯地址
+  const handleSaveAddress = (newAddress: AddressType) => {
+    if (editingAddress) {
+      // 編輯現有地址
+      setAddresses((prevAddresses) =>
+        prevAddresses.map((addr) => (addr.id === editingAddress.id ? newAddress : addr))
+      );
+      if (selectedAddress.id === editingAddress.id) {
+        setSelectedAddress(newAddress);
+      }
+    } else {
+      // 新增地址
+      setAddresses((prevAddresses) => [...prevAddresses, newAddress]);
+    }
+    setEditingAddress(null);
+    setIsAddressModalOpen(false);
+  };
+
+  // 開啟新增地址 Modal
+  const handleAddAddress = () => {
+    setEditingAddress(null);
+    setIsAddressModalOpen(true);
+  };
+
+  // 開啟編輯地址 Modal
+  const handleEditAddress = (address: Address, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingAddress(address);
+    setIsAddressModalOpen(true);
+  };
+
+  // 渲染卡片品牌 Logo (簡化版)
+  const renderCardBrandIcon = (brand: PaymentCard['brand']) => {
+    switch (brand) {
+      case 'visa':
+        return <div className="text-blue-600" style={{ fontSize: '10px', fontWeight: 700 }}>VISA</div>;
+      case 'mastercard':
+        return (
+          <div className="flex gap-0.5">
+            <div className="h-4 w-4 rounded-full bg-red-500" />
+            <div className="h-4 w-4 rounded-full bg-orange-400 -ml-2" />
+          </div>
+        );
+      case 'jcb':
+        return <div className="text-blue-700" style={{ fontSize: '9px', fontWeight: 700 }}>JCB</div>;
+      case 'amex':
+        return <div className="text-blue-500" style={{ fontSize: '8px', fontWeight: 700 }}>AMEX</div>;
+      default:
+        return <CreditCard className="h-5 w-5 text-[var(--vesti-primary)]" strokeWidth={2} />;
+    }
+=======
   // 確認結帳
   const handleCheckout = () => {
     if (cartItems.length === 0) {
@@ -144,6 +303,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
     }
     toast.success('訂單已送出！感謝您的購買 ✨');
     // 這裡可以導航到訂單確認頁面或清空購物車
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   };
 
   if (cartItems.length === 0) {
@@ -202,6 +362,126 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
         {/* 商品列表 */}
         <section className="px-5 py-6">
           <h2 className="mb-4 text-[var(--vesti-dark)]">購物清單</h2>
+<<<<<<< HEAD
+          <div className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {groupedCartItems.map(([brand, items], groupIndex) => (
+                <motion.div
+                  key={brand}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ delay: groupIndex * 0.05 }}
+                  className="overflow-hidden rounded-2xl border-2 border-[var(--vesti-gray-mid)]/30 bg-white shadow-sm"
+                >
+                  {/* 店家標頭 */}
+                  <div className="flex items-center justify-between border-b border-[var(--vesti-gray-mid)]/20 bg-[var(--vesti-gray-light)] px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--vesti-primary)]/10">
+                        <Store className="h-4 w-4 text-[var(--vesti-primary)]" strokeWidth={2} />
+                      </div>
+                      <span
+                        className="text-[var(--vesti-dark)]"
+                        style={{ fontWeight: 600, fontSize: 'var(--text-h4)' }}
+                      >
+                        {brand}
+                      </span>
+                    </div>
+                    <span
+                      className="text-[var(--vesti-primary)]"
+                      style={{ fontWeight: 700, fontSize: 'var(--text-label)' }}
+                    >
+                      NT$ {getBrandSubtotal(items).toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* 店家商品列表 */}
+                  <div className="divide-y divide-[var(--vesti-gray-mid)]/10">
+                    {items.map((item) => (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        className="flex gap-4 p-4"
+                      >
+                        {/* 商品圖片 */}
+                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl">
+                          <ImageWithFallback
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+
+                        {/* 商品資訊 */}
+                        <div className="flex flex-1 flex-col">
+                          <div className="mb-2 flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4
+                                className="mb-1 text-[var(--vesti-dark)] line-clamp-2"
+                                style={{ fontSize: 'var(--text-h4)', fontWeight: 600 }}
+                              >
+                                {item.name}
+                              </h4>
+                              {(item.size || item.color) && (
+                                <p
+                                  className="text-[var(--vesti-gray-mid)]"
+                                  style={{ fontSize: 'var(--text-label)' }}
+                                >
+                                  {item.size && `尺寸: ${item.size}`}
+                                  {item.size && item.color && ' / '}
+                                  {item.color && `顏色: ${item.color}`}
+                                </p>
+                              )}
+                            </div>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleRemoveItem(item.id)}
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--vesti-gray-mid)] hover:bg-[var(--vesti-gray-light)] transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" strokeWidth={2} />
+                            </motion.button>
+                          </div>
+
+                          {/* 價格和數量 */}
+                          <div className="mt-auto flex items-center justify-between">
+                            <p
+                              className="text-[var(--vesti-primary)]"
+                              style={{ fontWeight: 700, fontSize: 'var(--text-h4)' }}
+                            >
+                              NT$ {(item.price * item.quantity).toLocaleString()}
+                            </p>
+
+                            {/* 數量控制 */}
+                            <div className="flex items-center gap-3 rounded-full border-2 border-[var(--vesti-gray-light)] bg-white px-2 py-1">
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleDecreaseQuantity(item.id)}
+                                disabled={item.quantity <= 1}
+                                className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-[var(--vesti-gray-light)] transition-colors disabled:opacity-30"
+                              >
+                                <Minus className="h-3 w-3 text-[var(--vesti-dark)]" strokeWidth={2.5} />
+                              </motion.button>
+                              <span
+                                className="min-w-[20px] text-center text-[var(--vesti-dark)]"
+                                style={{ fontWeight: 600 }}
+                              >
+                                {item.quantity}
+                              </span>
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleIncreaseQuantity(item.id)}
+                                className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-[var(--vesti-gray-light)] transition-colors"
+                              >
+                                <Plus className="h-3 w-3 text-[var(--vesti-dark)]" strokeWidth={2.5} />
+                              </motion.button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+=======
           <div className="space-y-3">
             <AnimatePresence mode="popLayout">
               {cartItems.map((item) => (
@@ -295,6 +575,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
                         </div>
                       </div>
                     </div>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                   </div>
                 </motion.div>
               ))}
@@ -306,7 +587,11 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
         <section className="px-5 pb-6">
           <h2 className="mb-4 text-[var(--vesti-dark)]">配送地址</h2>
           <div className="space-y-3">
+<<<<<<< HEAD
+            {addresses.map((address) => (
+=======
             {mockAddresses.map((address) => (
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
               <motion.div
                 key={address.id}
                 whileTap={{ scale: 0.98 }}
@@ -368,6 +653,18 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
                 </div>
               </motion.div>
             ))}
+<<<<<<< HEAD
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleAddAddress}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--vesti-primary)]/40 bg-[var(--vesti-primary)]/5 py-4 text-[var(--vesti-primary)] transition-all hover:border-[var(--vesti-primary)]/60 hover:bg-[var(--vesti-primary)]/10"
+            >
+              <Plus className="h-5 w-5" strokeWidth={2.5} />
+              <span style={{ fontWeight: 600 }}>新增地址</span>
+            </motion.button>
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
           </div>
         </section>
 
@@ -418,6 +715,301 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
           </div>
         </section>
 
+<<<<<<< HEAD
+        {/* 信用卡選擇 (當選擇信用卡支付時顯示) */}
+        {selectedPayment === 'credit' && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-5 pb-6"
+          >
+            <h2 className="mb-4 text-[var(--vesti-dark)]">選擇信用卡</h2>
+            <div className="space-y-3">
+              {/* 已儲存的卡片列表 */}
+              {savedCards.map((card) => (
+                <motion.div
+                  key={card.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedCard(card)}
+                  className={`cursor-pointer overflow-hidden rounded-2xl border-2 bg-white p-4 transition-all ${
+                    selectedCard?.id === card.id
+                      ? 'border-[var(--vesti-primary)] shadow-[0_4px_16px_rgba(41,108,125,0.12)]'
+                      : 'border-transparent shadow-sm hover:border-[var(--vesti-secondary)]'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* 卡片品牌 Logo */}
+                    <div className="flex h-10 w-10 items-center justify-center flex-shrink-0">
+                      {renderCardBrandIcon(card.brand)}
+                    </div>
+
+                    {/* 卡片資訊 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span
+                          className="text-[var(--vesti-dark)]"
+                          style={{ fontWeight: 600, fontSize: 'var(--text-h4)' }}
+                        >
+                          •••• {card.lastFourDigits}
+                        </span>
+                        {card.isDefault && (
+                          <div className="flex items-center gap-1 rounded-full bg-[var(--vesti-primary)]/10 px-2 py-0.5">
+                            <Star className="h-3 w-3 text-[var(--vesti-primary)]" fill="currentColor" strokeWidth={2} />
+                            <span className="text-[var(--vesti-primary)]" style={{ fontSize: '11px', fontWeight: 600 }}>
+                              預設
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
+                        到期日：{card.expiryMonth}/{card.expiryYear}
+                      </p>
+                    </div>
+
+                    {/* 選中標記 */}
+                    {selectedCard?.id === card.id && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--vesti-primary)]"
+                      >
+                        <div className="h-2 w-2 rounded-full bg-white" />
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* 新增卡片按鈕 */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setIsAddCardModalOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--vesti-primary)]/40 bg-[var(--vesti-primary)]/5 py-4 text-[var(--vesti-primary)] transition-all hover:border-[var(--vesti-primary)]/60 hover:bg-[var(--vesti-primary)]/10"
+              >
+                <Plus className="h-5 w-5" strokeWidth={2.5} />
+                <span style={{ fontWeight: 600 }}>新增信用卡</span>
+              </motion.button>
+            </div>
+          </motion.section>
+        )}
+
+        {/* ATM 轉帳資訊輸入 (當選擇 ATM 支付時顯示) */}
+        {selectedPayment === 'atm' && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-5 pb-6"
+          >
+            <h2 className="mb-4 text-[var(--vesti-dark)]">ATM 轉帳資訊</h2>
+            <div className="space-y-3 rounded-2xl border-2 border-[var(--vesti-gray-mid)]/30 bg-white p-4 shadow-sm">
+              {/* 銀行代碼 */}
+              <div>
+                <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
+                  銀行代碼
+                </label>
+                <input
+                  type="text"
+                  value={atmBankCode}
+                  onChange={(e) => setAtmBankCode(e.target.value)}
+                  placeholder="例如：012"
+                  maxLength={3}
+                  className="h-12 w-full rounded-xl border-2 border-[var(--vesti-gray-light)] bg-white px-4 text-[var(--vesti-dark)] outline-none transition-colors focus:border-[var(--vesti-primary)]"
+                  style={{ fontSize: 'var(--text-base)' }}
+                />
+              </div>
+
+              {/* 帳號 */}
+              <div>
+                <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
+                  銀行帳號
+                </label>
+                <input
+                  type="text"
+                  value={atmAccountNumber}
+                  onChange={(e) => setAtmAccountNumber(e.target.value)}
+                  placeholder="請輸入銀行帳號"
+                  className="h-12 w-full rounded-xl border-2 border-[var(--vesti-gray-light)] bg-white px-4 text-[var(--vesti-dark)] outline-none transition-colors focus:border-[var(--vesti-primary)]"
+                  style={{ fontSize: 'var(--text-base)' }}
+                />
+              </div>
+
+              {/* 戶名 */}
+              <div>
+                <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
+                  帳戶戶名
+                </label>
+                <input
+                  type="text"
+                  value={atmAccountName}
+                  onChange={(e) => setAtmAccountName(e.target.value)}
+                  placeholder="請輸入戶名"
+                  className="h-12 w-full rounded-xl border-2 border-[var(--vesti-gray-light)] bg-white px-4 text-[var(--vesti-dark)] outline-none transition-colors focus:border-[var(--vesti-primary)]"
+                  style={{ fontSize: 'var(--text-base)' }}
+                />
+              </div>
+
+              {/* 提示訊息 */}
+              <div className="mt-3 rounded-xl bg-[var(--vesti-primary)]/5 p-3">
+                <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
+                  💡 請確認轉帳資訊正確，我們將於收到款項後儘快安排出貨。
+                </p>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
+        {/* 物流方式選擇 */}
+        <section className="px-5 pb-6">
+          <h2 className="mb-4 text-[var(--vesti-dark)]">配送方式</h2>
+          <div className="space-y-3">
+            {shippingMethods.map((method) => (
+              <motion.div
+                key={method.id}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSelectedShipping(method.id)}
+                className={`cursor-pointer overflow-hidden rounded-2xl border-2 bg-white p-4 transition-all ${
+                  selectedShipping === method.id
+                    ? 'border-[var(--vesti-primary)] shadow-[0_4px_16px_rgba(41,108,125,0.12)]'
+                    : 'border-transparent shadow-sm hover:border-[var(--vesti-secondary)]'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <method.icon
+                      className={`h-5 w-5 ${
+                        selectedShipping === method.id
+                          ? 'text-[var(--vesti-primary)]'
+                          : 'text-[var(--vesti-gray-mid)]'
+                      }`}
+                      strokeWidth={2}
+                    />
+                    <span
+                      className="text-[var(--vesti-dark)]"
+                      style={{ fontWeight: 600, fontSize: 'var(--text-h4)' }}
+                    >
+                      {method.name}
+                    </span>
+                  </div>
+                  {selectedShipping === method.id && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--vesti-primary)]"
+                    >
+                      <div className="h-2 w-2 rounded-full bg-white" />
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* 便利商店門市選擇 (當選擇便利商店取貨時顯示) */}
+        {(selectedShipping === '7-11' || selectedShipping === 'family') && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-5 pb-6"
+          >
+            <h2 className="mb-4 text-[var(--vesti-dark)]">選擇門市</h2>
+            <div className="space-y-3 rounded-2xl border-2 border-[var(--vesti-gray-mid)]/30 bg-white p-4 shadow-sm">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  toast.success('開啟門市選擇地圖（功能開發中）');
+                }}
+                className="flex w-full items-center justify-between rounded-xl border-2 border-[var(--vesti-gray-light)] bg-white px-4 py-3 transition-all hover:border-[var(--vesti-primary)]"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-5 w-5 text-[var(--vesti-primary)]" strokeWidth={2} />
+                  <span className="text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-base)' }}>
+                    {selectedStore || '請選擇取貨門市'}
+                  </span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-[var(--vesti-gray-mid)]" strokeWidth={2} />
+              </motion.button>
+              
+              <div className="rounded-xl bg-[var(--vesti-primary)]/5 p-3">
+                <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
+                  💡 選擇最近的 {selectedShipping === '7-11' ? '7-ELEVEN' : '全家'} 門市，商品到店後將以簡訊通知。
+                </p>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
+        {/* 宅配資訊輸入 (當選擇宅配到府時顯示) */}
+        {selectedShipping === 'home' && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-5 pb-6"
+          >
+            <h2 className="mb-4 text-[var(--vesti-dark)]">宅配資訊</h2>
+            <div className="space-y-3 rounded-2xl border-2 border-[var(--vesti-gray-mid)]/30 bg-white p-4 shadow-sm">
+              {/* 收件人姓名 */}
+              <div>
+                <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
+                  收件人姓名
+                </label>
+                <input
+                  type="text"
+                  value={homeDeliveryName}
+                  onChange={(e) => setHomeDeliveryName(e.target.value)}
+                  placeholder="請輸入收件人姓名"
+                  className="h-12 w-full rounded-xl border-2 border-[var(--vesti-gray-light)] bg-white px-4 text-[var(--vesti-dark)] outline-none transition-colors focus:border-[var(--vesti-primary)]"
+                  style={{ fontSize: 'var(--text-base)' }}
+                />
+              </div>
+
+              {/* 聯絡電話 */}
+              <div>
+                <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
+                  聯絡電話
+                </label>
+                <input
+                  type="tel"
+                  value={homeDeliveryPhone}
+                  onChange={(e) => setHomeDeliveryPhone(e.target.value)}
+                  placeholder="例如：0912-345-678"
+                  className="h-12 w-full rounded-xl border-2 border-[var(--vesti-gray-light)] bg-white px-4 text-[var(--vesti-dark)] outline-none transition-colors focus:border-[var(--vesti-primary)]"
+                  style={{ fontSize: 'var(--text-base)' }}
+                />
+              </div>
+
+              {/* 配送地址 */}
+              <div>
+                <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
+                  配送地址
+                </label>
+                <textarea
+                  value={homeDeliveryAddress}
+                  onChange={(e) => setHomeDeliveryAddress(e.target.value)}
+                  placeholder="請輸入完整地址，包含縣市、區域、街道和門牌號碼"
+                  rows={3}
+                  className="w-full rounded-xl border-2 border-[var(--vesti-gray-light)] bg-white p-4 text-[var(--vesti-dark)] outline-none transition-colors focus:border-[var(--vesti-primary)] resize-none"
+                  style={{ fontSize: 'var(--text-base)' }}
+                />
+              </div>
+
+              <div className="rounded-xl bg-[var(--vesti-primary)]/5 p-3">
+                <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
+                  💡 請確保收件資訊正確，配送時間為 2-3 個工作天。
+                </p>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
         {/* 優惠券 */}
         <section className="px-5 pb-6">
           <h2 className="mb-4 text-[var(--vesti-dark)]">優惠券</h2>
@@ -549,6 +1141,30 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
           </motion.button>
         </div>
       </div>
+<<<<<<< HEAD
+
+      {/* 新增卡片 Modal */}
+      <AddPaymentCardModal
+        isOpen={isAddCardModalOpen}
+        onClose={() => setIsAddCardModalOpen(false)}
+        onAdd={handleAddCard}
+      />
+
+      {/* 地址 Modal */}
+      <AddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => {
+          setIsAddressModalOpen(false);
+          setEditingAddress(null);
+        }}
+        editingAddress={editingAddress}
+        onSave={handleSaveAddress}
+      />
     </div>
   );
 }
+=======
+    </div>
+  );
+}
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

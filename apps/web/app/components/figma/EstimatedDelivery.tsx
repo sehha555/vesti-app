@@ -10,6 +10,10 @@ const mockDeliveryItems = [
     price: 890,
     imageUrl: 'https://images.unsplash.com/photo-1643881080033-e67069c5e4df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMHRzaGlydCUyMGNsb3RoaW5nfGVufDF8fHx8MTc2MjU1NDc2Mnww&ixlib=rb-4.1.0&q=80&w=1080',
     brand: 'BasicWear',
+<<<<<<< HEAD
+    merchant: 'BasicWear',
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     status: 'tomorrow'
   },
   {
@@ -18,11 +22,23 @@ const mockDeliveryItems = [
     price: 1590,
     imageUrl: 'https://images.unsplash.com/photo-1602585198422-d795fa9bfd6f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZW5pbSUyMGplYW5zJTIwZmFzaGlvbnxlbnwxfHx8fDE3NjI1NzE5ODN8MA&ixlib=rb-4.1.0&q=80&w=1080',
     brand: 'Denim Co.',
+<<<<<<< HEAD
+    merchant: 'DenimCo',
+=======
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     status: 'later'
   }
 ];
 
+<<<<<<< HEAD
+interface EstimatedDeliveryProps {
+  onNavigateToDelivery?: (merchant?: string) => void;
+}
+
+export function EstimatedDelivery({ onNavigateToDelivery }: EstimatedDeliveryProps) {
+=======
 export function EstimatedDelivery() {
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   return (
     <section className="mx-5 mt-0 mb-6 p-6 bg-white rounded-3xl border-2 border-[var(--vesti-secondary)] shadow-[0_12px_24px_rgba(0,0,0,0.08)]">
       <div className="flex items-center justify-between mb-4">
@@ -30,7 +46,15 @@ export function EstimatedDelivery() {
           <span className="w-1 h-5 bg-[var(--vesti-primary)] rounded-full"></span>
           <span>預計配送</span>
         </h3>
+<<<<<<< HEAD
+        <button 
+          onClick={onNavigateToDelivery}
+          className="flex items-center text-[var(--vesti-gray-mid)] hover:text-[var(--vesti-dark)] transition-colors"
+          style={{ fontSize: 'var(--text-label)', fontWeight: 500 }}
+        >
+=======
         <button className="flex items-center text-xs font-medium text-[var(--vesti-gray-mid)] hover:text-[var(--vesti-dark)] transition-colors">
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
            查看全部
            <ChevronRight className="w-4 h-4 ml-0.5" />
         </button>
@@ -48,7 +72,12 @@ export function EstimatedDelivery() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
+<<<<<<< HEAD
+                  onClick={() => onNavigateToDelivery?.(item.merchant)}
+                  className="w-full bg-[#F8F8F7] p-3.5 pr-4 rounded-2xl border border-gray-200 flex gap-4 items-center group hover:bg-gray-100 transition-all shadow hover:shadow-md cursor-pointer"
+=======
                   className="w-full bg-[#F8F8F7] p-3.5 pr-4 rounded-2xl border border-gray-200 flex gap-4 items-center group hover:bg-gray-100 transition-all shadow hover:shadow-md"
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                >
                   <div className="w-16 h-16 rounded-xl bg-white overflow-hidden flex-shrink-0 relative shadow-sm">
                      <ImageWithFallback src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -80,4 +109,8 @@ export function EstimatedDelivery() {
       </div>
     </section>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

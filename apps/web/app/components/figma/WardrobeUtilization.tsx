@@ -1,4 +1,8 @@
+<<<<<<< HEAD
+import { PieChart, Pie, Cell, Label } from 'recharts';
+=======
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from 'recharts';
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 import { motion } from 'motion/react';
 
 export function WardrobeUtilization() {
@@ -6,7 +10,8 @@ export function WardrobeUtilization() {
     { name: 'Used', value: 30 },
     { name: 'Unused', value: 70 },
   ];
-
+  
+  // Primary color for used, Light gray for unused
   const COLORS = ['var(--vesti-primary)', 'var(--vesti-gray-light)'];
 
   return (
@@ -26,6 +31,31 @@ export function WardrobeUtilization() {
 
         <div className="flex items-center gap-6">
           <div className="h-32 w-32 flex-shrink-0 relative">
+<<<<<<< HEAD
+            <PieChart width={128} height={128}>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={40}
+                outerRadius={55}
+                paddingAngle={5}
+                dataKey="value"
+                stroke="none"
+                cornerRadius={4}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+                <Label
+                  value="30%"
+                  position="center"
+                  className="text-lg font-bold fill-[var(--vesti-dark)]"
+                  style={{ fontWeight: 800 }}
+                />
+              </Pie>
+            </PieChart>
+=======
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -51,6 +81,7 @@ export function WardrobeUtilization() {
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
           </div>
 
           <div className="flex flex-col gap-3">
@@ -75,5 +106,8 @@ export function WardrobeUtilization() {
       </motion.div>
     </div>
   );
+<<<<<<< HEAD
 }
-  
+=======
+}
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

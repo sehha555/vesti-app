@@ -12,30 +12,38 @@ interface RankingItem {
   cpw: number;
 }
 
+<<<<<<< HEAD
+interface CPWRankingProps {
+  onNavigateToFullRanking?: () => void;
+}
+
+export function CPWRanking({ onNavigateToFullRanking }: CPWRankingProps) {
+=======
 export function CPWRanking() {
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   const [activeTab, setActiveTab] = useState<'best' | 'worst'>('best');
 
   const bestItems: RankingItem[] = [
     {
       id: 1,
-      name: '經典素色 T-Shirt',
-      imageUrl: 'https://images.unsplash.com/photo-1475178626620-a4d074967452?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=200',
+      name: "經典丹寧牛仔褲",
+      imageUrl: "https://images.unsplash.com/photo-1475178626620-a4d074967452?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=200",
       price: 2480,
       wearCount: 156,
       cpw: 15.8,
     },
     {
       id: 2,
-      name: '純白基本款 T-Shirt',
-      imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&q=80',
+      name: "純白重磅 T-Shirt",
+      imageUrl: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&q=80",
       price: 980,
       wearCount: 82,
       cpw: 11.9,
     },
     {
       id: 3,
-      name: '牛仔長褲',
-      imageUrl: 'https://images.unsplash.com/photo-1560769625-47ab3335ef61?w=200&q=80',
+      name: "復古慢跑鞋",
+      imageUrl: "https://images.unsplash.com/photo-1560769625-47ab3335ef61?w=200&q=80",
       price: 3680,
       wearCount: 210,
       cpw: 17.5,
@@ -45,24 +53,24 @@ export function CPWRanking() {
   const worstItems: RankingItem[] = [
     {
       id: 4,
-      name: '宴會禮服',
-      imageUrl: 'https://images.unsplash.com/photo-1763336016195-1942264993d3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=200',
+      name: "絲絨晚禮服",
+      imageUrl: "https://images.unsplash.com/photo-1763336016195-1942264993d3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=200",
       price: 12800,
       wearCount: 1,
       cpw: 12800,
     },
     {
       id: 5,
-      name: '高價外套',
-      imageUrl: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=200&q=80',
+      name: "設計師聯名手包",
+      imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=200&q=80",
       price: 25000,
       wearCount: 3,
       cpw: 8333,
     },
     {
       id: 6,
-      name: '運動鞋',
-      imageUrl: 'https://images.unsplash.com/photo-1582716960708-d6255b765256?w=200&q=80',
+      name: "寬簷度假草帽",
+      imageUrl: "https://images.unsplash.com/photo-1582716960708-d6255b765256?w=200&q=80",
       price: 3200,
       wearCount: 2,
       cpw: 1600,
@@ -72,7 +80,7 @@ export function CPWRanking() {
   const currentItems = activeTab === 'best' ? bestItems : worstItems;
 
   return (
-<div className="px-5 mb-5">
+    <div className="px-5 mb-5">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -155,7 +163,15 @@ export function CPWRanking() {
         </div>
 
         <div className="mt-5 pt-4 border-t border-[var(--vesti-gray-light)]/30 text-center">
+<<<<<<< HEAD
+          <button 
+            onClick={onNavigateToFullRanking}
+            className="text-[var(--vesti-primary)] flex items-center justify-center gap-1 mx-auto hover:opacity-80 transition-opacity"
+            style={{ fontWeight: 700, fontSize: 'var(--text-label)' }}
+          >
+=======
           <button className="text-xs font-bold text-[var(--vesti-primary)] flex items-center justify-center gap-1">
+>>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
             查看完整榜單
             <ArrowUpRight size={12} />
           </button>
@@ -164,4 +180,3 @@ export function CPWRanking() {
     </div>
   );
 }
-
