@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-<<<<<<< HEAD
 import { Search, Sparkles, ShoppingBag, Grid3x3, LayoutGrid, Shirt, ShoppingCart, X, Plus, ChevronLeft } from 'lucide-react';
 import { StoreOutfitCard } from './StoreOutfitCard';
 import { OutfitPackCard } from './OutfitPackCard';
 import { AIOutfitRecommendation } from './AIOutfitRecommendation';
-=======
-import { Search, Sparkles, ShoppingBag, Grid3x3, LayoutGrid, Shirt, ShoppingCart, X } from 'lucide-react';
-import { StoreOutfitCard } from './StoreOutfitCard';
-import { OutfitPackCard } from './OutfitPackCard';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 import { QuizModal } from './QuizModal';
 import { ProductDetailView } from './ProductDetailView';
 import { StoreProfilePage } from './StoreProfilePage';
@@ -56,7 +50,6 @@ const featuredStores: Store[] = [
     imageUrl: 'https://images.unsplash.com/photo-1634316164986-3d65b05f123f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwZmFzaGlvbiUyMGJvdXRpcXVlfGVufDF8fHx8MTc2MjYwMjk2OXww&ixlib=rb-4.1.0&q=80&w=1080',
     category: '極簡風格',
   },
-<<<<<<< HEAD
   {
     id: 3,
     name: 'Vintage Treasures',
@@ -93,8 +86,6 @@ const featuredStores: Store[] = [
     imageUrl: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBmYXNoaW9ufGVufDF8fHx8MTc2MjYwMjk2OXww&ixlib=rb-4.1.0&q=80&w=1080',
     category: '現代時尚',
   },
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 ];
 
 const featuredProducts: Product[] = [
@@ -146,7 +137,6 @@ const featuredProducts: Product[] = [
     tags: ['折扣'],
     originalPrice: 1680,
   },
-<<<<<<< HEAD
   {
     id: 6,
     name: '條紋襯衫',
@@ -211,8 +201,6 @@ const featuredProducts: Product[] = [
     category: '配件',
     tags: ['熱銷'],
   },
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 ];
 
 const outfitSets = [
@@ -231,12 +219,9 @@ const outfitSets = [
       matchScore: 85,
       matchingItems: 7,
     },
-<<<<<<< HEAD
     storeCount: 2,
     occasions: ['休閒', '約會'],
     styleTag: '休閒',
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     items: [
       {
         id: 1,
@@ -279,12 +264,9 @@ const outfitSets = [
       matchScore: 72,
       matchingItems: 5,
     },
-<<<<<<< HEAD
     storeCount: 1,
     occasions: ['工作', '正式'],
     styleTag: '正式',
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     items: [
       {
         id: 4,
@@ -327,12 +309,9 @@ const outfitSets = [
       matchScore: 93,
       matchingItems: 12,
     },
-<<<<<<< HEAD
     storeCount: 3,
     occasions: ['運動', '休閒'],
     styleTag: '運動',
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     items: [
       {
         id: 7,
@@ -380,11 +359,8 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
   const [isFabExpanded, setIsFabExpanded] = useState(false); // FAB 展開狀態
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-<<<<<<< HEAD
   const [showAllStores, setShowAllStores] = useState(false); // 顯示全部商家頁面
   const [showAllProducts, setShowAllProducts] = useState(false); // 顯示全部商品頁面
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   
   // If a store is selected, render the store profile page
   if (selectedStore) {
@@ -413,7 +389,6 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
     toast.success('正在為您尋找最適合的商品 ✨');
   };
 
-<<<<<<< HEAD
   // 如果顯示全部商家頁面
   if (showAllStores) {
     return (
@@ -604,8 +579,6 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
     );
   }
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   return (
     <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
       {/* Header */}
@@ -742,15 +715,11 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
             <section className="mb-6 px-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[var(--vesti-dark)]">推薦店家</h2>
-<<<<<<< HEAD
                 <button 
                   onClick={() => setShowAllStores(true)}
                   className="text-[var(--vesti-dark)]" 
                   style={{ fontSize: 'var(--text-label)' }}
                 >
-=======
-                <button className="text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)' }}>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                   查看全部
                 </button>
               </div>
@@ -764,11 +733,7 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                     onClick={() => setSelectedStore(store)}
                   >
                     <div className="w-40 overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-<<<<<<< HEAD
                       <div className="aspect-[4/3] overflow-hidden">
-=======
-                      <div className="h-28 overflow-hidden">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                         <ImageWithFallback
                           src={store.imageUrl}
                           alt={store.name}
@@ -776,13 +741,8 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                         />
                       </div>
                       <div className="p-3">
-<<<<<<< HEAD
                         <h4 className="mb-1 text-[var(--vesti-dark)] truncate">{store.name}</h4>
                         <p className="text-[var(--vesti-gray-mid)] truncate" style={{ fontSize: 'var(--text-label)' }}>
-=======
-                        <h4 className="mb-1 text-[var(--vesti-dark)]">{store.name}</h4>
-                        <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                           {store.category}
                         </p>
                       </div>
@@ -796,15 +756,11 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
             <section className="px-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[var(--vesti-dark)]">精選單品</h2>
-<<<<<<< HEAD
                 <button 
                   onClick={() => setShowAllProducts(true)}
                   className="text-[var(--vesti-dark)]" 
                   style={{ fontSize: 'var(--text-label)' }}
                 >
-=======
-                <button className="text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)' }}>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                   查看全部
                 </button>
               </div>
@@ -815,15 +771,9 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                     key={product.id}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setSelectedProduct(product)}
-<<<<<<< HEAD
                     className="relative overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] cursor-pointer"
                   >
                     <div className="aspect-[4/5] overflow-hidden">
-=======
-                    className="overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] cursor-pointer"
-                  >
-                    <div className="aspect-square overflow-hidden">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                       <ImageWithFallback
                         src={product.imageUrl}
                         alt={product.name}
@@ -831,48 +781,28 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                       />
                     </div>
                     <div className="flex items-center gap-2 p-3">
-<<<<<<< HEAD
                       <div className="flex-1 min-w-0">
                         <p className="mb-1 text-[var(--vesti-primary)] truncate" style={{ fontSize: 'var(--text-label)' }}>
                           {product.brand}
                         </p>
                         <h4 className="mb-2 text-[var(--vesti-dark)] line-clamp-1" style={{ lineHeight: 1.3 }}>{product.name}</h4>
                         <p className="text-[var(--vesti-primary)] whitespace-nowrap" style={{ fontWeight: 700, fontSize: '15px' }}>
-=======
-                      <div className="flex-1">
-                        <p className="mb-1 text-[var(--vesti-primary)]" style={{ fontSize: 'var(--text-label)' }}>
-                          {product.brand}
-                        </p>
-                        <h4 className="mb-2 text-[var(--vesti-dark)]">{product.name}</h4>
-                        <p className="text-[var(--vesti-primary)]" style={{ fontWeight: 700 }}>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                           NT$ {product.price.toLocaleString()}
                         </p>
                       </div>
                       {/* 加入試穿籃按鈕 - 位於右側 */}
                       <div className="mr-1 flex-shrink-0">
                         <button 
-<<<<<<< HEAD
                           className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95 flex-shrink-0"
-=======
-                          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-md transition-all hover:scale-110 hover:shadow-lg"
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                           onClick={(e) => {
                             e.stopPropagation();
                             toast.success(`已將 ${product.name} 加入試穿籃`);
                           }}
                         >
-<<<<<<< HEAD
                           <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
                           <div className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)] shadow-sm">
                             <Plus className="h-2.5 w-2.5" strokeWidth={4} />
                           </div>
-=======
-                          <ShoppingBag className="h-4 w-4" />
-                          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)]" style={{ fontSize: '13px', fontWeight: 700 }}>
-                            +
-                          </span>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                         </button>
                       </div>
                     </div>
@@ -889,18 +819,9 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-<<<<<<< HEAD
             {/* 整套推薦 - AI 搭配推薦 */}
             <section>
               <AIOutfitRecommendation outfits={outfitSets} />
-=======
-            {/* 整套推薦 - 卡包模式 */}
-            <section>
-              <OutfitPackCard 
-                outfits={outfitSets} 
-                onSwitchToShopping={() => setViewMode('shopping')}
-              />
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
             </section>
           </motion.div>
         )}
@@ -1051,8 +972,4 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
       )}
     </div>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

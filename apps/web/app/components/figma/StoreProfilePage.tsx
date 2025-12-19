@@ -1,9 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-<<<<<<< HEAD
 import { ArrowLeft, Search, ShoppingBag, ShoppingCart, Shirt, X, MapPin, Star, Clock, Plus } from 'lucide-react';
-=======
-import { ArrowLeft, Search, ShoppingBag, ShoppingCart, Shirt, X, MapPin, Star, Clock } from 'lucide-react';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 import { useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailView } from './ProductDetailView';
@@ -100,7 +96,6 @@ export function StoreProfilePage({
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [isFabExpanded, setIsFabExpanded] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-<<<<<<< HEAD
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -123,20 +118,11 @@ export function StoreProfilePage({
       setSearchQuery('');
     }
   };
-=======
-  
-  const categories = ['全部', '上衣', '褲裝', '外套', '裙裝', '配件'];
-
-  const filteredProducts = selectedCategory === '全部' 
-    ? storeProducts 
-    : storeProducts.filter(p => p.category === selectedCategory);
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
   return (
     <div className="min-h-screen bg-[var(--vesti-background)] pb-32">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm transition-all">
-<<<<<<< HEAD
         <AnimatePresence mode="wait">
           {isSearchMode ? (
             /* 搜尋模式 */
@@ -211,22 +197,6 @@ export function StoreProfilePage({
             </p>
           </motion.div>
         )}
-=======
-        <div className="flex items-center justify-between px-5 py-3">
-          <button 
-            onClick={onBack}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-[var(--vesti-gray-light)] transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 text-[var(--vesti-dark)]" />
-          </button>
-          <h1 className="text-lg font-bold text-[var(--vesti-dark)] opacity-90">
-            店家資訊
-          </h1>
-          <button className="flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-sm hover:bg-[var(--vesti-gray-light)] transition-colors">
-            <Search className="h-5 w-5 text-[var(--vesti-dark)]" />
-          </button>
-        </div>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
       </header>
 
       {/* Store Info Section */}
@@ -295,7 +265,6 @@ export function StoreProfilePage({
 
       {/* Product Grid */}
       <div className="px-5">
-<<<<<<< HEAD
         {filteredProducts.length === 0 ? (
           /* 搜尋無結果 */
           <motion.div
@@ -372,52 +341,6 @@ export function StoreProfilePage({
             ))}
           </div>
         )}
-=======
-        <div className="grid grid-cols-2 gap-3">
-          {filteredProducts.map((product) => (
-            <motion.div
-              key={product.id}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setSelectedProduct(product)}
-              className="overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] cursor-pointer flex flex-col h-full"
-            >
-              <div className="aspect-square overflow-hidden">
-                <ImageWithFallback
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                />
-              </div>
-              <div className="flex items-center gap-2 p-3 flex-1">
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <p className="mb-1 text-[var(--vesti-primary)] truncate" style={{ fontSize: 'var(--text-label)' }}>
-                    {product.brand}
-                  </p>
-                  <h4 className="mb-2 text-[var(--vesti-dark)] truncate">{product.name}</h4>
-                  <p className="text-[var(--vesti-primary)]" style={{ fontWeight: 700 }}>
-                    NT$ {product.price.toLocaleString()}
-                  </p>
-                </div>
-                <div className="mr-1 flex-shrink-0 self-center">
-                  <button 
-                    className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-md transition-all hover:scale-110 hover:shadow-lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddToBag();
-                      toast.success(`已將 ${product.name} 加入試穿籃`);
-                    }}
-                  >
-                    <ShoppingBag className="h-4 w-4" />
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)]" style={{ fontSize: '13px', fontWeight: 700 }}>
-                      +
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
       </div>
 
       {/* Product Detail Modal */}
@@ -560,8 +483,4 @@ export function StoreProfilePage({
       )}
     </div>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

@@ -1,17 +1,10 @@
 import { useState } from 'react';
-<<<<<<< HEAD
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ShoppingBag, Plus, ChevronLeft } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailView } from './ProductDetailView';
 import { toast } from 'sonner';
 import { useDebounce } from './hooks/useDebounce';
-=======
-import { motion } from 'motion/react';
-import { Search, ShoppingBag, Plus, ChevronLeft } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { toast } from 'sonner';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
 interface Product {
   id: number;
@@ -22,10 +15,7 @@ interface Product {
   imageUrl: string;
   brand: string;
   category: string;
-<<<<<<< HEAD
   tags?: string[];
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 }
 
 const discountProducts: Product[] = [
@@ -98,16 +88,12 @@ interface DiscountPageProps {
 
 export function DiscountPage({ onBack, onNavigateToTryOn }: DiscountPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
-<<<<<<< HEAD
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
   const handleAddToTryOn = (product: Product) => {
     toast.success(`已將 ${product.name} 加入試穿籃`);
   };
 
-<<<<<<< HEAD
   // 使用 debounce 優化搜尋效能
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -116,13 +102,6 @@ export function DiscountPage({ onBack, onNavigateToTryOn }: DiscountPageProps) {
         (product) =>
           product.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
           product.brand.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-=======
-  const filteredProducts = searchQuery
-    ? discountProducts.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.brand.toLowerCase().includes(searchQuery.toLowerCase())
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
       )
     : discountProducts;
 
@@ -188,18 +167,13 @@ export function DiscountPage({ onBack, onNavigateToTryOn }: DiscountPageProps) {
           </span>
         </div>
 
-<<<<<<< HEAD
         <div className="grid grid-cols-2 gap-3">
-=======
-        <div className="grid grid-cols-2 gap-4">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
           {filteredProducts.map((product) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               whileTap={{ scale: 0.97 }}
-<<<<<<< HEAD
               onClick={() => setSelectedProduct(product)}
               className="group relative overflow-hidden rounded-3xl bg-card border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-all hover:shadow-md cursor-pointer flex flex-col"
             >
@@ -210,23 +184,11 @@ export function DiscountPage({ onBack, onNavigateToTryOn }: DiscountPageProps) {
                     -{product.discount}%
                   </div>
                   <div className="text-white" style={{ fontSize: '9px', fontWeight: 600, lineHeight: 1.2 }}>
-=======
-              className="group relative overflow-hidden rounded-2xl bg-white border-2 border-[var(--vesti-gray-mid)]/30 shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-shadow hover:shadow-md"
-            >
-              {/* Discount Badge */}
-              <div className="absolute left-2 top-2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--vesti-destructive)] shadow-md">
-                <div className="text-center">
-                  <div className="text-white" style={{ fontSize: '10px', fontWeight: 700, lineHeight: 1 }}>
-                    -{product.discount}%
-                  </div>
-                  <div className="text-white" style={{ fontSize: '8px', fontWeight: 500, lineHeight: 1.2 }}>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                     OFF
                   </div>
                 </div>
               </div>
 
-<<<<<<< HEAD
               {/* Product Image - Much Taller & Dominant */}
               <div className="aspect-[2/3] w-full overflow-hidden bg-[var(--vesti-gray-light)]">
                 <ImageWithFallback
@@ -271,50 +233,6 @@ export function DiscountPage({ onBack, onNavigateToTryOn }: DiscountPageProps) {
                     <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
                     <div className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)] shadow-sm">
                       <Plus className="h-2.5 w-2.5" strokeWidth={4} />
-=======
-              {/* Product Image */}
-              <div className="aspect-square overflow-hidden bg-[var(--vesti-gray-light)]">
-                <ImageWithFallback
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              </div>
-
-              {/* Product Info */}
-              <div className="p-3">
-                <p className="mb-1 text-[var(--vesti-primary)]" style={{ fontSize: 'var(--text-label)' }}>
-                  {product.brand}
-                </p>
-                <h4 className="mb-2 text-[var(--vesti-dark)] line-clamp-1" style={{ fontSize: 'var(--text-label)' }}>
-                  {product.name}
-                </h4>
-
-                {/* Price and Button */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex flex-col">
-                    <span className="text-[var(--vesti-destructive)]" style={{ fontWeight: 700 }}>
-                      NT$ {product.price.toLocaleString()}
-                    </span>
-                    <span
-                      className="text-[var(--vesti-gray-mid)] line-through"
-                      style={{ fontSize: 'var(--text-label)' }}
-                    >
-                      NT$ {product.originalPrice.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {/* Add to Try-On Button */}
-                  <button
-                    onClick={() => handleAddToTryOn(product)}
-                    className="group/btn flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--vesti-primary)] text-white transition-all hover:bg-[var(--vesti-primary)]/90"
-                  >
-                    <div className="relative">
-                      <ShoppingBag className="h-4 w-4" strokeWidth={2} />
-                      <div className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-white border border-[var(--vesti-primary)]">
-                        <Plus className="h-2 w-2 text-[var(--vesti-primary)]" strokeWidth={3} />
-                      </div>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                     </div>
                   </button>
                 </div>
@@ -323,7 +241,6 @@ export function DiscountPage({ onBack, onNavigateToTryOn }: DiscountPageProps) {
           ))}
         </div>
       </section>
-<<<<<<< HEAD
 
       <AnimatePresence>
         {selectedProduct && (
@@ -340,8 +257,3 @@ export function DiscountPage({ onBack, onNavigateToTryOn }: DiscountPageProps) {
     </div>
   );
 }
-=======
-    </div>
-  );
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

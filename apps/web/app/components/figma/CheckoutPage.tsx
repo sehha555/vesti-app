@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Truck,
   ShieldCheck,
-<<<<<<< HEAD
   Star,
   Store,
   Package,
@@ -23,11 +22,6 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { AddPaymentCardModal, PaymentCard } from './AddPaymentCardModal';
 import { AddressModal, Address as AddressType } from './AddressModal';
-=======
-} from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { toast } from 'sonner';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
 interface CartItem {
   id: number;
@@ -40,7 +34,6 @@ interface CartItem {
   color?: string;
 }
 
-<<<<<<< HEAD
 interface Address {
   id: number;
   name: string;
@@ -49,8 +42,6 @@ interface Address {
   isDefault: boolean;
 }
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 interface CheckoutPageProps {
   onBack: () => void;
 }
@@ -93,11 +84,7 @@ const mockCartItems: CartItem[] = [
 ];
 
 // 模擬地址
-<<<<<<< HEAD
 const mockAddresses: Address[] = [
-=======
-const mockAddresses = [
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   {
     id: 1,
     name: '王小明',
@@ -121,7 +108,6 @@ const paymentMethods = [
   { id: 'cod', name: '貨到付款', icon: Truck },
 ];
 
-<<<<<<< HEAD
 // 物流方式
 const shippingMethods = [
   { id: '7-11', name: '7-ELEVEN 取貨', icon: Store },
@@ -155,21 +141,12 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
   const [homeDeliveryName, setHomeDeliveryName] = useState('');
   const [homeDeliveryPhone, setHomeDeliveryPhone] = useState('');
   const [homeDeliveryAddress, setHomeDeliveryAddress] = useState('');
-=======
-export function CheckoutPage({ onBack }: CheckoutPageProps) {
-  const [cartItems, setCartItems] = useState<CartItem[]>(mockCartItems);
-  const [selectedAddress, setSelectedAddress] = useState(mockAddresses[0]);
-  const [selectedPayment, setSelectedPayment] = useState('credit');
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
   // 計算總價
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingFee = subtotal >= 1000 ? 0 : 80;
   const total = subtotal + shippingFee - appliedDiscount;
 
-<<<<<<< HEAD
   // 確認結帳
   const handleCheckout = () => {
     if (cartItems.length === 0) {
@@ -199,8 +176,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
     return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   };
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   // 增加數量
   const handleIncreaseQuantity = (itemId: number) => {
     setCartItems((items) =>
@@ -233,7 +208,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
     }
   };
 
-<<<<<<< HEAD
   // 新增卡片
   const handleAddCard = (newCard: PaymentCard) => {
     // 如果是第一張卡片，設為預設並自動選中
@@ -294,16 +268,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
       default:
         return <CreditCard className="h-5 w-5 text-[var(--vesti-primary)]" strokeWidth={2} />;
     }
-=======
-  // 確認結帳
-  const handleCheckout = () => {
-    if (cartItems.length === 0) {
-      toast.error('購物車是空的');
-      return;
-    }
-    toast.success('訂單已送出！感謝您的購買 ✨');
-    // 這裡可以導航到訂單確認頁面或清空購物車
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   };
 
   if (cartItems.length === 0) {
@@ -362,7 +326,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
         {/* 商品列表 */}
         <section className="px-5 py-6">
           <h2 className="mb-4 text-[var(--vesti-dark)]">購物清單</h2>
-<<<<<<< HEAD
           <div className="space-y-4">
             <AnimatePresence mode="popLayout">
               {groupedCartItems.map(([brand, items], groupIndex) => (
@@ -481,101 +444,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
                         </div>
                       </motion.div>
                     ))}
-=======
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {cartItems.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9, x: -100 }}
-                  className="overflow-hidden rounded-2xl bg-white shadow-sm"
-                >
-                  <div className="flex gap-4 p-4">
-                    {/* 商品圖片 */}
-                    <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl">
-                      <ImageWithFallback
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    {/* 商品資訊 */}
-                    <div className="flex flex-1 flex-col">
-                      <div className="mb-2 flex items-start justify-between">
-                        <div className="flex-1">
-                          <p
-                            className="mb-1 text-[var(--vesti-primary)]"
-                            style={{ fontSize: 'var(--text-label)' }}
-                          >
-                            {item.brand}
-                          </p>
-                          <h4
-                            className="mb-1 text-[var(--vesti-dark)] line-clamp-2"
-                            style={{ fontSize: 'var(--text-h4)' }}
-                          >
-                            {item.name}
-                          </h4>
-                          {(item.size || item.color) && (
-                            <p
-                              className="text-[var(--vesti-gray-mid)]"
-                              style={{ fontSize: 'var(--text-label)' }}
-                            >
-                              {item.size && `尺寸: ${item.size}`}
-                              {item.size && item.color && ' / '}
-                              {item.color && `顏色: ${item.color}`}
-                            </p>
-                          )}
-                        </div>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--vesti-gray-mid)] hover:bg-[var(--vesti-gray-light)] transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" strokeWidth={2} />
-                        </motion.button>
-                      </div>
-
-                      {/* 價格和數量 */}
-                      <div className="mt-auto flex items-center justify-between">
-                        <p
-                          className="text-[var(--vesti-primary)]"
-                          style={{ fontWeight: 700, fontSize: 'var(--text-h4)' }}
-                        >
-                          NT$ {(item.price * item.quantity).toLocaleString()}
-                        </p>
-
-                        {/* 數量控制 */}
-                        <div className="flex items-center gap-3 rounded-full border-2 border-[var(--vesti-gray-light)] bg-white px-2 py-1">
-                          <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDecreaseQuantity(item.id)}
-                            disabled={item.quantity <= 1}
-                            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-[var(--vesti-gray-light)] transition-colors disabled:opacity-30"
-                          >
-                            <Minus className="h-3 w-3 text-[var(--vesti-dark)]" strokeWidth={2.5} />
-                          </motion.button>
-                          <span
-                            className="min-w-[20px] text-center text-[var(--vesti-dark)]"
-                            style={{ fontWeight: 600 }}
-                          >
-                            {item.quantity}
-                          </span>
-                          <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleIncreaseQuantity(item.id)}
-                            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-[var(--vesti-gray-light)] transition-colors"
-                          >
-                            <Plus className="h-3 w-3 text-[var(--vesti-dark)]" strokeWidth={2.5} />
-                          </motion.button>
-                        </div>
-                      </div>
-                    </div>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                   </div>
                 </motion.div>
               ))}
@@ -587,11 +455,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
         <section className="px-5 pb-6">
           <h2 className="mb-4 text-[var(--vesti-dark)]">配送地址</h2>
           <div className="space-y-3">
-<<<<<<< HEAD
             {addresses.map((address) => (
-=======
-            {mockAddresses.map((address) => (
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
               <motion.div
                 key={address.id}
                 whileTap={{ scale: 0.98 }}
@@ -653,7 +517,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
                 </div>
               </motion.div>
             ))}
-<<<<<<< HEAD
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -663,8 +526,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
               <Plus className="h-5 w-5" strokeWidth={2.5} />
               <span style={{ fontWeight: 600 }}>新增地址</span>
             </motion.button>
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
           </div>
         </section>
 
@@ -715,7 +576,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
           </div>
         </section>
 
-<<<<<<< HEAD
         {/* 信用卡選擇 (當選擇信用卡支付時顯示) */}
         {selectedPayment === 'credit' && (
           <motion.section
@@ -1008,8 +868,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
           </motion.section>
         )}
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
         {/* 優惠券 */}
         <section className="px-5 pb-6">
           <h2 className="mb-4 text-[var(--vesti-dark)]">優惠券</h2>
@@ -1141,7 +999,6 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
           </motion.button>
         </div>
       </div>
-<<<<<<< HEAD
 
       {/* 新增卡片 Modal */}
       <AddPaymentCardModal
@@ -1163,8 +1020,3 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
     </div>
   );
 }
-=======
-    </div>
-  );
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

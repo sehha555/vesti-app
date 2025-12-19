@@ -1,21 +1,14 @@
 import { useState } from 'react';
-<<<<<<< HEAD
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, Check, X, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ForgotPasswordPage } from './ForgotPasswordPage';
-=======
-import { motion } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
 interface LoginPageProps {
   onLogin: () => void;
   onBack?: () => void;
 }
 
-<<<<<<< HEAD
 // Google Logo SVG Component
 const GoogleLogo = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -33,14 +26,11 @@ const AppleLogo = () => (
   </svg>
 );
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-<<<<<<< HEAD
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
@@ -100,12 +90,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       }
     }
 
-=======
-  const [name, setName] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     if (isLogin) {
         // Mock login
         toast.success('登入成功！');
@@ -117,14 +101,11 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     }
   };
 
-<<<<<<< HEAD
   // Show forgot password page
   if (showForgotPassword) {
     return <ForgotPasswordPage onBack={() => setShowForgotPassword(false)} />;
   }
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   return (
     <div className="min-h-screen bg-[var(--vesti-background)] flex flex-col items-center justify-center px-6 py-10 relative overflow-hidden">
        {/* Background Decoration */}
@@ -159,7 +140,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                         <input 
                           type="text" 
                           value={name}
-<<<<<<< HEAD
                           onChange={(e) => {
                             setName(e.target.value);
                             checkUsername(e.target.value);
@@ -202,13 +182,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                         </motion.div>
                       )}
                     </AnimatePresence>
-=======
-                          onChange={e => setName(e.target.value)}
-                          className="w-full bg-transparent border border-[var(--vesti-gray-light)] focus:border-[var(--vesti-primary)] rounded-2xl px-4 py-3 text-[var(--vesti-dark)] outline-none transition-all placeholder:text-[var(--vesti-gray-mid)]/50"
-                          placeholder="您的暱稱"
-                        />
-                    </div>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                  </div>
               )}
 
@@ -247,7 +220,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                  </div>
-<<<<<<< HEAD
                  
                  {/* 密碼規則提示（註冊模式） */}
                  <AnimatePresence>
@@ -322,18 +294,12 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                  {isLogin && (
                     <div className="flex justify-end">
                         <button type="button" className="text-xs text-[var(--vesti-primary)] hover:underline" onClick={() => setShowForgotPassword(true)}>
-=======
-                 {isLogin && (
-                    <div className="flex justify-end">
-                        <button type="button" className="text-xs text-[var(--vesti-primary)] hover:underline">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                            忘記密碼？
                         </button>
                     </div>
                  )}
               </div>
 
-<<<<<<< HEAD
               {!isLogin && (
                  <div className="space-y-2">
                     <label className="text-sm font-medium text-[var(--vesti-dark)] ml-1">確認密碼</label>
@@ -358,8 +324,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                  </div>
               )}
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
               <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -378,19 +342,12 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
           <div className="grid grid-cols-2 gap-4">
              <button className="flex items-center justify-center gap-2 py-3 rounded-xl border border-[var(--vesti-gray-light)] hover:bg-[var(--vesti-gray-light)]/50 transition-colors">
-<<<<<<< HEAD
                 <GoogleLogo />
                 <span className="text-[var(--vesti-dark)]">Google</span>
              </button>
              <button className="flex items-center justify-center gap-2 py-3 rounded-xl border border-[var(--vesti-gray-light)] hover:bg-[var(--vesti-gray-light)]/50 transition-colors">
                 <AppleLogo />
                 <span className="text-[var(--vesti-dark)]">Apple</span>
-=======
-                <span className="font-bold text-[var(--vesti-dark)]">Google</span>
-             </button>
-             <button className="flex items-center justify-center gap-2 py-3 rounded-xl border border-[var(--vesti-gray-light)] hover:bg-[var(--vesti-gray-light)]/50 transition-colors">
-                <span className="font-bold text-[var(--vesti-dark)]">Apple</span>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
              </button>
           </div>
        </motion.div>
@@ -408,21 +365,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           </p>
        </div>
 
-<<<<<<< HEAD
 
     </div>
   );
 }
-=======
-       {onBack && (
-          <button 
-            onClick={onBack}
-            className="absolute top-6 left-6 p-2 rounded-full bg-white/80 backdrop-blur-sm border border-[var(--vesti-gray-light)] hover:bg-white transition-colors"
-          >
-             <ArrowLeft className="h-5 w-5 text-[var(--vesti-dark)]" />
-          </button>
-       )}
-    </div>
-  );
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

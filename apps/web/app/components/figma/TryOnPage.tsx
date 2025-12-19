@@ -9,6 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from './ui/accordion';
+import { PersonalPhotoDisplay } from './PersonalPhotoDisplay';
 
 interface TryOnItem {
   id: number;
@@ -25,6 +26,19 @@ interface OutfitLayer {
   name: string;
   items: TryOnItem[];
   categories: string[];
+}
+
+// 整套搭配數據結構
+export interface SavedOutfitSet {
+  id: number;
+  name: string;
+  date: string;
+  imageUrl: string;
+  layers: OutfitLayer[];
+  totalItems: number;
+  occasion: string;
+  tags: string[];
+  source: 'tryon';
 }
 
 // 模擬試穿籃商品
@@ -110,9 +124,12 @@ const mockWardrobeItems: TryOnItem[] = [
 interface TryOnPageProps {
   onBack: () => void;
   onNavigateToCheckout?: () => void;
+  onSaveToWardrobe?: (outfitSet: SavedOutfitSet) => void;
+  basketItems?: TryOnItem[];
+  userPhoto?: string;
 }
 
-export function TryOnPage({ onBack, onNavigateToCheckout }: TryOnPageProps) {
+export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, basketItems = [], userPhoto }: TryOnPageProps) {
   const [tryOnItems, setTryOnItems] = useState<TryOnItem[]>(mockTryOnItems);
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -120,17 +137,42 @@ export function TryOnPage({ onBack, onNavigateToCheckout }: TryOnPageProps) {
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [selectorTab, setSelectorTab] = useState<'basket' | 'wardrobe'>('basket');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [displayMode, setDisplayMode] = useState<'model' | 'hanger' | 'personal'>('personal'); // 新增：顯示模式切換，預設為個人照片
   
   // Mock model image
   const modelImage = "https://images.unsplash.com/photo-1660681436459-24798da1a9a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXNoaW9uJTIwbW9kZWwlMjBmdWxsJTIwYm9keSUyMHN0dWRpbyUyMHNob3QlMjBuZXV0cmFsJTIwYmFja2dyb3VuZHxlbnwxfHx8fDE3NjQzOTQwNTh8MA&ixlib=rb-4.1.0&q=80&w=1080";
   
   // 分層式搭配區域
-  const [outfitLayers, setOutfitLayers] = useState<OutfitLayer[]>([
-    { id: 'inner', name: '內層', items: [], categories: ['上衣', '襯衫', '背心'] },
-    { id: 'bottom', name: '下身', items: [], categories: ['褲裝', '裙裝', '短褲'] },
-    { id: 'outer', name: '外層', items: [], categories: ['外套', '大衣', '夾克'] },
-    { id: 'accessories', name: '配件', items: [], categories: ['鞋履', '包包', '配件', '帽子', '飾品'] },
-  ]);
+  const [outfitLayers, setOutfitLayers] = useState<OutfitLayer[]>(() => {
+    const initialLayers = [
+      { id: 'inner', name: '內層', items: [], categories: ['上衣', '襯衫', '背心'] },
+      { id: 'bottom', name: '下身', items: [], categories: ['褲裝', '裙裝', '短褲', '下身'] },
+      { id: 'outer', name: '外層', items: [], categories: ['外套', '大衣', '夾克'] },
+      { id: 'accessories', name: '配件', items: [], categories: ['鞋履', '包包', '配件', '帽子', '飾品', '鞋子'] },
+    ];
+    
+    // 自動配對籃子中的衣物到相應的層
+    if (basketItems && basketItems.length > 0) {
+      return initialLayers.map(layer => {
+        const matchingItems = basketItems.filter(item => 
+          layer.categories.some(cat => 
+            item.category === cat || item.category.includes(cat) || cat.includes(item.category)
+          )
+        ).map(item => ({
+          ...item,
+          price: item.price || 0,
+          source: (item.source || 'wardrobe') as 'store' | 'wardrobe',
+        }));
+        
+        return {
+          ...layer,
+          items: matchingItems as TryOnItem[],
+        };
+      });
+    }
+    
+    return initialLayers;
+  });
 
   const categories = ['全部', '上衣', '褲裝', '鞋履', '外套', '配件'];
 
@@ -182,6 +224,20 @@ export function TryOnPage({ onBack, onNavigateToCheckout }: TryOnPageProps) {
     const totalItems = outfitLayers.reduce((sum, layer) => sum + layer.items.length, 0);
     if (totalItems > 0) {
       toast.success('搭配已儲存！');
+      if (onSaveToWardrobe) {
+        const outfitSet: SavedOutfitSet = {
+          id: Date.now(),
+          name: '我的新搭配',
+          date: new Date().toISOString(),
+          imageUrl: modelImage,
+          layers: outfitLayers,
+          totalItems,
+          occasion: '日常',
+          tags: ['試穿', '儲存'],
+          source: 'tryon',
+        };
+        onSaveToWardrobe(outfitSet);
+      }
     } else {
       toast.error('請先選擇商品');
     }
@@ -508,157 +564,15 @@ export function TryOnPage({ onBack, onNavigateToCheckout }: TryOnPageProps) {
         {/* Live Preview Card */}
         <section className="px-5 pb-6">
            <h3 className="text-sm font-bold text-[var(--vesti-dark)] mb-3 flex items-center gap-2">
-<<<<<<< HEAD
               <Camera className="w-4 h-4 text-[var(--vesti-primary)]" />
               <span>已試穿搭配</span>
-=======
-              <Sparkles className="w-4 h-4 text-[var(--vesti-primary)]" />
-              <span>即時合成預覽</span>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
            </h3>
-           <motion.div 
-              layoutId="preview-card"
-              onClick={() => setIsPreviewOpen(true)}
-<<<<<<< HEAD
-              className="relative w-full aspect-[4/5] bg-gray-100 rounded-3xl shadow-md overflow-hidden cursor-pointer group ring-1 ring-black/5 border-2 border-[var(--vesti-gray-mid)]/30 hover:border-[var(--vesti-primary)]/50 transition-all"
-=======
-              className="relative w-full aspect-[4/5] bg-gray-100 rounded-3xl shadow-md overflow-hidden cursor-pointer group ring-1 ring-black/5"
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
-           >
-               {/* Main Preview Image */}
-               <ImageWithFallback 
-                  src={modelImage} 
-<<<<<<< HEAD
-                  alt="試穿效果" 
-=======
-                  alt="Model Preview" 
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-               />
-               
-               {/* Overlay Gradient */}
-<<<<<<< HEAD
-               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-
-               {/* Top Badge */}
-               <div className="absolute top-4 left-4 bg-[var(--vesti-primary)]/90 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg z-10">
-                  <Camera className="w-3.5 h-3.5 text-white" />
-                  <span className="text-xs font-bold text-white">虛擬試穿</span>
-               </div>
-
-               {/* Expand Button */}
-               <div className="absolute top-4 right-4">
-                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white group-hover:bg-white group-hover:text-[var(--vesti-dark)] transition-all shadow-md">
-=======
-               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-               {/* Floating Tag */}
-               <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm z-10">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs font-bold text-[var(--vesti-dark)]">AI 預覽中</span>
-               </div>
-
-               {/* Compare Button Overlay */}
-               <div className="absolute top-4 right-4">
-                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white group-hover:bg-white group-hover:text-[var(--vesti-dark)] transition-all">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
-                     <Maximize2 className="w-5 h-5" />
-                  </div>
-               </div>
-
-<<<<<<< HEAD
-               {/* Bottom Info Section */}
-               <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                  {/* Outfit Details */}
-                  {totalItems > 0 ? (
-                     <div className="space-y-3">
-                        {/* Title and Price */}
-                        <div className="flex items-end justify-between">
-                           <div>
-                              <h4 className="text-white drop-shadow-lg mb-1" style={{ fontWeight: 700 }}>
-                                 我的搭配
-                              </h4>
-                              <p className="text-white/80 text-xs">
-                                 {totalItems} 件商品
-                              </p>
-                           </div>
-                           {totalPrice > 0 && (
-                              <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/30">
-                                 <p className="text-white text-sm" style={{ fontWeight: 700 }}>
-                                    NT$ {totalPrice.toLocaleString()}
-                                 </p>
-                              </div>
-                           )}
-                        </div>
-
-                        {/* Item List Preview */}
-                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                           {outfitLayers.flatMap(l => l.items).slice(0, 3).map((item, idx) => (
-                              <div key={idx} className="flex-shrink-0 flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-lg px-2.5 py-1.5 border border-white/20">
-                                 <div className="w-8 h-8 rounded-md overflow-hidden bg-white flex-shrink-0">
-                                    <ImageWithFallback src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                                 </div>
-                                 <div className="flex-1 min-w-0">
-                                    <p className="text-white text-xs truncate" style={{ fontWeight: 600 }}>
-                                       {item.brand}
-                                    </p>
-                                    <p className="text-white/70 text-[10px] truncate">
-                                       {item.name}
-                                    </p>
-                                 </div>
-                              </div>
-                           ))}
-                           {totalItems > 3 && (
-                              <div className="flex-shrink-0 w-8 h-8 rounded-md bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
-                                 <span className="text-white text-xs" style={{ fontWeight: 700 }}>+{totalItems - 3}</span>
-                              </div>
-                           )}
-                        </div>
-
-                        {/* View Details Hint */}
-                        <div className="flex items-center justify-center gap-1 text-white/70 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                           <span>點擊查看完整商品列表</span>
-                           <ChevronRight className="w-3.5 h-3.5" />
-                        </div>
-                     </div>
-                  ) : (
-                     <div className="text-center py-4">
-                        <p className="text-white/80 text-sm mb-1" style={{ fontWeight: 600 }}>尚未選擇商品</p>
-                        <p className="text-white/60 text-xs">開始選擇商品建立您的搭配</p>
-                     </div>
-                  )}
-=======
-               {/* Applied Items Preview */}
-               <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center justify-between">
-                     <div className="flex items-center -space-x-2">
-                        {totalItems > 0 ? (
-                           <>
-                              {outfitLayers.flatMap(l => l.items).slice(0, 4).map((item, idx) => (
-                                 <div key={idx} className="w-10 h-10 rounded-full border-2 border-white bg-white overflow-hidden shadow-sm">
-                                    <ImageWithFallback src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                                 </div>
-                              ))}
-                              {totalItems > 4 && (
-                                 <div className="w-10 h-10 rounded-full border-2 border-white bg-[var(--vesti-dark)] flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                                    +{totalItems - 4}
-                                 </div>
-                              )}
-                           </>
-                        ) : (
-                           <span className="text-white/90 text-sm font-medium">尚未選擇商品</span>
-                        )}
-                     </div>
-                     
-                     {/* Action Text */}
-                     <div className="flex items-center gap-1 text-white/90 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-4 group-hover:translate-x-0">
-                        <span>查看詳情</span>
-                        <ChevronRight className="w-4 h-4" />
-                     </div>
-                  </div>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
-               </div>
-           </motion.div>
+           
+           <PersonalPhotoDisplay 
+              layers={outfitLayers}
+              onExpand={() => setIsPreviewOpen(true)}
+              userPhoto={userPhoto}
+           />
         </section>
 
         {/* Full Screen Preview Modal */}

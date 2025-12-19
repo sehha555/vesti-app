@@ -12,15 +12,11 @@ interface RankingItem {
   cpw: number;
 }
 
-<<<<<<< HEAD
 interface CPWRankingProps {
   onNavigateToFullRanking?: () => void;
 }
 
 export function CPWRanking({ onNavigateToFullRanking }: CPWRankingProps) {
-=======
-export function CPWRanking() {
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   const [activeTab, setActiveTab] = useState<'best' | 'worst'>('best');
 
   const bestItems: RankingItem[] = [
@@ -118,7 +114,7 @@ export function CPWRanking() {
         </div>
 
         <div className="space-y-4">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {currentItems.map((item, index) => (
               <motion.div
                 key={item.id}
@@ -163,15 +159,11 @@ export function CPWRanking() {
         </div>
 
         <div className="mt-5 pt-4 border-t border-[var(--vesti-gray-light)]/30 text-center">
-<<<<<<< HEAD
           <button 
             onClick={onNavigateToFullRanking}
             className="text-[var(--vesti-primary)] flex items-center justify-center gap-1 mx-auto hover:opacity-80 transition-opacity"
             style={{ fontWeight: 700, fontSize: 'var(--text-label)' }}
           >
-=======
-          <button className="text-xs font-bold text-[var(--vesti-primary)] flex items-center justify-center gap-1">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
             查看完整榜單
             <ArrowUpRight size={12} />
           </button>

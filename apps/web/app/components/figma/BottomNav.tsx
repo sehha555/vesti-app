@@ -1,5 +1,5 @@
 import { Home, Archive, Compass, Store, User, Bookmark } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { haptic } from './hooks/useHaptic';
 
 type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile';
@@ -27,13 +27,13 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
       {isActive && (
         <motion.div
           layoutId="activeTab"
-          className="absolute top-0 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-primary"
+          className="absolute top-0 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-[var(--vesti-primary)]"
           transition={{ type: "spring", stiffness: 380, damping: 30 }}
         />
       )}
       
       <motion.div 
-        className={isActive ? 'text-primary' : 'text-muted-foreground'}
+        className={isActive ? 'text-[var(--vesti-primary)]' : 'text-[var(--vesti-gray-mid)]'}
         animate={{ scale: isActive ? 1.1 : 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
       >
@@ -41,7 +41,7 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
       </motion.div>
       
       <motion.span 
-        className={isActive ? 'text-primary' : 'text-muted-foreground'} 
+        className={isActive ? 'text-[var(--vesti-primary)]' : 'text-[var(--vesti-gray-mid)]'} 
         style={{ fontSize: 'var(--text-label)', fontWeight: isActive ? 600 : 400 }}
         animate={{ opacity: isActive ? 1 : 0.7 }}
       >

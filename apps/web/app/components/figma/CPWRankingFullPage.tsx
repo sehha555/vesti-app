@@ -383,44 +383,43 @@ export function CPWRankingFullPage({ onBack }: CPWRankingFullPageProps) {
                     transition={{ delay: index * 0.05 }}
                     className="bg-white rounded-2xl border-2 border-border p-4 hover:border-[var(--vesti-primary)] transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      {/* 排名徽章 */}
-                      <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${getRankBadgeColor(rank)} shadow-md`}>
-                        <span className={`${getRankTextColor(rank)}`} style={{ fontWeight: 700, fontSize: '18px' }}>
-                          {rank}
-                        </span>
+                    <div className="flex gap-3">
+                      {/* 左側：排名 + 圖片 */}
+                      <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                        {/* 排名徽章 */}
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${getRankBadgeColor(rank)} shadow-md`}>
+                          <span className={`${getRankTextColor(rank)}`} style={{ fontWeight: 700, fontSize: '16px' }}>
+                            {rank}
+                          </span>
+                        </div>
+
+                        {/* 商品圖片 */}
+                        <div className="h-20 w-20 overflow-hidden rounded-xl border-2 border-border bg-white">
+                          <ImageWithFallback
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
                       </div>
 
-                      {/* 商品圖片 */}
-                      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 border-border bg-white">
-                        <ImageWithFallback
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-
-                      {/* 商品資訊 */}
-                      <div className="flex-1 min-w-0">
+                      {/* 右側：商品資訊 */}
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        {/* 標題與趨勢 */}
                         <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-[var(--vesti-dark)] truncate" style={{ fontWeight: 600 }}>
-                              {item.name}
-                            </h3>
-                            <p className="text-[var(--vesti-gray-mid)] mt-0.5" style={{ fontSize: '11px' }}>
-                              {item.brand} · {item.category}
-                            </p>
-                          </div>
+                          <h3 className="text-[var(--vesti-dark)] line-clamp-1 flex-1" style={{ fontWeight: 600, fontSize: 'var(--text-base)' }}>
+                            {item.name}
+                          </h3>
 
                           {/* 趨勢指示器 */}
                           {item.trend && (
-                            <div className={`flex items-center gap-0.5 ${
+                            <div className={`flex items-center gap-0.5 flex-shrink-0 ${
                               item.trend === 'up' ? 'text-green-600' : 
                               item.trend === 'down' ? 'text-red-600' : 
                               'text-[var(--vesti-gray-mid)]'
                             }`}>
-                              {item.trend === 'up' && <TrendingUp className="h-3 w-3" strokeWidth={2} />}
-                              {item.trend === 'down' && <TrendingDown className="h-3 w-3" strokeWidth={2} />}
+                              {item.trend === 'up' && <TrendingUp className="h-3.5 w-3.5" strokeWidth={2} />}
+                              {item.trend === 'down' && <TrendingDown className="h-3.5 w-3.5" strokeWidth={2} />}
                               {item.trendChange && (
                                 <span style={{ fontSize: '10px', fontWeight: 600 }}>
                                   {item.trendChange}
@@ -430,10 +429,16 @@ export function CPWRankingFullPage({ onBack }: CPWRankingFullPageProps) {
                           )}
                         </div>
 
-                        {/* CPW 資訊 */}
-                        <div className="flex items-center gap-3 mt-2">
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
+                        {/* 品牌與分類 */}
+                        <p className="text-[var(--vesti-gray-mid)] mb-3" style={{ fontSize: '11px' }}>
+                          {item.brand} · {item.category}
+                        </p>
+
+                        {/* CPW 資訊區塊 - 統一垂直排列 */}
+                        <div className="mt-auto space-y-1.5">
+                          {/* CPW */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '12px' }}>
                               CPW
                             </span>
                             <span className={`${isCPWGood ? 'text-green-600' : 'text-[var(--vesti-primary)]'}`} style={{ fontWeight: 700, fontSize: '16px' }}>
@@ -441,21 +446,19 @@ export function CPWRankingFullPage({ onBack }: CPWRankingFullPageProps) {
                             </span>
                           </div>
 
-                          <div className="h-3 w-px bg-border" />
-
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
-                              穿著
+                          {/* 穿著次數 */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '12px' }}>
+                              穿著次數
                             </span>
                             <span className="text-[var(--vesti-dark)]" style={{ fontWeight: 600, fontSize: 'var(--text-label)' }}>
-                              {item.wearCount}次
+                              {item.wearCount} 次
                             </span>
                           </div>
 
-                          <div className="h-3 w-px bg-border" />
-
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
+                          {/* 價格 */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '12px' }}>
                               價格
                             </span>
                             <span className="text-[var(--vesti-dark)]" style={{ fontWeight: 600, fontSize: 'var(--text-label)' }}>

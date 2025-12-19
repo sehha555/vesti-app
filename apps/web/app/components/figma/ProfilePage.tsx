@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Camera, User, Ruler, Settings, Upload, Edit2, Check, X, Package, ChevronRight, Sparkles, Search, Plus, ShoppingBag, Blend, Star, ShoppingCart, LogOut, CreditCard } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
@@ -68,9 +68,10 @@ interface ProfilePageProps {
   onNavigateToDelivery?: (merchant?: string) => void;
   onLogout?: () => void;
   onNavigateToPaymentMethods?: () => void;
+  onTryOnPhotoUpdate?: (photoUrl: string) => void;
 }
 
-export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogout, onNavigateToPaymentMethods }: ProfilePageProps = {}) {
+export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogout, onNavigateToPaymentMethods, onTryOnPhotoUpdate }: ProfilePageProps = {}) {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [tryOnPhoto, setTryOnPhoto] = useState<string | null>(null);
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
@@ -98,6 +99,33 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
   // 檔案選擇器 refs
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePhoto(reader.result as string);
+        toast.success('頭像已更新');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleTryOnPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTryOnPhoto(reader.result as string);
+        toast.success('試穿照片已上傳');
+        if (onTryOnPhotoUpdate) {
+          onTryOnPhotoUpdate(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // 點擊頭像或全身照區域
   const handleAvatarClick = () => {
@@ -135,6 +163,9 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
         } else {
           setTryOnPhoto(result);
           toast.success('試穿照片已上傳 ✨');
+          if (onTryOnPhotoUpdate) {
+            onTryOnPhotoUpdate(result);
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -204,24 +235,24 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
   const getOrderStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'completed':
-        return 'text-success';
+        return 'text-[var(--vesti-success)]';
       case 'processing':
-        return 'text-primary';
+        return 'text-[var(--vesti-primary)]';
       case 'cancelled':
-        return 'text-muted-foreground';
+        return 'text-[var(--vesti-gray-mid)]';
     }
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-[var(--vesti-background)] pb-24">
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border"
+        className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm border-b border-border"
       >
         <div className="flex items-center justify-center px-5 py-4">
-          <h1 className="text-foreground">個人檔案</h1>
+          <h1 className="text-[var(--vesti-dark)]">個人檔案</h1>
         </div>
       </motion.header>
 
@@ -231,7 +262,7 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-2xl bg-white border-2 border-muted-foreground/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+          className="rounded-2xl bg-white border-2 border-[var(--vesti-gray-mid)]/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <div className="flex items-center gap-4">
             <div 
@@ -239,7 +270,7 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
               onClick={handleAvatarClick}
             >
               {profilePhoto ? (
-                <div className="h-20 w-20 overflow-hidden rounded-full bg-muted">
+                <div className="h-20 w-20 overflow-hidden rounded-full bg-[var(--vesti-gray-light)]">
                   <ImageWithFallback
                     src={profilePhoto}
                     alt="Profile"
@@ -247,19 +278,19 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                   />
                 </div>
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-dashed border-primary/30 transition-all hover:border-primary/50 hover:bg-primary/10">
-                  <User className="h-8 w-8 text-primary/40" strokeWidth={1.5} />
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[var(--vesti-primary)]/10 to-[var(--vesti-primary)]/5 border-2 border-dashed border-[var(--vesti-primary)]/30 transition-all hover:border-[var(--vesti-primary)]/50 hover:bg-[var(--vesti-primary)]/10">
+                  <User className="h-8 w-8 text-[var(--vesti-primary)]/40" strokeWidth={1.5} />
                 </div>
               )}
-              <div className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90">
+              <div className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:bg-[var(--vesti-primary)]/90">
                 <Camera className="h-4 w-4" strokeWidth={2} />
               </div>
             </div>
             <div className="flex-1">
-              <h3 className="text-foreground font-semibold">
+              <h3 className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                 個人頭像
               </h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 設定您的個人檔案照片
               </p>
             </div>
@@ -271,20 +302,20 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="rounded-2xl bg-white border-2 border-muted-foreground/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+          className="rounded-2xl bg-white border-2 border-[var(--vesti-gray-mid)]/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <div className="mb-3">
-            <h3 className="text-foreground font-semibold">
+            <h3 className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
               試穿用照片
             </h3>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
               上傳全身照以獲得更準確的虛擬試穿效果
             </p>
           </div>
           
           {tryOnPhoto ? (
             <div 
-              className="relative rounded-xl overflow-hidden bg-muted cursor-pointer"
+              className="relative rounded-xl overflow-hidden bg-[var(--vesti-gray-light)] cursor-pointer"
               onClick={handleTryOnClick}
             >
               <ImageWithFallback
@@ -292,20 +323,20 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                 alt="Try On Photo"
                 className="w-full h-64 object-cover"
               />
-              <div className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90">
+              <div className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:bg-[var(--vesti-primary)]/90">
                 <Camera className="h-5 w-5" strokeWidth={2} />
               </div>
             </div>
           ) : (
             <div
               onClick={handleTryOnClick}
-              className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 py-8 transition-all hover:border-primary/50 hover:bg-primary/10"
+              className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--vesti-primary)]/30 bg-gradient-to-br from-[var(--vesti-primary)]/5 to-[var(--vesti-primary)]/10 py-8 transition-all hover:border-[var(--vesti-primary)]/50 hover:bg-[var(--vesti-primary)]/10"
             >
-              <Upload className="mb-2 h-8 w-8 text-primary" strokeWidth={2} />
-              <p className="text-primary font-semibold">
+              <Upload className="mb-2 h-8 w-8 text-[var(--vesti-primary)]" strokeWidth={2} />
+              <p className="text-[var(--vesti-primary)]" style={{ fontWeight: 600 }}>
                 點擊上傳照片
               </p>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 建議使用全身正面照
               </p>
             </div>
@@ -317,12 +348,12 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-2xl bg-white border-2 border-muted-foreground/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+          className="rounded-2xl bg-white border-2 border-[var(--vesti-gray-mid)]/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Ruler className="h-5 w-5 text-primary" strokeWidth={2} />
-              <h3 className="text-foreground font-semibold">
+              <Ruler className="h-5 w-5 text-[var(--vesti-primary)]" strokeWidth={2} />
+              <h3 className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                 身體數據
               </h3>
             </div>
@@ -332,7 +363,8 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                   setIsEditingMeasurements(true);
                   setTempMeasurements(measurements);
                 }}
-                className="flex items-center gap-1 text-primary text-sm"
+                className="flex items-center gap-1 text-[var(--vesti-primary)]"
+                style={{ fontSize: 'var(--text-label)' }}
               >
                 <Edit2 className="h-4 w-4" strokeWidth={2} />
                 <span>編輯</span>
@@ -341,13 +373,13 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCancelEdit}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--vesti-gray-light)] text-[var(--vesti-gray-mid)] transition-colors hover:bg-[var(--vesti-gray-mid)]/20"
                 >
                   <X className="h-4 w-4" strokeWidth={2} />
                 </button>
                 <button
                   onClick={handleSaveMeasurements}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--vesti-primary)] text-white transition-colors hover:bg-[var(--vesti-primary)]/90"
                 >
                   <Check className="h-4 w-4" strokeWidth={2} />
                 </button>
@@ -358,36 +390,36 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           <div className="space-y-3">
             {/* Height & Weight */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-background p-3">
-                <label className="mb-1 block text-muted-foreground text-sm">
+              <div className="rounded-xl bg-[var(--vesti-background)] p-3">
+                <label className="mb-1 block text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                   身高 (cm)
                 </label>
                 {isEditingMeasurements ? (
-                  <Input
+                  <input
                     type="number"
                     value={tempMeasurements.height}
                     onChange={(e) => setTempMeasurements({ ...tempMeasurements, height: e.target.value })}
-                    className="w-full bg-white rounded-lg border border-border px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full bg-white rounded-lg border border-border px-3 py-2 text-[var(--vesti-dark)] focus:border-[var(--vesti-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--vesti-primary)]/20"
                   />
                 ) : (
-                  <p className="text-foreground font-semibold">
+                  <p className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                     {measurements.height || '—'} {measurements.height && 'cm'}
                   </p>
                 )}
               </div>
-              <div className="rounded-xl bg-background p-3">
-                <label className="mb-1 block text-muted-foreground text-sm">
+              <div className="rounded-xl bg-[var(--vesti-background)] p-3">
+                <label className="mb-1 block text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                   體重 (kg)
                 </label>
                 {isEditingMeasurements ? (
-                  <Input
+                  <input
                     type="number"
                     value={tempMeasurements.weight}
                     onChange={(e) => setTempMeasurements({ ...tempMeasurements, weight: e.target.value })}
-                    className="w-full bg-white rounded-lg border border-border px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full bg-white rounded-lg border border-border px-3 py-2 text-[var(--vesti-dark)] focus:border-[var(--vesti-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--vesti-primary)]/20"
                   />
                 ) : (
-                  <p className="text-foreground font-semibold">
+                  <p className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                     {measurements.weight || '—'} {measurements.weight && 'kg'}
                   </p>
                 )}
@@ -395,61 +427,64 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
             </div>
 
             {/* Three Measurements */}
-            <div className="rounded-xl bg-background p-3">
-              <label className="mb-2 block text-muted-foreground text-sm">
-                三圍 (cm) <span className="text-muted-foreground/60">— 選填</span>
+            <div className="rounded-xl bg-[var(--vesti-background)] p-3">
+              <label className="mb-2 block text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
+                三圍 (cm) <span className="text-[var(--vesti-gray-mid)]/60">— 選填</span>
               </label>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="mb-1 block text-muted-foreground text-xs">
+                  <label className="mb-1 block text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
                     胸圍
                   </label>
                   {isEditingMeasurements ? (
-                    <Input
+                    <input
                       type="number"
                       placeholder="—"
                       value={tempMeasurements.bust}
                       onChange={(e) => setTempMeasurements({ ...tempMeasurements, bust: e.target.value })}
-                      className="w-full bg-white rounded-lg border border-border px-2 py-1.5 text-foreground text-center focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+                      className="w-full bg-white rounded-lg border border-border px-2 py-1.5 text-[var(--vesti-dark)] text-center focus:border-[var(--vesti-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--vesti-primary)]/20"
+                      style={{ fontSize: 'var(--text-label)' }}
                     />
                   ) : (
-                    <p className="text-foreground text-center font-semibold">
+                    <p className="text-[var(--vesti-dark)] text-center" style={{ fontWeight: 600 }}>
                       {measurements.bust || '—'}
                     </p>
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-muted-foreground text-xs">
+                  <label className="mb-1 block text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
                     腰圍
                   </label>
                   {isEditingMeasurements ? (
-                    <Input
+                    <input
                       type="number"
                       placeholder="—"
                       value={tempMeasurements.waist}
                       onChange={(e) => setTempMeasurements({ ...tempMeasurements, waist: e.target.value })}
-                      className="w-full bg-white rounded-lg border border-border px-2 py-1.5 text-foreground text-center focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+                      className="w-full bg-white rounded-lg border border-border px-2 py-1.5 text-[var(--vesti-dark)] text-center focus:border-[var(--vesti-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--vesti-primary)]/20"
+                      style={{ fontSize: 'var(--text-label)' }}
                     />
                   ) : (
-                    <p className="text-foreground text-center font-semibold">
+                    <p className="text-[var(--vesti-dark)] text-center" style={{ fontWeight: 600 }}>
                       {measurements.waist || '—'}
                     </p>
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-muted-foreground text-xs">
+                  <label className="mb-1 block text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
                     臀圍
                   </label>
                   {isEditingMeasurements ? (
-                    <Input
+                    <input
                       type="number"
                       placeholder="—"
                       value={tempMeasurements.hips}
                       onChange={(e) => setTempMeasurements({ ...tempMeasurements, hips: e.target.value })}
-                      className="w-full bg-white rounded-lg border border-border px-2 py-1.5 text-foreground text-center focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+                      className="w-full bg-white rounded-lg border border-border px-2 py-1.5 text-[var(--vesti-dark)] text-center focus:border-[var(--vesti-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--vesti-primary)]/20"
+                      style={{ fontSize: 'var(--text-label)' }}
                     />
                   ) : (
-                    <p className="text-foreground text-center font-semibold">
+                    <p className="text-[var(--vesti-dark)] text-center" style={{ fontWeight: 600 }}>
                       {measurements.hips || '—'}
                     </p>
                   )}
@@ -464,40 +499,40 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-2xl bg-muted/50 border-2 border-muted-foreground/20 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+          className="rounded-2xl bg-[var(--vesti-gray-light)] border-2 border-[var(--vesti-gray-mid)]/20 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <div className="mb-4">
-            <h3 className="text-foreground font-semibold">
+            <h3 className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
               衣櫃概覽
             </h3>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
               最後更新：今天
             </p>
           </div>
 
           {/* Stats Grid */}
           <div className="mb-5 grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/40 p-3 text-center">
-              <p className="mb-1 text-primary text-2xl font-bold">
+            <div className="rounded-xl bg-gradient-to-br from-[var(--vesti-primary)]/10 to-[var(--vesti-primary)]/5 border-2 border-[var(--vesti-primary)]/40 p-3 text-center">
+              <p className="mb-1 text-[var(--vesti-primary)]" style={{ fontSize: '24px', fontWeight: 700 }}>
                 93
               </p>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 衣物總數
               </p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/40 p-3 text-center">
-              <p className="mb-1 text-primary text-2xl font-bold">
+            <div className="rounded-xl bg-gradient-to-br from-[var(--vesti-primary)]/10 to-[var(--vesti-primary)]/5 border-2 border-[var(--vesti-primary)]/40 p-3 text-center">
+              <p className="mb-1 text-[var(--vesti-primary)]" style={{ fontSize: '24px', fontWeight: 700 }}>
                 38
               </p>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 搭配套數
               </p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/40 p-3 text-center">
-              <p className="mb-1 text-primary text-2xl font-bold">
+            <div className="rounded-xl bg-gradient-to-br from-[var(--vesti-primary)]/10 to-[var(--vesti-primary)]/5 border-2 border-[var(--vesti-primary)]/40 p-3 text-center">
+              <p className="mb-1 text-[var(--vesti-primary)]" style={{ fontSize: '24px', fontWeight: 700 }}>
                 67
               </p>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 常穿單品
               </p>
             </div>
@@ -505,22 +540,22 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
 
           {/* Category Distribution */}
           <div>
-            <h4 className="mb-3 text-foreground font-semibold text-base">
+            <h4 className="mb-3 text-[var(--vesti-dark)]" style={{ fontWeight: 600, fontSize: 'var(--text-h4)' }}>
               品類分布
             </h4>
             <div className="space-y-2">
               {categoryDistribution.map((item) => (
                 <div key={item.name} className="flex items-center gap-3">
-                  <span className="w-12 text-foreground text-sm">
+                  <span className="w-12 text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)' }}>
                     {item.name}
                   </span>
                   <div className="flex-1 h-6 rounded-full bg-white overflow-hidden border border-border">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
+                      className="h-full rounded-full bg-gradient-to-r from-[var(--vesti-primary)] to-[var(--vesti-secondary)]"
                       style={{ width: `${(item.count / 30) * 100}%` }}
                     />
                   </div>
-                  <span className="w-8 text-right text-foreground text-sm font-semibold">
+                  <span className="w-8 text-right text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
                     {item.count}
                   </span>
                 </div>
@@ -540,7 +575,7 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={onNavigateToCheckout}
-              className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-secondary p-5 shadow-lg transition-all hover:shadow-xl"
+              className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--vesti-primary)] to-[var(--vesti-secondary)] p-5 shadow-lg transition-all hover:shadow-xl"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -548,10 +583,10 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                     <ShoppingCart className="h-7 w-7 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="text-left">
-                    <h3 className="mb-1 text-white font-semibold">
+                    <h3 className="mb-1 text-white" style={{ fontWeight: 600 }}>
                       購物車
                     </h3>
-                    <p className="text-white/90 text-sm">
+                    <p className="text-white/90" style={{ fontSize: 'var(--text-label)' }}>
                       3 件商品待結帳
                     </p>
                   </div>
@@ -573,23 +608,23 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={onNavigateToPaymentMethods}
-              className="w-full overflow-hidden rounded-2xl bg-white border-2 border-muted-foreground/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-all hover:shadow-lg"
+              className="w-full overflow-hidden rounded-2xl bg-white border-2 border-[var(--vesti-gray-mid)]/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-all hover:shadow-lg"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                    <CreditCard className="h-7 w-7 text-primary" strokeWidth={2.5} />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--vesti-primary)]/10">
+                    <CreditCard className="h-7 w-7 text-[var(--vesti-primary)]" strokeWidth={2.5} />
                   </div>
                   <div className="text-left">
-                    <h3 className="mb-1 text-foreground font-semibold">
+                    <h3 className="mb-1 text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                       支付方式
                     </h3>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                       管理您的信用卡和付款資訊
                     </p>
                   </div>
                 </div>
-                <ChevronRight className="h-6 w-6 text-muted-foreground" strokeWidth={2.5} />
+                <ChevronRight className="h-6 w-6 text-[var(--vesti-gray-mid)]" strokeWidth={2.5} />
               </div>
             </motion.button>
           </motion.section>
@@ -600,18 +635,19 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-2xl bg-muted/50 border-2 border-muted-foreground/20 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+          className="rounded-2xl bg-[var(--vesti-gray-light)] border-2 border-[var(--vesti-gray-mid)]/20 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" strokeWidth={2} />
-              <h3 className="text-foreground font-semibold">
+              <Package className="h-5 w-5 text-[var(--vesti-primary)]" strokeWidth={2} />
+              <h3 className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                 訂單紀錄
               </h3>
             </div>
             <button 
               onClick={onNavigateToDelivery}
-              className="flex items-center gap-1 text-primary text-sm"
+              className="flex items-center gap-1 text-[var(--vesti-primary)]" 
+              style={{ fontSize: 'var(--text-label)' }}
             >
               <span>查看全部</span>
               <ChevronRight className="h-4 w-4" strokeWidth={2} />
@@ -622,26 +658,26 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
             {recentOrders.map((order) => (
               <div
                 key={order.id}
-                className="rounded-xl bg-background p-3 transition-all hover:shadow-sm"
+                className="rounded-xl bg-[var(--vesti-background)] p-3 transition-all hover:shadow-sm"
               >
                 <div className="mb-2 flex items-start justify-between">
                   <div>
-                    <p className="text-foreground font-semibold text-sm">
+                    <p className="text-[var(--vesti-dark)]" style={{ fontWeight: 600, fontSize: 'var(--text-label)' }}>
                       {order.id}
                     </p>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
                       {order.date}
                     </p>
                   </div>
-                  <span className={`${getOrderStatusColor(order.status)} text-sm font-semibold`}>
+                  <span className={`${getOrderStatusColor(order.status)}`} style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
                     {getOrderStatusText(order.status)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">
+                  <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                     共 {order.items} 件商品
                   </span>
-                  <span className="text-primary font-bold">
+                  <span className="text-[var(--vesti-primary)]" style={{ fontWeight: 700 }}>
                     NT$ {order.total.toLocaleString()}
                   </span>
                 </div>
@@ -655,23 +691,23 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="rounded-2xl bg-muted/50 border-2 border-muted-foreground/20 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+          className="rounded-2xl bg-[var(--vesti-gray-light)] border-2 border-[var(--vesti-gray-mid)]/20 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <div className="mb-4 flex items-center gap-2">
-            <Settings className="h-5 w-5 text-primary" strokeWidth={2} />
-            <h3 className="text-foreground font-semibold">
+            <Settings className="h-5 w-5 text-[var(--vesti-primary)]" strokeWidth={2} />
+            <h3 className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
               AI 推薦設定
             </h3>
           </div>
 
           <div className="space-y-4">
             {/* Weather Based */}
-            <div className="flex items-center justify-between rounded-xl bg-background p-3">
+            <div className="flex items-center justify-between rounded-xl bg-[var(--vesti-background)] p-3">
               <div>
-                <p className="text-foreground font-semibold">
+                <p className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                   天氣智能推薦
                 </p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                   根據當日天氣調整穿搭建議
                 </p>
               </div>
@@ -684,11 +720,11 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
             </div>
 
             {/* Recommendation Type */}
-            <div className="rounded-xl bg-background p-3">
-              <label className="mb-2 block text-foreground font-semibold">
+            <div className="rounded-xl bg-[var(--vesti-background)] p-3">
+              <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                 推薦類型
               </label>
-              <p className="mb-3 text-muted-foreground text-sm">
+              <p className="mb-3 text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 選擇 AI 為您推薦的穿搭風格傾向
               </p>
               <div className="grid grid-cols-3 gap-2">
@@ -696,31 +732,31 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                   onClick={() => setAISettings({ ...aiSettings, recommendationType: 'conservative' })}
                   className={`rounded-xl border p-2.5 transition-all ${
                     aiSettings.recommendationType === 'conservative'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-white hover:border-primary/50'
+                      ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)]/10'
+                      : 'border-border bg-white hover:border-[var(--vesti-primary)]/50'
                   }`}
                 >
                   <div className="mb-1.5 flex justify-center">
                     <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
                       aiSettings.recommendationType === 'conservative'
-                        ? 'bg-primary'
-                        : 'bg-muted'
+                        ? 'bg-[var(--vesti-primary)]'
+                        : 'bg-[var(--vesti-gray-light)]'
                     }`}>
                       <Settings className={`h-4 w-4 ${
                         aiSettings.recommendationType === 'conservative'
                           ? 'text-white'
-                          : 'text-muted-foreground'
+                          : 'text-[var(--vesti-gray-mid)]'
                       }`} strokeWidth={2} />
                     </div>
                   </div>
                   <p className={`text-center ${
                     aiSettings.recommendationType === 'conservative'
-                      ? 'text-primary'
-                      : 'text-foreground'
-                  } font-semibold text-sm`}>
+                      ? 'text-[var(--vesti-primary)]'
+                      : 'text-[var(--vesti-dark)]'
+                  }`} style={{ fontWeight: 600, fontSize: 'var(--text-label)' }}>
                     保守推薦
                   </p>
-                  <p className="text-center text-muted-foreground text-xs">
+                  <p className="text-center text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
                     符合風格
                   </p>
                 </button>
@@ -729,31 +765,31 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                   onClick={() => setAISettings({ ...aiSettings, recommendationType: 'exploratory' })}
                   className={`rounded-xl border p-2.5 transition-all ${
                     aiSettings.recommendationType === 'exploratory'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-white hover:border-primary/50'
+                      ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)]/10'
+                      : 'border-border bg-white hover:border-[var(--vesti-primary)]/50'
                   }`}
                 >
                   <div className="mb-1.5 flex justify-center">
                     <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
                       aiSettings.recommendationType === 'exploratory'
-                        ? 'bg-primary'
-                        : 'bg-muted'
+                        ? 'bg-[var(--vesti-primary)]'
+                        : 'bg-[var(--vesti-gray-light)]'
                     }`}>
                       <Sparkles className={`h-4 w-4 ${
                         aiSettings.recommendationType === 'exploratory'
                           ? 'text-white'
-                          : 'text-muted-foreground'
+                          : 'text-[var(--vesti-gray-mid)]'
                       }`} strokeWidth={2} />
                     </div>
                   </div>
                   <p className={`text-center ${
                     aiSettings.recommendationType === 'exploratory'
-                      ? 'text-primary'
-                      : 'text-foreground'
-                  } font-semibold text-sm`}>
+                      ? 'text-[var(--vesti-primary)]'
+                      : 'text-[var(--vesti-dark)]'
+                  }`} style={{ fontWeight: 600, fontSize: 'var(--text-label)' }}>
                     探索推薦
                   </p>
-                  <p className="text-center text-muted-foreground text-xs">
+                  <p className="text-center text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
                     嘗試新風格
                   </p>
                 </button>
@@ -762,31 +798,31 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                   onClick={() => setAISettings({ ...aiSettings, recommendationType: 'mixed' })}
                   className={`rounded-xl border p-2.5 transition-all ${
                     aiSettings.recommendationType === 'mixed'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-white hover:border-primary/50'
+                      ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)]/10'
+                      : 'border-border bg-white hover:border-[var(--vesti-primary)]/50'
                   }`}
                 >
                   <div className="mb-1.5 flex justify-center">
                     <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
                       aiSettings.recommendationType === 'mixed'
-                        ? 'bg-primary'
-                        : 'bg-muted'
+                        ? 'bg-[var(--vesti-primary)]'
+                        : 'bg-[var(--vesti-gray-light)]'
                     }`}>
                       <Blend className={`h-4 w-4 ${
                         aiSettings.recommendationType === 'mixed'
                           ? 'text-white'
-                          : 'text-muted-foreground'
+                          : 'text-[var(--vesti-gray-mid)]'
                       }`} strokeWidth={2} />
                     </div>
                   </div>
                   <p className={`text-center ${
                     aiSettings.recommendationType === 'mixed'
-                      ? 'text-primary'
-                      : 'text-foreground'
-                  } font-semibold text-sm`}>
+                      ? 'text-[var(--vesti-primary)]'
+                      : 'text-[var(--vesti-dark)]'
+                  }`} style={{ fontWeight: 600, fontSize: 'var(--text-label)' }}>
                     混合推薦
                   </p>
-                  <p className="text-center text-muted-foreground text-xs">
+                  <p className="text-center text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
                     平衡搭配
                   </p>
                 </button>
@@ -794,27 +830,27 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
             </div>
 
             {/* Brand Blacklist */}
-            <div className="rounded-xl bg-background p-3">
-              <label className="mb-2 block text-foreground font-semibold">
+            <div className="rounded-xl bg-[var(--vesti-background)] p-3">
+              <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                 品牌黑名單
               </label>
-              <p className="mb-3 text-muted-foreground text-sm">
+              <p className="mb-3 text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 新增不想要推薦的品牌
               </p>
               <div className="mb-3 flex gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2} />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--vesti-gray-mid)]" strokeWidth={2} />
                   <Input
                     value={brandInput}
                     onChange={(e) => setBrandInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addBrand()}
                     placeholder="輸入品牌名稱..."
-                    className="pl-9 bg-white border-border focus:border-primary"
+                    className="pl-9 bg-white border-border focus:border-[var(--vesti-primary)]"
                   />
                 </div>
                 <button
                   onClick={addBrand}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--vesti-primary)] text-white transition-colors hover:bg-[var(--vesti-primary)]/90"
                 >
                   <Plus className="h-5 w-5" strokeWidth={2} />
                 </button>
@@ -826,12 +862,12 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                       key={brand}
                       className="flex items-center gap-1.5 rounded-lg bg-white border border-border px-2.5 py-1.5"
                     >
-                      <span className="text-foreground text-sm">
+                      <span className="text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)' }}>
                         {brand}
                       </span>
                       <button
                         onClick={() => removeBrand(brand)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-[var(--vesti-gray-mid)] hover:text-[var(--vesti-dark)]"
                       >
                         <X className="h-3.5 w-3.5" strokeWidth={2} />
                       </button>
@@ -842,27 +878,27 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
             </div>
 
             {/* Favorite Stores */}
-            <div className="rounded-xl bg-background p-3">
-              <label className="mb-2 block text-foreground font-semibold">
+            <div className="rounded-xl bg-[var(--vesti-background)] p-3">
+              <label className="mb-2 block text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
                 最愛店家
               </label>
-              <p className="mb-3 text-muted-foreground text-sm">
+              <p className="mb-3 text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
                 新增您常逛的店家，AI 會優先推薦
               </p>
               <div className="mb-3 flex gap-2">
                 <div className="relative flex-1">
-                  <ShoppingBag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2} />
+                  <ShoppingBag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--vesti-gray-mid)]" strokeWidth={2} />
                   <Input
                     value={storeInput}
                     onChange={(e) => setStoreInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addStore()}
                     placeholder="輸入店家名稱..."
-                    className="pl-9 bg-white border-border focus:border-primary"
+                    className="pl-9 bg-white border-border focus:border-[var(--vesti-primary)]"
                   />
                 </div>
                 <button
                   onClick={addStore}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground transition-colors hover:bg-accent/90"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--vesti-accent)] text-white transition-colors hover:bg-[var(--vesti-accent)]/90"
                 >
                   <Plus className="h-5 w-5" strokeWidth={2} />
                 </button>
@@ -872,15 +908,15 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                   {aiSettings.favoriteStores.map((store) => (
                     <div
                       key={store}
-                      className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 px-2.5 py-1.5"
+                      className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[var(--vesti-accent)]/10 to-[var(--vesti-accent)]/5 border border-[var(--vesti-accent)]/20 px-2.5 py-1.5"
                     >
-                      <Star className="h-3.5 w-3.5 text-accent" strokeWidth={2} fill="currentColor" />
-                      <span className="text-foreground font-medium text-sm">
+                      <Star className="h-3.5 w-3.5 text-[var(--vesti-accent)]" strokeWidth={2} fill="var(--vesti-accent)" />
+                      <span className="text-[var(--vesti-dark)]" style={{ fontSize: 'var(--text-label)', fontWeight: 500 }}>
                         {store}
                       </span>
                       <button
                         onClick={() => removeStore(store)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-[var(--vesti-gray-mid)] hover:text-[var(--vesti-dark)]"
                       >
                         <X className="h-3.5 w-3.5" strokeWidth={2} />
                       </button>
@@ -901,7 +937,7 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
           >
              <button 
                onClick={onLogout}
-               className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-white border-2 border-muted/50 text-muted-foreground font-bold hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all shadow-sm"
+               className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-white border-2 border-[var(--vesti-gray-light)]/50 text-[var(--vesti-gray-mid)] font-bold hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all shadow-sm"
              >
                <LogOut className="h-5 w-5" />
                <span>登出帳號</span>

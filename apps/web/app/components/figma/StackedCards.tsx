@@ -1,17 +1,9 @@
-<<<<<<< HEAD
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { haptic } from './hooks/useHaptic';
-=======
-import { useState } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'motion/react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Bookmark, Check } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
 interface Outfit {
   id: number;
@@ -23,7 +15,6 @@ interface Outfit {
 interface StackedCardsProps {
   outfits: Outfit[];
   onCardClick: (outfit: Outfit) => void;
-<<<<<<< HEAD
   userId?: string;
   weather?: {
     temp_c: number;
@@ -40,18 +31,12 @@ interface StackedCardsProps {
 
 export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOutfit }: StackedCardsProps) {
   const userId = "123e4567-e89b-12d3-a456-426614174000";
-=======
-}
-
-export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   const [cards, setCards] = useState(outfits);
   const [isDragging, setIsDragging] = useState(false);
   const [exitX, setExitX] = useState(0);
   const [savedCards, setSavedCards] = useState<Set<number>>(new Set());
   const [confirmedCards, setConfirmedCards] = useState<Set<number>>(new Set());
 
-<<<<<<< HEAD
   useEffect(() => {
     // 從 localStorage 讀取已保存的穿搭 ID
     const savedOutfitsKey = `vesti_saved_outfits_${userId}`;
@@ -68,8 +53,6 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
     }
   }, [userId]);
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 80;
     
@@ -98,7 +81,6 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
     setIsDragging(true);
   };
 
-<<<<<<< HEAD
   const handleSave = async (e: React.MouseEvent, cardId: number) => {
     e.stopPropagation();
     haptic('medium');
@@ -187,39 +169,18 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
         toast.error('儲存失敗，請再試一次');
       }
     }
-=======
-  const handleSave = (e: React.MouseEvent, cardId: number) => {
-    e.stopPropagation();
-    setSavedCards(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(cardId)) {
-        newSet.delete(cardId);
-        toast('已取消收藏');
-      } else {
-        newSet.add(cardId);
-        toast.success('已收藏穿搭靈感 🔖');
-      }
-      return newSet;
-    });
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   };
 
   const handleConfirm = (e: React.MouseEvent, cardId: number) => {
     e.stopPropagation();
-<<<<<<< HEAD
     haptic('medium');
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     setConfirmedCards(prev => {
       const newSet = new Set(prev);
       if (newSet.has(cardId)) {
         newSet.delete(cardId);
         toast('已取消選定');
       } else {
-<<<<<<< HEAD
         haptic('success'); // 成功加入時額外的震動
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
         newSet.add(cardId);
         toast.success('已加入今日穿搭計畫 ✓');
       }
@@ -285,16 +246,12 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
                 onDragStart={isTop ? handleDragStart : undefined}
                 onDragEnd={isTop ? handleDragEnd : undefined}
                 whileTap={isTop ? { cursor: 'grabbing' } : undefined}
-<<<<<<< HEAD
                 onClick={() => {
                   if (isTop && !isDragging) {
                     haptic('light');
                     onCardClick(card);
                   }
                 }}
-=======
-                onClick={() => isTop && !isDragging && onCardClick(card)}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
               >
                 <motion.div
                   className="overflow-hidden rounded-[24px] bg-card shadow-[0_8px_32px_rgba(41,108,125,0.18)] border-2 border-white cursor-pointer select-none h-full"
@@ -322,11 +279,7 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
                       <div className="absolute right-3 top-3 flex gap-2">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
-<<<<<<< HEAD
                           whileTap={{ scale: 0.95 }}
-=======
-                          whileTap={{ scale: 0.9 }}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                           onClick={(e) => handleSave(e, card.id)}
                           className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${
                             isSaved
@@ -389,8 +342,4 @@ export function StackedCards({ outfits, onCardClick }: StackedCardsProps) {
       </div>
     </div>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

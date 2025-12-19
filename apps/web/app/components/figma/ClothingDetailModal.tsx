@@ -12,11 +12,7 @@ interface ClothingDetailModalProps {
     name: string;
     category: string;
     brand?: string;
-<<<<<<< HEAD
     source: 'app-purchase' | 'user-upload';
-=======
-    source: 'app-purchase' | 'user-upload' | 'saved' | 'merchant';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
     isPurchased?: boolean;
     price?: number;
     material?: string;
@@ -34,11 +30,6 @@ interface ClothingDetailModalProps {
 const sourceLabels = {
   'app-purchase': { label: 'App 內購買', icon: ShoppingBag, color: 'var(--vesti-primary)' },
   'user-upload': { label: '用戶上傳', icon: Upload, color: 'var(--vesti-accent)' },
-<<<<<<< HEAD
-=======
-  'saved': { label: '已儲存', icon: Bookmark, color: 'var(--vesti-gray-mid)' },
-  'merchant': { label: '商家推薦', icon: Store, color: 'var(--vesti-primary)' },
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 };
 
 export function ClothingDetailModal({ 
@@ -105,24 +96,6 @@ export function ClothingDetailModal({
                     alt={item.name}
                     className="h-full w-full object-cover"
                   />
-<<<<<<< HEAD
-=======
-                  
-                  {/* 購買狀態標籤 */}
-                  {item.source === 'app-purchase' && (
-                    <div className="absolute left-3 top-3">
-                      <Badge 
-                        className={`${
-                          item.isPurchased
-                            ? 'bg-[var(--vesti-primary)] text-white'
-                            : 'border-2 border-[var(--vesti-primary)] bg-white text-[var(--vesti-primary)]'
-                        }`}
-                      >
-                        {item.isPurchased ? '已購買' : '未購買'}
-                      </Badge>
-                    </div>
-                  )}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                 </div>
               </div>
 
@@ -136,11 +109,7 @@ export function ClothingDetailModal({
 
               {/* 來源標籤 */}
               <div className="mb-4 flex items-center gap-2">
-<<<<<<< HEAD
                 <div className="flex items-center gap-1.5 rounded-full border-2 border-[var(--vesti-primary)]/30 bg-[var(--vesti-primary)]/10 px-3 py-1.5">
-=======
-                <div className="flex items-center gap-1.5 rounded-full border-2 border-border bg-[var(--vesti-secondary)] px-3 py-1.5">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
                   <SourceIcon className="h-4 w-4" style={{ color: sourceInfo.color }} strokeWidth={2} />
                   <span className="text-xs" style={{ fontWeight: 500, color: sourceInfo.color }}>
                     {sourceInfo.label}
@@ -277,8 +246,4 @@ export function ClothingDetailModal({
       )}
     </AnimatePresence>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
