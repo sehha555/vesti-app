@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { useState, useRef, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -10,22 +9,11 @@ import { ClothingDetailModal } from './ClothingDetailModal';
 import { UploadOptionsDialog } from './UploadOptionsDialog';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { OutfitDetailView } from './OutfitDetailView';
+import { FloatingBasket } from './FloatingBasket';
 import { toast } from 'sonner';
 import { Plus, Sparkles, Bell, Radio, Calendar, Search, Heart, X, ShoppingBag, Upload } from 'lucide-react';
 import { useDebounce } from './hooks/useDebounce';
 import { EmptyState } from './EmptyState';
-=======
-import { useState } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { motion } from 'motion/react';
-import { DroppableClothingRow } from './DroppableClothingRow';
-import { CreateLayerDialog } from './CreateLayerDialog';
-import { ClothingDetailModal } from './ClothingDetailModal';
-import { UploadOptionsDialog } from './UploadOptionsDialog';
-import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
 interface ClothingItem {
   id: number;
@@ -33,11 +21,7 @@ interface ClothingItem {
   name: string;
   category: string;
   brand?: string;
-<<<<<<< HEAD
   source: 'app-purchase' | 'user-upload';
-=======
-  source: 'app-purchase' | 'user-upload' | 'saved' | 'merchant';
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   isPurchased?: boolean;
   price?: number;
   material?: string;
@@ -53,6 +37,10 @@ interface Layer {
   name: string;
   items: ClothingItem[];
 }
+
+// 預設值常數 - 確保參考穩定性
+const EMPTY_OUTFITS: any[] = [];
+const EMPTY_OUTFIT_SETS: any[] = [];
 
 const initialLayers: Layer[] = [
   {
@@ -95,11 +83,7 @@ const initialLayers: Layer[] = [
         name: '黑色針織衫', 
         category: '上衣',
         brand: 'H&M',
-<<<<<<< HEAD
         source: 'user-upload',
-=======
-        source: 'saved',
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
         size: 'M',
         material: '80% 羊毛, 20% 尼龍',
         wearCount: 5,
@@ -113,13 +97,9 @@ const initialLayers: Layer[] = [
         name: '條紋上衣', 
         category: '上衣',
         brand: 'GAP',
-<<<<<<< HEAD
         source: 'app-purchase',
         isPurchased: true,
         price: 650,
-=======
-        source: 'merchant',
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
         size: 'S',
         material: '95% 棉, 5% 彈性纖維',
         wearCount: 15,
@@ -226,13 +206,9 @@ const initialLayers: Layer[] = [
         name: '白色球鞋', 
         category: '鞋子',
         brand: 'NIKE',
-<<<<<<< HEAD
         source: 'app-purchase',
         isPurchased: true,
         price: 2890,
-=======
-        source: 'merchant',
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
         size: 'US 9',
         material: '合成皮革',
         wearCount: 25,
@@ -258,7 +234,6 @@ const initialLayers: Layer[] = [
   },
 ];
 
-<<<<<<< HEAD
 // Mock outfit data for the outfits view
 interface SavedOutfit {
   id: number;
@@ -294,24 +269,17 @@ const mockSavedOutfits: SavedOutfit[] = [
   },
 ];
 
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 type ViewMode = 'items' | 'outfits';
 
 interface WardrobePageProps {
   onNavigateToUpload?: (imageUrl?: string) => void;
-<<<<<<< HEAD
-  onNavigateToTryOn?: () => void;
+  onNavigateToTryOn?: (items?: ClothingItem[]) => void;
   onNavigateToBroadcast?: () => void;
   savedOutfitsFromHome?: any[]; // 從首頁收藏的穿搭
+  savedOutfitSetsFromTryOn?: any[]; // 從試穿頁儲存的整套搭配
 }
 
-export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigateToBroadcast, savedOutfitsFromHome = [] }: WardrobePageProps = {} as WardrobePageProps) {
-=======
-}
-
-export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as WardrobePageProps) {
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
+export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigateToBroadcast, savedOutfitsFromHome = EMPTY_OUTFITS, savedOutfitSetsFromTryOn = EMPTY_OUTFIT_SETS }: WardrobePageProps = {} as WardrobePageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('items');
   const [layers, setLayers] = useState<Layer[]>(initialLayers);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -319,7 +287,6 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-<<<<<<< HEAD
   const [selectedOutfit, setSelectedOutfit] = useState<any | null>(null);
   const [isOutfitDetailOpen, setIsOutfitDetailOpen] = useState(false);
   
@@ -362,8 +329,10 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
   // 監聽 savedOutfitsFromHome 的變化並更新
   useEffect(() => {
     setOutfits(prev => {
-      // 移除舊的收藏穿搭
+      // 保留本地搭配
       const localOutfits = prev.filter(o => o.source === 'local');
+      // 保留試穿搭配
+      const tryOnOutfits = prev.filter(o => o.source === 'tryon');
       
       // 添加新的收藏穿搭
       const savedOutfits = savedOutfitsFromHome.map((outfit) => ({
@@ -378,9 +347,34 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
         source: 'saved' as const,
       }));
       
-      return [...savedOutfits, ...localOutfits];
+      return [...savedOutfits, ...tryOnOutfits, ...localOutfits];
     });
   }, [savedOutfitsFromHome]);
+
+  // 監聽 savedOutfitSetsFromTryOn 的變化並更新
+  useEffect(() => {
+    setOutfits(prev => {
+      // 保留本地搭配和收藏穿搭
+      const localOutfits = prev.filter(o => o.source === 'local');
+      const savedOutfits = prev.filter(o => o.source === 'saved');
+      
+      // 添加新的試穿搭配
+      const tryOnOutfits = savedOutfitSetsFromTryOn.map((outfitSet) => ({
+        id: outfitSet.id,
+        name: outfitSet.name,
+        date: new Date(outfitSet.date).toISOString().split('T')[0].replace(/-/g, '/'),
+        imageUrl: outfitSet.imageUrl,
+        occasion: outfitSet.occasion,
+        itemCount: outfitSet.totalItems,
+        isFavorite: false,
+        tags: outfitSet.tags,
+        source: 'tryon' as const,
+        layers: outfitSet.layers, // 保存分層信息
+      }));
+      
+      return [...savedOutfits, ...tryOnOutfits, ...localOutfits];
+    });
+  }, [savedOutfitSetsFromTryOn]);
 
   // 自定義分類功能
   const [customCategories, setCustomCategories] = useState<string[]>(['日常', '約會', '運動']);
@@ -390,38 +384,149 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
   // 長按卡片顯示刪除功能
   const [longPressOutfit, setLongPressOutfit] = useState<number | null>(null); // 長按顯示刪除按鈕的卡片 ID
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 拖曳功能狀態
+  const [draggableOutfit, setDraggableOutfit] = useState<number | null>(null); // 可拖曳的卡片 ID
+
+  // 浮動籃子狀態 - 存放待試穿的衣物
+  const [basketItems, setBasketItems] = useState<ClothingItem[]>([]);
 
   // 滾動隱藏功能
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const lastScrollYRef = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastControlsStateRef = useRef(true);
+  const lastToggleTimeRef = useRef(0); // 冷卻計時器
 
-  // 滾動監聽 - 使用 useRef 避免無限循環
+  // 搜尋防抖 (移到 useEffect 之前以避免初始化順序錯誤)
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // 篩選搭配 (移到 useEffect 之前以避免初始化順序錯誤)
+  const filteredOutfits = outfits.filter(outfit => {
+    const matchesFilter = selectedFilter === '全部' || outfit.occasion === selectedFilter;
+    const matchesSearch =
+      debouncedSearchQuery === '' ||
+      outfit.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      outfit.occasion.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      outfit.tags.some(tag => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+    return matchesFilter && matchesSearch;
+  });
+
+  // 滾動監聽 - 只在單品衣櫃模式啟用 collapsing header
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
+    // 整套搭配模式: 強制顯示 header，不監聽滾動
+    if (viewMode === 'outfits') {
+      setIsControlsVisible(true);
+      lastControlsStateRef.current = true;
+      return;
+    }
+
+    const SCROLL_THRESHOLD = 15; // 滾動死區 (px)
+    const HIDE_OFFSET = 80; // 開始隱藏的滾動位置 (px)
+    const TOP_ZONE = 20; // 回到頂部區域 (px)
+    const BOTTOM_ZONE = 30; // 底部保護區域 (px)
+    const COOLDOWN_MS = 300; // 狀態切換冷卻時間 (ms)
+
     const handleScroll = () => {
-      const currentScrollY = container.scrollTop;
-      
-      // 向下滾動且超過 50px → 隱藏控件
-      if (currentScrollY > lastScrollYRef.current && currentScrollY > 50) {
-        setIsControlsVisible(false);
-      } 
-      // 向上滾動 → 顯示控件
-      else if (currentScrollY < lastScrollYRef.current) {
-        setIsControlsVisible(true);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
       }
-      
-      // 使用 ref 儲存位置，不觸發重新渲染
-      lastScrollYRef.current = currentScrollY;
+
+      rafRef.current = requestAnimationFrame(() => {
+        const now = Date.now();
+        const currentScrollY = container.scrollTop;
+        const delta = currentScrollY - lastScrollYRef.current;
+        const maxScroll = container.scrollHeight - container.clientHeight;
+
+        // 冷卻期間內忽略滾動事件
+        if (now - lastToggleTimeRef.current < COOLDOWN_MS) {
+          lastScrollYRef.current = currentScrollY;
+          return;
+        }
+
+        // 回到頂部區域 → 強制顯示
+        if (currentScrollY < TOP_ZONE) {
+          if (!lastControlsStateRef.current) {
+            setIsControlsVisible(true);
+            lastControlsStateRef.current = true;
+            lastToggleTimeRef.current = now;
+          }
+          lastScrollYRef.current = currentScrollY;
+          return;
+        }
+
+        // 底部保護區域 → 忽略滾動事件，避免彈跳抖動
+        if (currentScrollY >= maxScroll - BOTTOM_ZONE) {
+          lastScrollYRef.current = currentScrollY;
+          return;
+        }
+
+        // 超過死區才處理方向判斷
+        if (Math.abs(delta) >= SCROLL_THRESHOLD) {
+          // 向下滾動且超過 HIDE_OFFSET → 隱藏
+          if (delta > 0 && currentScrollY > HIDE_OFFSET) {
+            if (lastControlsStateRef.current) {
+              setIsControlsVisible(false);
+              lastControlsStateRef.current = false;
+              lastToggleTimeRef.current = now;
+            }
+          }
+          // 向上滾動 → 顯示
+          else if (delta < 0) {
+            if (!lastControlsStateRef.current) {
+              setIsControlsVisible(true);
+              lastControlsStateRef.current = true;
+              lastToggleTimeRef.current = now;
+            }
+          }
+          lastScrollYRef.current = currentScrollY;
+        }
+      });
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []); // 空依賴數組，只執行一次
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [viewMode]); // viewMode 變化時重新綁定
+
+  // 內容高度檢查 - 當內容不足以滾動時，強制顯示 Header
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const checkContentHeight = () => {
+      // 如果內容高度 <= 視窗高度 (無法滾動)，強制顯示 Header
+      if (container.scrollHeight <= container.clientHeight + 10) {
+        if (!lastControlsStateRef.current) {
+          setIsControlsVisible(true);
+          lastControlsStateRef.current = true;
+        }
+      }
+    };
+
+    // 初始檢查
+    checkContentHeight();
+
+    // 監聽視窗大小變化
+    window.addEventListener('resize', checkContentHeight);
+
+    // 使用 ResizeObserver 監聽內容變化
+    const resizeObserver = new ResizeObserver(checkContentHeight);
+    resizeObserver.observe(container);
+
+    return () => {
+      window.removeEventListener('resize', checkContentHeight);
+      resizeObserver.disconnect();
+    };
+  }, [viewMode, filteredOutfits.length, layers.length]);
 
   const handleLike = (id: number) => {
     toast.success('已加入最愛 ❤️');
@@ -465,17 +570,11 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
       // 添加到目標層
       return newLayers.map(layer => {
         if (layer.id === targetLayerId) {
-<<<<<<< HEAD
           // Remove sourceLayerId from item before adding
           const { sourceLayerId, ...itemData } = item;
           return {
             ...layer,
             items: [...layer.items, itemData],
-=======
-          return {
-            ...layer,
-            items: [...layer.items, { id: item.id, imageUrl: item.imageUrl, name: item.name, category: item.category }],
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
           };
         }
         return layer;
@@ -546,21 +645,12 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
 
   const handleCameraUpload = () => {
     setIsUploadDialogOpen(false);
-<<<<<<< HEAD
     // 直接觸發相機拍照（移動端會開啟相機，桌面端會開啟檔案選擇）
     cameraInputRef.current?.click();
-=======
-    // 模擬相機上傳
-    toast.success('開啟相機中...');
-    setTimeout(() => {
-      onNavigateToUpload?.();
-    }, 300);
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
   };
 
   const handleGalleryUpload = () => {
     setIsUploadDialogOpen(false);
-<<<<<<< HEAD
     // 直接觸發相簿選擇
     galleryInputRef.current?.click();
   };
@@ -631,17 +721,22 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
   const handleDeleteOutfit = (id: number) => {
     setOutfits(prev => prev.filter(outfit => outfit.id !== id));
     setLongPressOutfit(null);
+    setDraggableOutfit(null); // 同時清除拖曳狀態
     toast('已刪除穿搭');
   };
   
-  // 處理長按開始
+  // 處理長按開始 - 顯示刪除按鈕並啟用拖曳
   const handleLongPressStart = (id: number) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
     }
+
+    // 長按 800ms 顯示刪除按鈕並啟用拖曳
     longPressTimerRef.current = setTimeout(() => {
       setLongPressOutfit(id);
-    }, 500); // 500ms 觸發長按
+      setDraggableOutfit(id); // 啟用拖曳
+      toast('長按拖曳排序，點擊 X 刪除', { duration: 1500 });
+    }, 800);
   };
   
   // 處理長按結束
@@ -649,6 +744,19 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
     }
+  };
+  
+  // 處理拖曳開始
+  const handleDragStart = (id: number) => {
+    setDraggableOutfit(id);
+  };
+  
+  // 處理拖曳結束 - 自動關閉拖曳模式和刪除按鈕
+  const handleDragEnd = () => {
+    setTimeout(() => {
+      setDraggableOutfit(null);
+      setLongPressOutfit(null);
+    }, 300);
   };
   
   // 處理穿搭順序更新
@@ -692,20 +800,6 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
     setSearchQuery('');
   };
 
-  // 使用 debounce 優化搜尋效能
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
-
-  // 篩選搭配
-  const filteredOutfits = outfits.filter(outfit => {
-    const matchesFilter = selectedFilter === '全部' || outfit.occasion === selectedFilter;
-    const matchesSearch =
-      debouncedSearchQuery === '' ||
-      outfit.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      outfit.occasion.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      outfit.tags.some(tag => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
-    return matchesFilter && matchesSearch;
-  });
-
   // 將 mockSavedOutfits 轉換為 carousel 格式
   const carouselOutfits = mockSavedOutfits.map(outfit => ({
     ...outfit,
@@ -715,49 +809,163 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
     description: `這是我最喜歡的 ${outfit.name} 穿搭風格，適合日常休閒場合。`,
   }));
 
-  return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="h-screen flex flex-col bg-[var(--vesti-background)] overflow-hidden">
-        {/* Header */}
-        <div className="flex-shrink-0 bg-[var(--vesti-background)]/95 backdrop-blur-sm">
-          {/* 標題列 - 永遠可見 */}
-=======
-    // 模擬相簿選擇
-    toast.success('開啟相簿中...');
-    setTimeout(() => {
-      onNavigateToUpload?.();
-    }, 300);
+  // 籃子功能處理
+  const handleAddToBasket = (item: ClothingItem) => {
+    // 檢查是否已存在於籃子中
+    const exists = basketItems.find(i => i.id === item.id);
+    if (exists) {
+      toast('此單品已在試穿籃中');
+      return;
+    }
+    
+    setBasketItems(prev => [...prev, item]);
+    toast.success(`已加入「${item.name}」到試穿籃`);
   };
 
+  const handleRemoveFromBasket = (id: number) => {
+    setBasketItems(prev => prev.filter(item => item.id !== id));
+    toast('已從試穿籃移除');
+  };
+
+  const handleNavigateToTryOnWithBasket = () => {
+    if (basketItems.length === 0) return;
+
+    // 傳遞籃子中的衣物到試穿頁面
+    toast.success(`準備試穿 ${basketItems.length} 件單品！`);
+    // 調用回調並傳遞籃子數據
+    onNavigateToTryOn?.(basketItems);
+  };
+
+  // 渲染搭配卡片內容 (供正常模式和拖曳模式共用)
+  const renderOutfitCardContent = (outfit: typeof outfits[0], showDeleteButton: boolean) => (
+    <div onClick={() => !showDeleteButton && handleOutfitCardClick(outfit)}>
+      {/* 圖片區域 */}
+      <div className="relative aspect-[4/5] overflow-hidden">
+        <ImageWithFallback
+          src={outfit.imageUrl}
+          alt={outfit.name}
+          className="w-full h-full object-cover"
+        />
+
+        {/* 漸層保護層 */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+
+        {/* 場合標籤 */}
+        <div className="absolute top-2 left-2 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm">
+          <span
+            className="text-[var(--vesti-dark)]"
+            style={{ fontSize: 'var(--text-label)' }}
+          >
+            {outfit.occasion}
+          </span>
+        </div>
+
+        {/* 收藏按鈕 */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleFavorite(outfit.id);
+          }}
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
+        >
+          <Heart
+            className={`w-4 h-4 transition-all ${
+              outfit.isFavorite
+                ? 'fill-[var(--vesti-accent)] text-[var(--vesti-accent)]'
+                : 'text-[var(--vesti-dark)]'
+            }`}
+            strokeWidth={2}
+          />
+        </motion.button>
+
+        {/* 長按顯示刪除按鈕 */}
+        <AnimatePresence>
+          {showDeleteButton && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteOutfit(outfit.id);
+              }}
+              className="absolute top-2 right-12 w-8 h-8 rounded-full bg-[var(--vesti-accent)] text-white flex items-center justify-center shadow-lg hover:brightness-110 transition-all"
+              whileTap={{ scale: 0.9 }}
+            >
+              <X className="w-4 h-4" strokeWidth={2.5} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* 資訊區域 */}
+      <div className="p-3">
+        <h3
+          className="text-[var(--vesti-dark)] mb-1 line-clamp-1"
+          style={{ fontSize: 'var(--text-h4)' }}
+        >
+          {outfit.name}
+        </h3>
+        <p
+          className="text-[var(--vesti-text-secondary)]"
+          style={{ fontSize: 'var(--text-label)', fontWeight: 400 }}
+        >
+          {outfit.date} · {outfit.itemCount}件單品
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
+      <div className="h-screen flex flex-col bg-[var(--vesti-background)]">
         {/* Header */}
-        <div className="sticky top-0 z-30 bg-[var(--vesti-background)]/95 backdrop-blur-sm">
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
-          <div className="flex h-16 items-center px-5">
+        <div className="flex-shrink-0 bg-[var(--vesti-background)]/95 backdrop-blur-sm relative z-30">
+          {/* 標題列 - 永遠可見，點擊可恢復 Header */}
+          <div
+            className="flex h-16 items-center px-5 cursor-pointer"
+            onClick={() => {
+              if (!isControlsVisible) {
+                setIsControlsVisible(true);
+                lastControlsStateRef.current = true;
+                lastToggleTimeRef.current = Date.now();
+              }
+            }}
+          >
             <h1 className="tracking-widest text-[var(--vesti-primary)]">衣櫃</h1>
+            {/* Header 收起時顯示展開提示 */}
+            {!isControlsVisible && (
+              <span className="ml-2 text-xs text-[var(--vesti-gray-mid)]">點擊展開 ▼</span>
+            )}
           </div>
 
-<<<<<<< HEAD
           {/* 可隱藏的控制區域 */}
           <motion.div
+            initial={false}
             animate={{
-              maxHeight: isControlsVisible ? 500 : 0,
+              height: isControlsVisible ? 'auto' : 0,
               opacity: isControlsVisible ? 1 : 0,
             }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            transition={{
+              duration: 0.25,
+              ease: 'easeOut',
+            }}
             className="overflow-hidden"
-            style={{ willChange: 'max-height, opacity' }}
-          >
-            {/* 視圖模式切換 */}
+            style={{
+              pointerEvents: isControlsVisible ? 'auto' : 'none',
+            }}
+          >            {/* 視圖模式切換 */}
             <div className="flex gap-3 bg-white/95 px-5 py-2 backdrop-blur-sm">
               <motion.button
                 onClick={() => {
                   setViewMode('items');
                   setIsControlsVisible(true);
+                  lastControlsStateRef.current = true; // 重置狀態
                   if (scrollContainerRef.current) {
                     scrollContainerRef.current.scrollTop = 0;
+                    lastScrollYRef.current = 0;
                   }
                 }}
                 whileTap={{ scale: 0.95 }}
@@ -776,8 +984,10 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
                 onClick={() => {
                   setViewMode('outfits');
                   setIsControlsVisible(true);
+                  lastControlsStateRef.current = true; // 重置狀態
                   if (scrollContainerRef.current) {
                     scrollContainerRef.current.scrollTop = 0;
+                    lastScrollYRef.current = 0;
                   }
                 }}
                 whileTap={{ scale: 0.95 }}
@@ -948,50 +1158,15 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
         {/* 可滾動內容區域 */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto pb-20"
+          className="flex-1 min-h-0 overflow-y-auto pb-20"
           style={{ overscrollBehavior: 'contain' }}
-=======
-          {/* 視圖模式切換 */}
-          <div className="mb-4 flex gap-3 px-5">
-            <motion.button
-              onClick={() => setViewMode('items')}
-              whileTap={{ scale: 0.95 }}
-              className={`flex flex-1 items-center justify-center rounded-xl border-2 py-2.5 transition-all ${
-                viewMode === 'items'
-                  ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)] text-white shadow-md'
-                  : 'border-border bg-card text-[var(--vesti-gray-mid)] hover:border-[var(--vesti-primary)]/30'
-              }`}
-            >
-              <span style={{ fontWeight: viewMode === 'items' ? 600 : 400 }}>
-                單品衣櫃
-              </span>
-            </motion.button>
-
-            <motion.button
-              onClick={() => setViewMode('outfits')}
-              whileTap={{ scale: 0.95 }}
-              className={`flex flex-1 items-center justify-center rounded-xl border-2 py-2.5 transition-all ${
-                viewMode === 'outfits'
-                  ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)] text-white shadow-md'
-                  : 'border-border bg-card text-[var(--vesti-gray-mid)] hover:border-[var(--vesti-primary)]/30'
-              }`}
-            >
-              <span style={{ fontWeight: viewMode === 'outfits' ? 600 : 400 }}>
-                整套搭配
-              </span>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* 內容區域 */}
-        <motion.div
-          key={viewMode}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="px-0 pt-4"
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
+          onClick={() => {
+            // 點擊空白處清除長按狀態
+            if (longPressOutfit || draggableOutfit) {
+              setLongPressOutfit(null);
+              setDraggableOutfit(null);
+            }
+          }}
         >
           {viewMode === 'items' ? (
             <>
@@ -1029,7 +1204,6 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
               </div>
             </>
           ) : (
-<<<<<<< HEAD
             <>
               {/* 我的搭配標題與按鈕 */}
               <div className="px-5 mb-4 flex items-center justify-between">
@@ -1046,120 +1220,63 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
                 </div>
               </div>
 
-              {/* 搭配卡片網格 - 使用 BroadcastPage 設計 */}
+              {/* 搭配卡片網格 - 條件渲染: 正常模式 vs 拖曳模式 */}
               {filteredOutfits.length > 0 ? (
-                <Reorder.Group
-                  axis="y"
-                  values={filteredOutfits}
-                  onReorder={handleReorderOutfits}
-                  className="grid grid-cols-2 gap-3 px-4 pb-6"
-                >
-                  <AnimatePresence mode="popLayout">
+                draggableOutfit !== null ? (
+                  // 拖曳模式: 使用 Reorder.Group 啟用排序
+                  <Reorder.Group
+                    axis="y"
+                    values={filteredOutfits}
+                    onReorder={handleReorderOutfits}
+                    className="grid grid-cols-2 gap-3 px-4 pb-6"
+                  >
                     {filteredOutfits.map((outfit, index) => {
                       const showDeleteButton = longPressOutfit === outfit.id;
-                      
                       return (
                         <Reorder.Item
                           key={outfit.id}
                           value={outfit}
                           drag
-                          dragListener={!showDeleteButton} // 當顯示刪除按鈕時禁用拖曳
-                          initial={{ opacity: 0, scale: 0.9 }}
+                          dragListener
+                          initial={{ opacity: 1, scale: 1 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ duration: 0.2, delay: index * 0.05 }}
-                          whileDrag={{ scale: 1.05, zIndex: 10 }}
-                          className="bg-[var(--vesti-background)] rounded-[16px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-shadow duration-200 cursor-pointer"
-                          onTouchStart={() => handleLongPressStart(outfit.id)}
-                          onTouchEnd={handleLongPressEnd}
-                          onTouchMove={handleLongPressEnd}
-                          onMouseDown={() => handleLongPressStart(outfit.id)}
-                          onMouseUp={handleLongPressEnd}
-                          onMouseLeave={handleLongPressEnd}
+                          whileDrag={{ scale: 1.05, zIndex: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
+                          onDragEnd={handleDragEnd}
+                          className="bg-[var(--vesti-background)] rounded-[16px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-shadow duration-200 cursor-grab active:cursor-grabbing"
                         >
-                          <div onClick={() => !showDeleteButton && handleOutfitCardClick(outfit)}>
-                            {/* 圖片區域 */}
-                            <div className="relative aspect-[4/5] overflow-hidden">
-                              <ImageWithFallback
-                                src={outfit.imageUrl}
-                                alt={outfit.name}
-                                className="w-full h-full object-cover"
-                              />
-                              
-                              {/* 漸層保護層 */}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                              
-                              {/* 場合標籤 */}
-                              <div className="absolute top-2 left-2 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm">
-                                <span
-                                  className="text-[var(--vesti-dark)]"
-                                  style={{ fontSize: 'var(--text-label)' }}
-                                >
-                                  {outfit.occasion}
-                                </span>
-                              </div>
-
-                              {/* 收藏按鈕 */}
-                              <motion.button
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleFavorite(outfit.id);
-                                }}
-                                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
-                              >
-                                <Heart
-                                  className={`w-4 h-4 transition-all ${
-                                    outfit.isFavorite
-                                      ? 'fill-[var(--vesti-accent)] text-[var(--vesti-accent)]'
-                                      : 'text-[var(--vesti-dark)]'
-                                  }`}
-                                  strokeWidth={2}
-                                />
-                              </motion.button>
-                              
-                              {/* 長按顯示刪除按鈕 */}
-                              <AnimatePresence>
-                                {showDeleteButton && (
-                                  <motion.button
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0, opacity: 0 }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteOutfit(outfit.id);
-                                    }}
-                                    className="absolute top-2 right-12 w-8 h-8 rounded-full bg-[var(--vesti-accent)] text-white flex items-center justify-center shadow-lg hover:brightness-110 transition-all"
-                                    whileTap={{ scale: 0.9 }}
-                                  >
-                                    <X className="w-4 h-4" strokeWidth={2.5} />
-                                  </motion.button>
-                                )}
-                              </AnimatePresence>
-                            </div>
-
-                            {/* 資訊區域 */}
-                            <div className="p-3">
-                              <h3
-                                className="text-[var(--vesti-dark)] mb-1 line-clamp-1"
-                                style={{ fontSize: 'var(--text-h4)' }}
-                              >
-                                {outfit.name}
-                              </h3>
-                              <p
-                                className="text-[var(--vesti-text-secondary)]"
-                                style={{ fontSize: 'var(--text-label)', fontWeight: 400 }}
-                              >
-                                {outfit.date} · {outfit.itemCount}件單品
-                              </p>
-                            </div>
-                          </div>
+                          {renderOutfitCardContent(outfit, showDeleteButton)}
                         </Reorder.Item>
                       );
                     })}
-                  </AnimatePresence>
-                </Reorder.Group>
+                  </Reorder.Group>
+                ) : (
+                  // 正常模式: 使用普通 div，不干擾滾動
+                  <div className="grid grid-cols-2 gap-3 px-4 pb-6">
+                    <AnimatePresence mode="popLayout">
+                      {filteredOutfits.map((outfit, index) => {
+                        const showDeleteButton = longPressOutfit === outfit.id;
+                        return (
+                          <motion.div
+                            key={outfit.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.2, delay: index * 0.05 }}
+                            className="bg-[var(--vesti-background)] rounded-[16px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-shadow duration-200 cursor-pointer"
+                            onTouchStart={() => handleLongPressStart(outfit.id)}
+                            onTouchEnd={handleLongPressEnd}
+                            onTouchMove={handleLongPressEnd}
+                            onMouseDown={() => handleLongPressStart(outfit.id)}
+                            onMouseUp={handleLongPressEnd}
+                            onMouseLeave={handleLongPressEnd}
+                          >
+                            {renderOutfitCardContent(outfit, showDeleteButton)}
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
+                )
               ) : (
                 /* 空狀態 */
                 <EmptyState
@@ -1173,21 +1290,6 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
             </>
           )}
         </div>
-=======
-            <div className="flex min-h-[60vh] items-center justify-center px-5">
-              <div className="text-center">
-                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--vesti-secondary)] mx-auto">
-                  <Plus className="h-10 w-10 text-[var(--vesti-gray-mid)]" strokeWidth={1.5} />
-                </div>
-                <h3 className="mb-2 text-[var(--vesti-dark)]">整套搭配功能</h3>
-                <p className="text-sm text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
-                  從單品衣櫃中選擇搭配，創建您的完整造型
-                </p>
-              </div>
-            </div>
-          )}
-        </motion.div>
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
         {/* 創建/編輯層對話框 */}
         <CreateLayerDialog
@@ -1199,7 +1301,6 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
           onConfirm={handleCreateLayer}
           editingLayer={editingLayer}
         />
-<<<<<<< HEAD
         
         {/* 創建分類對話框 */}
         <CreateCategoryDialog
@@ -1207,8 +1308,6 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
           onClose={() => setIsCategoryDialogOpen(false)}
           onConfirm={handleCreateCategory}
         />
-=======
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2
 
         {/* 衣物詳細資訊彈窗 */}
         {selectedItem && (
@@ -1219,6 +1318,7 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
             onEdit={handleEditItem}
             onCreateOutfit={handleCreateOutfit}
             onShare={handleShareItem}
+            onAddToBasket={handleAddToBasket}
           />
         )}
 
@@ -1229,7 +1329,6 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
           onSelectCamera={handleCameraUpload}
           onSelectGallery={handleGalleryUpload}
         />
-<<<<<<< HEAD
 
         {/* 搭配詳細視窗 */}
         <AnimatePresence>
@@ -1258,13 +1357,15 @@ export function WardrobePage({ onNavigateToUpload }: WardrobePageProps = {} as W
           onChange={handleFileSelect}
           className="hidden"
         />
+        
+        {/* 浮動購物車 */}
+        <FloatingBasket
+          items={basketItems}
+          onRemoveItem={handleRemoveFromBasket}
+          onNavigateToTryOn={handleNavigateToTryOnWithBasket}
+          onAddItem={handleAddToBasket}
+        />
       </div>
     </DndProvider>
   );
 }
-=======
-      </div>
-    </DndProvider>
-  );
-}
->>>>>>> de3ed00c33a5d0df6cf810802fd173e4ca4388a2

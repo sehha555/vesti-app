@@ -1,13 +1,8 @@
 import axios from 'axios';
 import pRetry from 'p-retry';
-import NodeCache from 'node-cache';
 import { Weather, Location } from './weather.types';
 
-// 從環境變數讀取快取 TTL
-const cacheTtl = process.env.WEATHER_CACHE_TTL ? parseInt(process.env.WEATHER_CACHE_TTL, 10) : 1800;
-
-// 初始化快取
-const weatherCache = new NodeCache({ stdTTL: cacheTtl });
+// 注意: 快取已移至 services/weather/index.ts 的系統級快取
 
 /**
  * 取得預設天氣資訊
@@ -30,9 +25,9 @@ const getDefaultWeather = (): Weather => ({
  * @returns {Promise<Weather>} 天氣資訊物件
  */
 export const getCurrentWeather = async (location: Location): Promise<Weather> => {
-  const apiKey = process.env.WEATHER_API_KEY;
+  const apiKey = process.env.OPENWEATHER_API_KEY;
   if (!apiKey) {
-    console.error('WEATHER_API_KEY is not set. Returning default weather.');
+    console.error('OPENWEATHER_API_KEY is not set. Returning default weather.');
     return getDefaultWeather();
   }
 
@@ -42,15 +37,10 @@ export const getCurrentWeather = async (location: Location): Promise<Weather> =>
   }
 
   const { lat, lon } = location;
-  const cacheKey = `weather:${lat}:${lon}`;
+  const latFixed = lat.toFixed(4);
+  const lonFixed = lon.toFixed(4);
 
-  // 嘗試從快取中取得天氣資訊
-  const cachedWeather = weatherCache.get<Weather>(cacheKey);
-  if (cachedWeather) {
-    return cachedWeather;
-  }
-
-  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latFixed}&lon=${lonFixed}&appid=${apiKey}&units=metric&lang=zh_tw`;
 
   const fetchWeather = async () => {
     const response = await axios.get(url, { timeout: 5000 });
@@ -67,8 +57,6 @@ export const getCurrentWeather = async (location: Location): Promise<Weather> =>
       timestamp: new Date(data.dt * 1000),
     };
 
-    // 將天氣資訊存入快取
-    weatherCache.set(cacheKey, weather);
     return weather;
   };
 

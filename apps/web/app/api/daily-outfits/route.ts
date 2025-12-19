@@ -65,10 +65,9 @@ export async function GET(request: NextRequest) {
 
     const wardrobeService = await wardrobeServicePromise;
 
-    // Adapter to map the Location type from the service ({lat, lon}) 
-    // to the one expected by the mock getWeather function ({latitude, longitude}).
-    const weatherAdapter = (location: Location) => 
-      getWeather({ latitude: location.lat, longitude: location.lon });
+    // Adapter: getWeather 已期望 Location 型別 { lat, lon }，直接傳遞
+    const weatherAdapter = (location: Location) =>
+      getWeather(location);
 
     const service = new DailyOutfitsService(wardrobeService, weatherAdapter);
 
@@ -78,7 +77,11 @@ export async function GET(request: NextRequest) {
       occasion as Occasion
     );
 
-    return NextResponse.json(outfits);
+    // 獲取天氣資料
+    const weather = await weatherAdapter({ lat: latNum, lon: lonNum });
+
+    // 返回包含 outfits 和 weather 的物件
+    return NextResponse.json({ outfits, weather });
   } catch (error) {
     console.error('Error generating daily outfits:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

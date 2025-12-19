@@ -1,74 +1,157 @@
-
 /**
- * @fileoverview This file contains the weather service implementation.
- * Currently, it uses mock data for weather information.
- * It is intended to be replaced with a real weather API implementation in the future.
+ * @fileoverview Weather Service Manager
+ * 提供天氣資料查詢、快取管理、體感溫度計算
  */
 
-import { WeatherSummary } from '../../packages/types/src/weather';
+import { getCurrentWeather } from './weather.service';
+import { getLocationName } from './geo.service';
+import { Weather } from './weather.types';
+import type { Location } from './weather.types';
+import type { WeatherSummary } from '../../packages/types/src/weather';
 
-/**
- * Represents the geographic location.
- */
-export interface Location {
-  latitude: number;
-  longitude: number;
+// 導出 Location 型別
+export type { Location } from './weather.types';
+
+/** 快取項目結構 */
+interface CacheEntry {
+  weather: WeatherSummary;
+  timestamp: number;
 }
 
-/**
- * Generates a random number within a specified range.
- * @param min - The minimum value.
- * @param max - The maximum value.
- * @returns A random number between min and max.
- */
-const getRandom = (min: number, max: number): number => {
-  return Math.random() * (max - min) + min;
+/** 天氣條件對應表 */
+const CONDITION_MAP: Record<string, WeatherSummary['condition']> = {
+  clear: 'sunny',
+  rain: 'rainy',
+  clouds: 'cloudy',
+  snow: 'snowy',
+  drizzle: 'rainy',
 };
 
 /**
- * Fetches weather information for a given location.
- * 
- * This is currently a mock implementation that generates weather data based on latitude.
- * TODO: Replace this with a call to a real weather API like OpenWeatherMap.
- * 
- * @param location - The latitude and longitude for which to get the weather.
- * @returns A promise that resolves to a standard WeatherSummary object.
+ * 天氣服務管理器
+ * - 系統級快取 (30分鐘，同地區共享)
+ * - 體感溫度計算
+ * - 天氣資料轉換
  */
-export const getWeather = async (location: Location): Promise<WeatherSummary> => {
-  const { latitude } = location;
-  const absLat = Math.abs(latitude);
+class WeatherServiceManager {
+  // 靜態快取 (模組級，所有請求共享)
+  private static readonly CACHE_DURATION = 30 * 60 * 1000; // 30 分鐘
+  private static cache = new Map<string, CacheEntry>();
 
-  let temperature: number;
+  // ============================================
+  // 快取管理
+  // ============================================
 
-  // Simulate temperature based on latitude bands
-  if (absLat <= 23) { // Tropical
-    temperature = getRandom(25, 32);
-  } else if (absLat <= 35) { // Subtropical
-    temperature = getRandom(18, 28);
-  } else if (absLat <= 50) { // Temperate
-    temperature = getRandom(10, 20);
-  } else { // Frigid/Polar
-    temperature = getRandom(-5, 10);
+  /** 生成快取鍵 (座標精度 2 位小數，約 1km 範圍共享) */
+  private getCacheKey(lat: number, lon: number): string {
+    return `${lat.toFixed(2)},${lon.toFixed(2)}`;
   }
 
-  const conditions: Array<'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'windy'> = 
-     ['sunny', 'cloudy', 'rainy', 'snowy', 'windy'];
-  let condition = conditions[Math.floor(Math.random() * conditions.length)];
-
-  // It shouldn't be snowy in hot weather or rainy in freezing weather
-  if (temperature > 15 && condition === 'snowy') {
-      condition = 'rainy';
-  }
-  if (temperature < 0 && condition === 'rainy') {
-      condition = 'snowy';
+  /** 檢查快取是否有效 */
+  private isCacheValid(entry: CacheEntry): boolean {
+    return Date.now() - entry.timestamp < WeatherServiceManager.CACHE_DURATION;
   }
 
-  const windSpeed = getRandom(0, 10);
+  /** 格式化快取年齡 */
+  private formatCacheAge(timestamp: number): string {
+    const ageMs = Date.now() - timestamp;
+    const minutes = Math.floor(ageMs / 60000);
+    const seconds = Math.floor((ageMs % 60000) / 1000);
+    return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+  }
 
-  // Return a mock WeatherSummary object compliant with the standard type
-  return {
-    temperature: Math.round(temperature),
-    condition,
-    windSpeed: Math.round(windSpeed),
-  };
+  // ============================================
+  // 資料處理
+  // ============================================
+
+  /**
+   * 計算水氣壓 (hPa)
+   * Magnus 公式: e = (humidity/100) × 6.105 × exp(17.27 × temp / (237.7 + temp))
+   */
+  private calculateVaporPressure(temperature: number, humidity: number): number {
+    return (humidity / 100) * 6.105 * Math.exp((17.27 * temperature) / (237.7 + temperature));
+  }
+
+  /**
+   * 計算體感溫度
+   * 公式: (1.04 × 溫度) + (0.2 × 水氣壓) - (0.65 × 風速) - 2.7
+   */
+  private calculateFeelsLike(temperature: number, humidity: number, windSpeed: number): number {
+    const vaporPressure = this.calculateVaporPressure(temperature, humidity);
+    const feelsLike = 1.04 * temperature + 0.2 * vaporPressure - 0.65 * windSpeed - 2.7;
+    return Math.round(feelsLike * 10) / 10;
+  }
+
+  /** 將 Weather 轉換為 WeatherSummary */
+  private weatherToSummary(weather: Weather): Omit<WeatherSummary, 'locationName'> {
+    const condition = CONDITION_MAP[weather.condition] || 'cloudy';
+    const windSpeedKmh = Math.round(weather.windSpeed * 3.6 * 10) / 10;
+    const feelsLike = this.calculateFeelsLike(weather.temperature, weather.humidity, weather.windSpeed);
+
+    return {
+      temperature: weather.temperature,
+      feelsLike,
+      humidity: weather.humidity,
+      condition,
+      windSpeed: windSpeedKmh,
+    };
+  }
+
+  // ============================================
+  // 公開方法
+  // ============================================
+
+  /**
+   * 取得天氣資訊
+   * - 使用系統級快取 (30分鐘)
+   * - 並行獲取天氣和地區名稱
+   * - 自動計算體感溫度
+   */
+  public async getWeather(location: Location): Promise<WeatherSummary> {
+    const cacheKey = this.getCacheKey(location.lat, location.lon);
+
+    // 1. 檢查快取
+    const cached = WeatherServiceManager.cache.get(cacheKey);
+    if (cached && this.isCacheValid(cached)) {
+      console.log(`[Cache] Hit: ${cacheKey} (${this.formatCacheAge(cached.timestamp)})`);
+      return cached.weather;
+    }
+
+    // 2. 快取過期，刪除舊資料
+    if (cached) {
+      console.log(`[Cache] Expired: ${cacheKey}`);
+      WeatherServiceManager.cache.delete(cacheKey);
+    }
+
+    // 3. 呼叫 API
+    console.log(`[API] Fetching weather: ${cacheKey}`);
+
+    const [weather, locationName] = await Promise.all([
+      getCurrentWeather(location),
+      getLocationName(location),
+    ]);
+
+    // 4. 組合結果
+    const result: WeatherSummary = {
+      ...this.weatherToSummary(weather),
+      locationName,
+    };
+
+    // 5. 存入快取
+    WeatherServiceManager.cache.set(cacheKey, {
+      weather: result,
+      timestamp: Date.now(),
+    });
+    console.log(`[Cache] Saved: ${cacheKey}`);
+
+    return result;
+  }
+}
+
+// Singleton 實例
+export const weatherService = new WeatherServiceManager();
+
+// 相容性導出 (保持現有 API 不變)
+export const getWeather = (location: Location): Promise<WeatherSummary> => {
+  return weatherService.getWeather(location);
 };
