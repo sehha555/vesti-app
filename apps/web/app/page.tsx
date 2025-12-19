@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Bell, ShoppingCart } from 'lucide-react';
+import type { WeatherSummary } from '@/packages/types/src/weather';
 
 // --- Import all required components from './components/figma/*' ---
 import { LoginPage } from './components/figma/LoginPage';
@@ -104,7 +105,8 @@ export default function Page() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
   const [selectedDeliveryMerchant, setSelectedDeliveryMerchant] = useState<string>('');
-  
+  const [weatherData, setWeatherData] = useState<WeatherSummary | undefined>();
+
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
   const [savedCards, setSavedCards] = useState<PaymentCard[]>([]);
@@ -113,6 +115,54 @@ export default function Page() {
 
   // --- Hooks ---
   useScrollMemory(currentPage);
+
+  // 獲取真實天氣資料 (使用瀏覽器定位)
+  useEffect(() => {
+    const fetchWithCoords = async (latitude: number, longitude: number) => {
+      try {
+        const params = new URLSearchParams({
+          userId: 'default-user',
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          occasion: 'casual'
+        });
+
+        const response = await fetch(`/api/daily-outfits?${params}`);
+        const data = await response.json();
+
+        if (data.weather) {
+          setWeatherData(data.weather);
+        }
+      } catch (error) {
+        console.error('[WeatherCard] Failed to fetch weather data:', error);
+      }
+    };
+
+    const fetchWithDefaultLocation = () => {
+      fetchWithCoords(25.033, 121.565);
+    };
+
+    // 優先使用瀏覽器定位
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetchWithCoords(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn('[WeatherCard] 定位失敗，使用預設座標:', error.message);
+          fetchWithDefaultLocation();
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 300000
+        }
+      );
+    } else {
+      console.warn('[WeatherCard] 瀏覽器不支援定位');
+      fetchWithDefaultLocation();
+    }
+  }, []);
 
   // --- Core Functions ---
   const navigateTo = (newPage: PageType) => {
@@ -178,7 +228,7 @@ export default function Page() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <WeatherCard />
+            <WeatherCard weather={weatherData} />
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
             <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
             <div className="mb-16"><StackedCards outfits={outfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} /></div>

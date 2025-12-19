@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import './styles/vesti/globals.css';
 import './styles/vesti-index.css'
 
 export const metadata: Metadata = {
