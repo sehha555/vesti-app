@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"(Get-Content ''C:\\Users\\User\\Desktop\\VestiUI\\src\\index.css'' | Measure-Object -Line).Lines\")",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\check-css.ps1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\cleanup.ps1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\check-layout.ps1\")",
+      "Bash(npm run dev:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\cleanup-conflicts.ps1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\fix-encoding.ps1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\batch-copy.ps1\")"
+    ]
+  }
+}
