@@ -106,6 +106,7 @@ export default function Page() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
   const [selectedDeliveryMerchant, setSelectedDeliveryMerchant] = useState<string>('');
   const [weatherData, setWeatherData] = useState<WeatherSummary | undefined>();
+  const [dailyOutfits, setDailyOutfits] = useState<Outfit[]>([]);
 
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
@@ -121,7 +122,7 @@ export default function Page() {
     const fetchWithCoords = async (latitude: number, longitude: number) => {
       try {
         const params = new URLSearchParams({
-          userId: 'default-user',
+          userId: 'user-1760785862304',
           latitude: latitude.toString(),
           longitude: longitude.toString(),
           occasion: 'casual'
@@ -132,6 +133,17 @@ export default function Page() {
 
         if (data.weather) {
           setWeatherData(data.weather);
+        }
+
+        if (data.outfits && Array.isArray(data.outfits) && data.outfits.length > 0) {
+          const mapped = data.outfits.map((outfit: any, index: number) => ({
+            id: index + 1,
+            imageUrl: outfit.top?.imageUrl || outfit.bottom?.imageUrl || outfit.shoes?.imageUrl || '',
+            styleName: '每日推薦穿搭',
+            description: [outfit.top?.name, outfit.bottom?.name, outfit.shoes?.name].filter(Boolean).join(' ・ ')
+          }));
+          setDailyOutfits(mapped);
+          console.log('[Home] dailyOutfits from API:', mapped);
         }
       } catch (error) {
         console.error('[WeatherCard] Failed to fetch weather data:', error);
@@ -231,7 +243,7 @@ export default function Page() {
             <WeatherCard weather={weatherData} />
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
             <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
-            <div className="mb-16"><StackedCards outfits={outfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} /></div>
+            <div className="mb-16"><StackedCards outfits={dailyOutfits.length > 0 ? dailyOutfits : outfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} /></div>
             <WardrobeUtilization />
             <CPWRanking onNavigateToFullRanking={() => navigateTo('cpwranking')} />
             <EstimatedDelivery onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} />
