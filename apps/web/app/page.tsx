@@ -37,11 +37,28 @@ import { NotificationPage } from './components/figma/NotificationPage';
 import { PaymentMethodsPage } from './components/figma/PaymentMethodsPage';
 
 // --- Types and Mock Data ---
+interface OutfitItem {
+  id?: string;
+  name?: string;
+  imageUrl?: string;
+  category?: string;
+  color?: string;
+  brand?: string;
+  [key: string]: any; // 允許其他屬性
+}
+
 interface Outfit {
   id: number;
   imageUrl: string;
   styleName: string;
   description: string;
+  items?: {
+    top?: OutfitItem;           // 上衣/內層
+    outerwear?: OutfitItem;     // 外套/外層 (預留)
+    bottom?: OutfitItem;        // 下身
+    shoes?: OutfitItem;         // 鞋子
+    accessories?: OutfitItem;   // 配件 (預留)
+  };
 }
 
 interface PaymentCard {
@@ -136,11 +153,22 @@ export default function Page() {
         }
 
         if (data.outfits && Array.isArray(data.outfits) && data.outfits.length > 0) {
-          const mapped = data.outfits.map((outfit: any, index: number) => ({
+          const mapped: Outfit[] = data.outfits.map((outfit: any, index: number) => ({
             id: index + 1,
             imageUrl: outfit.top?.imageUrl || outfit.bottom?.imageUrl || outfit.shoes?.imageUrl || '',
             styleName: '每日推薦穿搭',
-            description: [outfit.top?.name, outfit.bottom?.name, outfit.shoes?.name].filter(Boolean).join(' ・ ')
+            description: [
+              outfit.top?.name,
+              outfit.bottom?.name,
+              outfit.shoes?.name
+            ].filter(Boolean).join(' ・ '),
+            // 完整單品資料 (為未來 IG 風格 UI 與試穿功能預留)
+            items: {
+              top: outfit.top,
+              bottom: outfit.bottom,
+              shoes: outfit.shoes
+              // outerwear 和 accessories 目前 API 沒給，先不填
+            }
           }));
           setDailyOutfits(mapped);
           console.log('[Home] dailyOutfits from API:', mapped);
