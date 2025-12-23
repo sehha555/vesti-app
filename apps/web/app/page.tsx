@@ -37,11 +37,35 @@ import { NotificationPage } from './components/figma/NotificationPage';
 import { PaymentMethodsPage } from './components/figma/PaymentMethodsPage';
 
 // --- Types and Mock Data ---
+interface OutfitItem {
+  id?: string;
+  name?: string;
+  imageUrl?: string;
+  category?: string;
+  color?: string;
+  brand?: string;
+  [key: string]: any; // 允許其他屬性
+}
+
+interface LayoutSlot {
+  slotKey: string;
+  item: OutfitItem;
+  priority: number;
+}
+
 interface Outfit {
   id: number;
   imageUrl: string;
   styleName: string;
   description: string;
+  items?: {
+    top?: OutfitItem;           // 上衣/內層
+    outerwear?: OutfitItem;     // 外套/外層 (預留)
+    bottom?: OutfitItem;        // 下身
+    shoes?: OutfitItem;         // 鞋子
+    accessories?: OutfitItem;   // 配件 (預留)
+  };
+  layoutSlots?: LayoutSlot[];   // 白板結構：人體結構分槽
 }
 
 interface PaymentCard {
@@ -117,6 +141,33 @@ export default function Page() {
   // --- Hooks ---
   useScrollMemory(currentPage);
 
+  // 輔助函數：將單品資料映射到白板槽位
+  const createLayoutSlots = (items: any): LayoutSlot[] => {
+    const slots: LayoutSlot[] = [];
+    let priority = 1;
+
+    // 槽位定義：slotKey → items字段 的映射
+    const slotMappings = [
+      { slotKey: 'top_inner', itemKey: 'top', priority: 1 },
+      { slotKey: 'top_outer', itemKey: 'outerwear', priority: 2 },
+      { slotKey: 'bottom', itemKey: 'bottom', priority: 3 },
+      { slotKey: 'shoes', itemKey: 'shoes', priority: 4 },
+      { slotKey: 'accessory', itemKey: 'accessories', priority: 5 }
+    ];
+
+    slotMappings.forEach(mapping => {
+      if (items[mapping.itemKey]) {
+        slots.push({
+          slotKey: mapping.slotKey,
+          item: items[mapping.itemKey],
+          priority: mapping.priority
+        });
+      }
+    });
+
+    return slots;
+  };
+
   // 獲取真實天氣資料 (使用瀏覽器定位)
   useEffect(() => {
     const fetchWithCoords = async (latitude: number, longitude: number) => {
@@ -136,12 +187,40 @@ export default function Page() {
         }
 
         if (data.outfits && Array.isArray(data.outfits) && data.outfits.length > 0) {
-          const mapped = data.outfits.map((outfit: any, index: number) => ({
-            id: index + 1,
-            imageUrl: outfit.top?.imageUrl || outfit.bottom?.imageUrl || outfit.shoes?.imageUrl || '',
-            styleName: '每日推薦穿搭',
-            description: [outfit.top?.name, outfit.bottom?.name, outfit.shoes?.name].filter(Boolean).join(' ・ ')
-          }));
+          const mapped: Outfit[] = data.outfits.map((outfit: any, index: number) => {
+            const items = {
+              top: outfit.top,
+              bottom: outfit.bottom,
+              shoes: outfit.shoes,
+              outerwear: outfit.outerwear,
+              accessories: outfit.accessories
+            };
+
+            // Prefer layoutSlots from API (for mock data verification), otherwise generate locally
+            const layoutSlots = (outfit.layoutSlots && outfit.layoutSlots.length > 0)
+              ? outfit.layoutSlots
+              : createLayoutSlots(items);
+
+            // 檢查 layoutSlots 是否建立成功，用於排查白板顯示問題
+            console.log('layoutSlots for outfit', index + 1, layoutSlots);
+
+            return {
+              id: index + 1,
+              imageUrl: outfit.top?.imageUrl || outfit.bottom?.imageUrl || outfit.shoes?.imageUrl || '',
+              styleName: '每日推薦穿搭',
+              description: [
+                outfit.top?.name,
+                outfit.bottom?.name,
+                outfit.shoes?.name
+              ].filter(Boolean).join(' ・ '),
+              // 完整單品資料 (為未來 IG 風格 UI 與試穿功能預留)
+              items: items,
+              // 白板結構：依人體結構分槽
+              layoutSlots: layoutSlots,
+              // 保留原始 ID 以便追蹤
+              originalId: outfit.id
+            };
+          });
           setDailyOutfits(mapped);
           console.log('[Home] dailyOutfits from API:', mapped);
         }
