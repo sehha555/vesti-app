@@ -69,6 +69,34 @@ export async function GET(request: NextRequest) {
     const weatherAdapter = (location: Location) =>
       getWeather(location);
 
+    // MOCK DATA FOR VERIFICATION
+    const svg = (color: string, text: string) =>
+      `data:image/svg+xml,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+           <rect x="10" y="20" width="80" height="60" rx="8" fill="${color}" />
+           <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="14" font-weight="bold">${text}</text>
+         </svg>`
+      )}`;
+
+    const mockOutfits = [
+      {
+        id: 999,
+        imageUrl: svg('gray', 'FULL'),
+        styleName: 'Mannequin Verification',
+        description: 'Mock outfit to verify mannequin layout',
+        layoutSlots: [
+          { slotKey: 'top_inner', item: { name: 'Inner Top', imageUrl: svg('blue', 'TOP') }, priority: 1 },
+          { slotKey: 'top_outer', item: { name: 'Outer Jacket', imageUrl: svg('red', 'OUTER') }, priority: 2 },
+          { slotKey: 'bottom', item: { name: 'Jeans', imageUrl: svg('green', 'BOTTOM') }, priority: 3 },
+          { slotKey: 'shoes', item: { name: 'Sneakers', imageUrl: svg('purple', 'SHOES') }, priority: 4 },
+          { slotKey: 'accessory', item: { name: 'Hat', imageUrl: svg('#facc15', 'ACC 1') }, priority: 5 }, // Yellow
+          { slotKey: 'accessory', item: { name: 'Scarf', imageUrl: svg('#facc15', 'ACC 2') }, priority: 6 },
+          { slotKey: 'accessory', item: { name: 'Bag', imageUrl: svg('#facc15', 'ACC 3') }, priority: 7 },
+        ]
+      }
+    ];
+
+    /*
     const service = new DailyOutfitsService(wardrobeService, weatherAdapter);
 
     const outfits = await service.generateDailyOutfits(
@@ -76,6 +104,8 @@ export async function GET(request: NextRequest) {
       { lat: latNum, lon: lonNum },
       occasion as Occasion
     );
+     */
+    const outfits = mockOutfits;
 
     // 獲取天氣資料
     const weather = await weatherAdapter({ lat: latNum, lon: lonNum });
