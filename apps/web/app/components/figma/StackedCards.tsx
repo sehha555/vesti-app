@@ -446,16 +446,16 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                     {/* 漸層遮罩 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-                    {/* 右上角按鈕組 */}
+                    {/* 右上角按鈕組 - z-30 確保在白板佈局元素之上 */}
                     {isTop && (
-                      <div className="absolute right-3 top-3 flex gap-2">
+                      <div className="absolute right-3 top-3 flex gap-2 z-30">
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => handleSave(e, card.id)}
-                          className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${isSaved
+                          className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md ${isSaved
                             ? 'bg-[var(--vesti-primary)] shadow-lg'
-                            : 'bg-white/20 hover:bg-white/30'
+                            : 'bg-black/20 hover:bg-black/30'
                             }`}
                         >
                           <Bookmark
@@ -468,9 +468,9 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={(e) => handleConfirm(e, card.id)}
-                          className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all ${isConfirmed
+                          className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md ${isConfirmed
                             ? 'bg-[var(--vesti-accent)] shadow-lg'
-                            : 'bg-white/20 hover:bg-white/30'
+                            : 'bg-black/20 hover:bg-black/30'
                             }`}
                         >
                           <Check
