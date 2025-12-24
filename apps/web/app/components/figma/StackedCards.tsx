@@ -49,7 +49,8 @@ interface StackedCardsProps {
 }
 
 export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOutfit }: StackedCardsProps) {
-  const userId = "123e4567-e89b-12d3-a456-426614174000";
+  // M2 再改成從 session 取得，目前先讀環境變數或 fallback 測試用戶
+  const userId = process.env.NEXT_PUBLIC_VESTI_TEST_USER_ID || "8b5b6279-7580-4db0-a1f8-e2937913359e";
   const [cards, setCards] = useState(outfits);
   const [isDragging, setIsDragging] = useState(false);
   const [exitX, setExitX] = useState(0);
@@ -70,6 +71,25 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
         console.error('讀取收藏穿搭失敗:', error);
       }
     }
+  }, [userId]);
+
+  // 初始化：從 Supabase 回填今日已選定的穿搭
+  useEffect(() => {
+    const fetchTodayPlan = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`/api/reco/daily-outfits/plan?userId=${userId}&date=${today}`);
+        const data = await res.json();
+
+        if (data.ok && data.plan?.outfitId) {
+          setConfirmedCards(new Set([data.plan.outfitId]));
+        }
+      } catch (error) {
+        console.error('[StackedCards] 載入今日計畫失敗:', error);
+      }
+    };
+
+    fetchTodayPlan();
   }, [userId]);
 
   const handleDragEnd = (event: any, info: PanInfo) => {
@@ -231,14 +251,11 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
       // 呼叫 Supabase API
       const response = await fetch('/api/reco/daily-outfits/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       const result = await response.json();
-
       if (!response.ok || !result.ok) {
         throw new Error(result.message || '保存失敗');
       }

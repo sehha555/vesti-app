@@ -93,18 +93,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
       .select();
 
     if (error) {
-      console.error('[API] Supabase upsert error:', error);
+      console.error('[API] Supabase upsert error:', error.code, error.message);
       return NextResponse.json(
         { ok: false, message: '無法保存穿搭計畫' },
         { status: 500 }
       );
     }
-
-    console.log('[API] Daily outfit plan saved:', {
-      userId: body.userId,
-      date: body.date,
-      outfitId: body.outfitId
-    });
 
     return NextResponse.json(
       { ok: true, saved: true },
