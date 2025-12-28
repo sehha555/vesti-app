@@ -1,43 +1,43 @@
-# Google TypeScript Style Guide Summary
+# Google TypeScript 風格指南摘要
 
-This document summarizes key rules and best practices from the Google TypeScript Style Guide, which is enforced by the `gts` tool.
+本文件摘要了 Google TypeScript 風格指南中的關鍵規則和最佳實踐，該指南由 `gts` 工具強制執行。
 
-## 1. Language Features
-- **Variable Declarations:** Always use `const` or `let`. **`var` is forbidden.** Use `const` by default.
-- **Modules:** Use ES6 modules (`import`/`export`). **Do not use `namespace`.**
-- **Exports:** Use named exports (`export {MyClass};`). **Do not use default exports.**
-- **Classes:**
-  - **Do not use `#private` fields.** Use TypeScript's `private` visibility modifier.
-  - Mark properties never reassigned outside the constructor with `readonly`.
-  - **Never use the `public` modifier** (it's the default). Restrict visibility with `private` or `protected` where possible.
-- **Functions:** Prefer function declarations for named functions. Use arrow functions for anonymous functions/callbacks.
-- **String Literals:** Use single quotes (`'`). Use template literals (`` ` ``) for interpolation and multi-line strings.
-- **Equality Checks:** Always use triple equals (`===`) and not equals (`!==`).
-- **Type Assertions:** **Avoid type assertions (`x as SomeType`) and non-nullability assertions (`y!`)**. If you must use them, provide a clear justification.
+## 1. 語言特性
+- **變數宣告**：始終使用 `const` 或 `let`。**禁止使用 `var`**。預設使用 `const`。
+- **模組**：使用 ES6 模組 (`import`/`export`)。**不要使用 `namespace`**。
+- **匯出**：使用具名匯出 (`export {MyClass};`)。**不要使用預設匯出**。
+- **類別**：
+  - **不要使用 `#private` 欄位**。應使用 TypeScript 的 `private` 可見性修飾符。
+  - 對於在建構函式之外從不重新賦值的屬性，標記為 `readonly`。
+  - **永遠不要使用 `public` 修飾符**（因為它是預設值）。在可能的情況下，使用 `private` 或 `protected` 限制可見性。
+- **函式**：對於具名函式，偏好使用函式宣告。對於匿名函式/回呼，使用箭頭函式。
+- **字串字面值**：使用單引號 (`'`)。對於內插和多行字串，使用樣板字面值 (`` ` ``)。
+- **相等性檢查**：始終使用全等 (`===`) 和不全等 (`!==`) 運算子。
+- **型別斷言**：**避免使用型別斷言 (`x as SomeType`) 和非空斷言 (`y!`)**。如果必須使用，請提供明確的理由。
 
-## 2. Disallowed Features
-- **`any` Type:** **Avoid `any`**. Prefer `unknown` or a more specific type.
-- **Wrapper Objects:** Do not instantiate `String`, `Boolean`, or `Number` wrapper classes.
-- **Automatic Semicolon Insertion (ASI):** Do not rely on it. **Explicitly end all statements with a semicolon.**
-- **`const enum`:** Do not use `const enum`. Use plain `enum` instead.
-- **`eval()` and `Function(...string)`:** Forbidden.
+## 2. 禁用特性
+- **`any` 型別**：**避免使用 `any`**。偏好使用 `unknown` 或更具體的型別。
+- **包裝物件**：不要實例化 `String`、`Boolean` 或 `Number` 包裝類別。
+- **自動分號插入 (ASI)**：不要依賴它。**所有語句都必須明確以分號結尾**。
+- **`const enum`**：不要使用 `const enum`。應使用普通的 `enum`。
+- **`eval()` 和 `Function(...string)`**：禁用。
 
-## 3. Naming
-- **`UpperCamelCase`:** For classes, interfaces, types, enums, and decorators.
-- **`lowerCamelCase`:** For variables, parameters, functions, methods, and properties.
-- **`CONSTANT_CASE`:** For global constant values, including enum values.
-- **`_` Prefix/Suffix:** **Do not use `_` as a prefix or suffix** for identifiers, including for private properties.
+## 3. 命名
+- **`UpperCamelCase` (大駝峰命名法)**：用於類別、介面、型別、枚舉和裝飾器。
+- **`lowerCamelCase` (小駝峰命名法)**：用於變數、參數、函式、方法和屬性。
+- **`CONSTANT_CASE` (常數命名法)**：用於全域常數值，包括枚舉值。
+- **`_` 前綴/後綴**：**不要在識別符中使用 `_` 作為前綴或後綴**，包括私有屬性。
 
-## 4. Type System
-- **Type Inference:** Rely on type inference for simple, obvious types. Be explicit for complex types.
-- **`undefined` and `null`:** Both are supported. Be consistent within your project.
-- **Optional vs. `|undefined`:** Prefer optional parameters and fields (`?`) over adding `|undefined` to the type.
-- **`Array<T>` Type:** Use `T[]` for simple types. Use `Array<T>` for more complex union types (e.g., `Array<string | number>`).
-- **`{}` Type:** **Do not use `{}`**. Prefer `unknown`, `Record<string, unknown>`, or `object`.
+## 4. 型別系統
+- **型別推斷**：對於簡單、明顯的型別，依賴型別推斷。對於複雜型別，應明確指定。
+- **`undefined` 和 `null`**：兩者都支援。在專案內部保持一致性。
+- **可選 vs. `|undefined`**：偏好使用可選參數和欄位 (`?`)，而不是在型別中添加 `|undefined`。
+- **`Array<T>` 型別**：對於簡單型別，使用 `T[]`。對於更複雜的聯合型別（例如 `Array<string | number>`），使用 `Array<T>`。
+- **`{}` 型別**：**不要使用 `{}`**。偏好使用 `unknown`、`Record<string, unknown>` 或 `object`。
 
-## 5. Comments and Documentation
-- **JSDoc:** Use `/** JSDoc */` for documentation, `//` for implementation comments.
-- **Redundancy:** **Do not declare types in `@param` or `@return` blocks** (e.g., `/** @param {string} user */`). This is redundant in TypeScript.
-- **Add Information:** Comments must add information, not just restate the code.
+## 5. 註釋與文件
+- **JSDoc**：使用 `/** JSDoc */` 進行文件註釋，使用 `//` 進行實作註釋。
+- **冗餘**：**不要在 `@param` 或 `@return` 區塊中宣告型別**（例如 `/** @param {string} user */`）。這在 TypeScript 中是多餘的。
+- **增加資訊**：註釋必須增加資訊，而不僅僅是重複程式碼。
 
-*Source: [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)*
+*來源：[Google TypeScript 風格指南](https://google.github.io/styleguide/tsguide.html)*

@@ -24,19 +24,11 @@ ADD COLUMN IF NOT EXISTS outfit_data JSONB;
 
 -- 將 items 和 weather_info 改為可選（nullable）
 -- 因為新的資料結構會將這些資訊放在 outfit_data 中
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'saved_outfits' AND column_name = 'items') THEN
-    EXECUTE 'ALTER TABLE public.saved_outfits ALTER COLUMN items DROP NOT NULL';
-  END IF;
-END $$;
+ALTER TABLE saved_outfits
+ALTER COLUMN items DROP NOT NULL;
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'saved_outfits' AND column_name = 'weather_info') THEN
-    EXECUTE 'ALTER TABLE public.saved_outfits ALTER COLUMN weather_info DROP NOT NULL';
-  END IF;
-END $$;
+ALTER TABLE saved_outfits
+ALTER COLUMN weather_info DROP NOT NULL;
 
 -- 為 outfit_data 建立 GIN 索引以支援 jsonb 查詢
 CREATE INDEX IF NOT EXISTS idx_saved_outfits_outfit_data_gin

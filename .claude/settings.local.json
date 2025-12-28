@@ -9,7 +9,10 @@
       "Bash(npm run dev:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\cleanup-conflicts.ps1\")",
       "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\fix-encoding.ps1\")",
-      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\batch-copy.ps1\")"
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\batch-copy.ps1\")",
+      "Bash(npx supabase db push:*)",
+      "Bash(npx supabase migration list:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

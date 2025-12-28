@@ -6,7 +6,7 @@ describe('ClosetGapFillService', () => {
     const service = new ClosetGapFillService();
     const response = await service.generate('1', Style.CASUAL);
     expect(response.recommendations).toHaveLength(2);
-    expect(response.recommendations[0].item.category).toBe('shoes');
+    expect(response.recommendations[0].item.type).toBe('shoes');
   });
 
   it('should filter recommendations by max price', async () => {
@@ -20,7 +20,7 @@ describe('ClosetGapFillService', () => {
     const service = new ClosetGapFillService();
     const response = await service.generate('1', Style.CASUAL, undefined, undefined, 'summer');
     expect(response.recommendations).toHaveLength(2);
-    expect(response.recommendations[0].item.seasonality).toBe('all-season'); // all-season is also included
-    expect(response.recommendations[1].item.seasonality).toBe('summer');
+    expect(response.recommendations[0].item.season).toBe('all-season'); // all-season is also included
+    expect(response.recommendations[1].item.season).toBe('summer');
   });
 });

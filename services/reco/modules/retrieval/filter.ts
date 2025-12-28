@@ -2,7 +2,7 @@ import { CatalogItem } from '@/packages/types/src/gap';
 
 export const filterBySeason = (items: CatalogItem[], season: 'summer' | 'winter' | 'spring' | 'autumn' | 'all-season'): CatalogItem[] => {
   if (!season) return items;
-  return items.filter(item => item.seasonality === season || item.seasonality === 'all-season');
+  return items.filter(item => item.season === season || item.season === 'all-season');
 };
 
 export const filterByPrice = (items: CatalogItem[], minPrice?: number, maxPrice?: number): CatalogItem[] => {

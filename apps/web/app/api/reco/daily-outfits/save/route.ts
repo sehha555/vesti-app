@@ -2,11 +2,12 @@
 // 使用 Supabase 持久化每日穿搭計畫
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 // TypeScript Interface 定義
 interface SaveDailyOutfitRequest {
-  userId: string;
+  // userId is removed from request, will be retrieved from session
   date: string;
   outfitId: number;
   layoutSlots: Record<string, any>;
@@ -25,22 +26,22 @@ interface DailyOutfitResponse {
   message?: string;
 }
 
-// 初始化 Supabase Client（使用 service_role 以繞過 RLS）
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('缺少 Supabase 環境變數: NEXT_PUBLIC_SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 /**
  * POST /api/reco/daily-outfits/save
- * 保存/更新今日穿搭計畫（upsert）
+ * 保存/更新今日穿搭計畫（upsert）。userId 從 session 取得。
  */
 export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitResponse>> {
   try {
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { ok: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     // 驗證 Content-Type
     const contentType = req.headers.get('content-type');
     if (!contentType?.includes('application/json')) {
@@ -53,12 +54,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
     // 解析請求體
     const body = await req.json() as SaveDailyOutfitRequest;
 
-    // 驗證必填字段
-    if (!body.userId || !body.date || !body.outfitId || !body.layoutSlots) {
+    // 驗證必填字段 (不再包含 userId)
+    if (!body.date || !body.outfitId || !body.layoutSlots) {
       return NextResponse.json(
         {
           ok: false,
-          message: '缺少必填字段: userId, date, outfitId, layoutSlots'
+          message: '缺少必填字段: date, outfitId, layoutSlots'
         },
         { status: 400 }
       );
@@ -74,11 +75,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
 
     // 執行 Upsert（衝突時更新，無衝突時新增）
     // Unique key: (user_id, date)
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('daily_outfit_plans')
       .upsert(
         {
-          user_id: body.userId,
+          user_id: user.id, // 從 session 取得 userId
           date: body.date,
           outfit_id: body.outfitId,
           layout_slots: body.layoutSlots,
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
 
     if (error) {
       console.error('[API] Supabase upsert error:', error.code, error.message);
+      // TODO: RLS 失敗時，error.code 可能為 '42501' (permission denied)，需做對應處理
       return NextResponse.json(
         { ok: false, message: '無法保存穿搭計畫' },
         { status: 500 }
@@ -114,18 +116,27 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
 }
 
 /**
- * GET /api/reco/daily-outfits/save?userId=...&date=...
- * 回填今日已選定的穿搭計畫
+ * GET /api/reco/daily-outfits/save?date=...
+ * 回填今日已選定的穿搭計畫。userId 從 session 取得。
  */
 export async function GET(req: NextRequest): Promise<NextResponse<DailyOutfitResponse>> {
   try {
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { ok: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
     const date = searchParams.get('date');
 
-    if (!userId || !date) {
+    if (!date) {
       return NextResponse.json(
-        { ok: false, message: 'userId 和 date 為必填參數' },
+        { ok: false, message: 'date 為必填參數' },
         { status: 400 }
       );
     }
@@ -142,13 +153,14 @@ export async function GET(req: NextRequest): Promise<NextResponse<DailyOutfitRes
     const { data, error } = await supabase
       .from('daily_outfit_plans')
       .select('outfit_id, layout_slots')
-      .eq('user_id', userId)
+      .eq('user_id', user.id) // 從 session 取得 userId
       .eq('date', date)
       .single(); // 期望只有一筆記錄
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 = no rows returned，這不是錯誤
       console.error('[API] Supabase select error:', error);
+      // TODO: RLS 失敗時，error.code 可能為 '42501' (permission denied)，需做對應處理
       return NextResponse.json(
         { ok: false, message: '無法查詢穿搭計畫' },
         { status: 500 }

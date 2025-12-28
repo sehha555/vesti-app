@@ -1,51 +1,51 @@
-# Google JavaScript Style Guide Summary
+# Google JavaScript 風格指南摘要
 
-This document summarizes key rules and best practices from the Google JavaScript Style Guide.
+本文件摘要了 Google JavaScript 風格指南中的關鍵規則和最佳實踐。
 
-## 1. Source File Basics
-- **File Naming:** All lowercase, with underscores (`_`) or dashes (`-`). Extension must be `.js`.
-- **File Encoding:** UTF-8.
-- **Whitespace:** Use only ASCII horizontal spaces (0x20). Tabs are forbidden for indentation.
+## 1. 原始檔案基礎
+- **檔案命名**：全小寫，使用底線 (`_`) 或破折號 (`-`)。副檔名必須是 `.js`。
+- **檔案編碼**：UTF-8。
+- **空白字元**：僅使用 ASCII 水平空格 (0x20)。禁止使用 Tab 進行縮排。
 
-## 2. Source File Structure
-- New files should be ES modules (`import`/`export`).
-- **Exports:** Use named exports (`export {MyClass};`). **Do not use default exports.**
-- **Imports:** Do not use line-wrapped imports. The `.js` extension in import paths is mandatory.
+## 2. 原始檔案結構
+- 新檔案應為 ES 模組 (`import`/`export`)。
+- **匯出**：使用具名匯出 (`export {MyClass};`)。**不要使用預設匯出**。
+- **匯入**：不要使用換行的匯入語句。匯入路徑中的 `.js` 副檔名是強制性的。
 
-## 3. Formatting
-- **Braces:** Required for all control structures (`if`, `for`, `while`, etc.), even single-line blocks. Use K&R style ("Egyptian brackets").
-- **Indentation:** +2 spaces for each new block.
-- **Semicolons:** Every statement must be terminated with a semicolon.
-- **Column Limit:** 80 characters.
-- **Line-wrapping:** Indent continuation lines at least +4 spaces.
-- **Whitespace:** Use single blank lines between methods. No trailing whitespace.
+## 3. 格式化
+- **大括號**：所有控制結構 (`if`, `for`, `while` 等) 都需要大括號，即使是單行區塊。使用 K&R 風格（"埃及括號"）。
+- **縮排**：每個新區塊縮排 +2 個空格。
+- **分號**：每個語句都必須以分號結尾。
+- **欄位寬度限制**：80 個字元。
+- **換行**：接續行至少縮排 +4 個空格。
+- **空白字元**：方法之間使用單一空行。禁止結尾有多餘的空白。
 
-## 4. Language Features
-- **Variable Declarations:** Use `const` by default, `let` if reassignment is needed. **`var` is forbidden.**
-- **Array Literals:** Use trailing commas. Do not use the `Array` constructor.
-- **Object Literals:** Use trailing commas and shorthand properties. Do not use the `Object` constructor.
-- **Classes:** Do not use JavaScript getter/setter properties (`get name()`). Provide ordinary methods instead.
-- **Functions:** Prefer arrow functions for nested functions to preserve `this` context.
-- **String Literals:** Use single quotes (`'`). Use template literals (`` ` ``) for multi-line strings or complex interpolation.
-- **Control Structures:** Prefer `for-of` loops. `for-in` loops should only be used on dict-style objects.
-- **`this`:** Only use `this` in class constructors, methods, or in arrow functions defined within them.
-- **Equality Checks:** Always use identity operators (`===` / `!==`).
+## 4. 語言特性
+- **變數宣告**：預設使用 `const`，如果需要重新賦值則使用 `let`。**禁止使用 `var`**。
+- **陣列字面值**：使用結尾逗號。不要使用 `Array` 建構函式。
+- **物件字面值**：使用結尾逗號和簡寫屬性。不要使用 `Object` 建構函式。
+- **類別**：不要使用 JavaScript 的 getter/setter 屬性 (`get name()`)。應提供普通方法。
+- **函式**：在巢狀函式中偏好使用箭頭函式以保持 `this` 的上下文。
+- **字串字面值**：使用單引號 (`'`)。對於多行字串或複雜的內插，使用樣板字面值 (`` ` ``)。
+- **控制結構**：偏好使用 `for-of` 迴圈。`for-in` 迴圈只應在類字典物件上使用。
+- **`this`**：只在類別建構函式、方法或其內部定義的箭頭函式中使用 `this`。
+- **相等性檢查**：始終使用全等運算子 (`===` / `!==`)。
 
-## 5. Disallowed Features
-- `with` keyword.
-- `eval()` or `Function(...string)`.
-- Automatic Semicolon Insertion.
-- Modifying builtin objects (`Array.prototype.foo = ...`).
+## 5. 禁用特性
+- `with` 關鍵字。
+- `eval()` 或 `Function(...string)`。
+- 自動分號插入。
+- 修改內建物件 (`Array.prototype.foo = ...`)。
 
-## 6. Naming
-- **Classes:** `UpperCamelCase`.
-- **Methods & Functions:** `lowerCamelCase`.
-- **Constants:** `CONSTANT_CASE` (all uppercase with underscores).
-- **Non-constant Fields & Variables:** `lowerCamelCase`.
+## 6. 命名
+- **類別**：`UpperCamelCase` (大駝峰命名法)。
+- **方法與函式**：`lowerCamelCase` (小駝峰命名法)。
+- **常數**：`CONSTANT_CASE` (全大寫，用底線分隔)。
+- **非常數欄位與變數**：`lowerCamelCase` (小駝峰命名法)。
 
 ## 7. JSDoc
-- JSDoc is used on all classes, fields, and methods.
-- Use `@param`, `@return`, `@override`, `@deprecated`.
-- Type annotations are enclosed in braces (e.g., `/** @param {string} userName */`).
+- 所有類別、欄位和方法都應使用 JSDoc。
+- 使用 `@param`、`@return`、`@override`、`@deprecated`。
+- 型別註釋應包含在大括號中 (例如，`/** @param {string} userName */`)。
 
-*Source: [Google JavaScript Style Guide](https://google.github.io/styleguide/jsguide.html)*
+*來源：[Google JavaScript 風格指南](https://google.github.io/styleguide/jsguide.html)*

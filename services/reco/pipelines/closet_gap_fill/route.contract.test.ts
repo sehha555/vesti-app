@@ -57,8 +57,8 @@ describe('/api/reco/closet-gap-fill', () => {
     expect(res._getStatusCode()).toBe(200);
     const responseJson = JSON.parse(res._getData());
     expect(responseJson.recommendations).toHaveLength(2);
-    expect(responseJson.recommendations[0].item.seasonality).toBe('all-season');
-    expect(responseJson.recommendations[1].item.seasonality).toBe('summer');
+    expect(responseJson.recommendations[0].item.season).toBe('all-season');
+    expect(responseJson.recommendations[1].item.season).toBe('summer');
   });
 
   it('should save closet gap fill recommendations', async () => {

@@ -9,7 +9,7 @@ const mockedAxios = axios as any;
 
 describe('WeatherService', () => {
   beforeEach(() => {
-    process.env.WEATHER_API_KEY = 'test-key';
+    process.env.OPENWEATHER_API_KEY = 'test-key';
   });
 
   afterEach(() => {

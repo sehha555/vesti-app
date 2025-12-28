@@ -2,7 +2,8 @@
 // GET 今日穿搭計畫（回填用）
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 interface DailyPlanResponse {
   ok: boolean;
@@ -14,35 +15,33 @@ interface DailyPlanResponse {
   message?: string;
 }
 
-// 初始化 Supabase Client（使用 service_role 繞過 RLS）
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 /**
- * GET /api/reco/daily-outfits/plan?userId=...&date=...
- * 查詢指定日期的穿搭計畫
+ * GET /api/reco/daily-outfits/plan?date=...
+ * 查詢指定日期的穿搭計畫。userId 從 session 取得。
  */
 export async function GET(req: NextRequest): Promise<NextResponse<DailyPlanResponse>> {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!userId) {
-      return NextResponse.json({ ok: false, plan: null, message: 'userId 為必填' }, { status: 400 });
+    if (authError || !user) {
+      return NextResponse.json({ ok: false, plan: null, message: 'Unauthorized' }, { status: 401 });
     }
+
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
     // 查詢 daily_outfit_plans
     const { data, error } = await supabase
       .from('daily_outfit_plans')
       .select('outfit_id, layout_slots, occasion')
-      .eq('user_id', userId)
+      .eq('user_id', user.id) // 改用 session user.id
       .eq('date', date)
       .maybeSingle(); // 可能沒有資料
 
     if (error) {
       console.error('[API] plan query error:', error);
+      // TODO: RLS 失敗時，error.code 可能為 '42501' (permission denied)，需做對應處理
       return NextResponse.json({ ok: false, plan: null, message: '查詢失敗' }, { status: 500 });
     }
 

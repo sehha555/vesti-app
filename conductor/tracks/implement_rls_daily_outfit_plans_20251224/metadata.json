@@ -4,5 +4,5 @@
   "status": "new",
   "created_at": "2025-12-24T09:40:00Z",
   "updated_at": "2025-12-24T09:40:00Z",
-  "description": "Implement Row Level Security (RLS) for 'daily_outfit_plans' table and related entities to enhance data privacy and integrity."
+  "description": "為 'daily_outfit_plans' 表格及相關實體實施行級安全 (RLS)，以增強資料隱私和完整性。"
 }

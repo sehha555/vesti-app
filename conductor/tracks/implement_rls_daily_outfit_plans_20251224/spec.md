@@ -1,21 +1,21 @@
-# Spec: Implement Row Level Security (RLS) for 'daily_outfit_plans' Table
+# 規範：為 'daily_outfit_plans' 表格實施行級安全 (RLS)
 
-## 1. Objective
-To enhance data privacy and integrity by implementing Row Level Security (RLS) policies on the `daily_outfit_plans` table in the Supabase database. This will ensure that users can only access and modify their own data.
+## 1. 目標
+透過在 Supabase 資料庫的 `daily_outfit_plans` 表格上實施行級安全 (RLS) 策略，以增強資料隱私和完整性。這將確保使用者只能存取和修改自己的資料。
 
-## 2. Functional Requirements
-- **Data Isolation:** Users must only be able to `SELECT`, `INSERT`, `UPDATE`, and `DELETE` their own records in the `daily_outfit_plans` table.
-- **API Behavior:** Existing APIs that interact with this table (`/api/reco/daily-outfits/save` and `/api/reco/daily-outfits/plan`) must continue to function correctly for authenticated users, while respecting the new RLS policies.
-- **Unauthorized Access:** Unauthenticated users must be prevented from accessing any data in the `daily_outfit_plans` table at the database level.
+## 2. 功能需求
+- **資料隔離**：使用者在 `daily_outfit_plans` 表格中必須只能 `SELECT`、`INSERT`、`UPDATE` 和 `DELETE` 自己的記錄。
+- **API 行為**：與此表格互動的現有 API (`/api/reco/daily-outfits/save` 和 `/api/reco/daily-outfits/plan`) 必須在尊重新的 RLS 策略的同時，繼續對已驗證使用者正常運作。
+- **未經授權的存取**：未經身份驗證的使用者必須在資料庫層面被阻止存取 `daily_outfit_plans` 表格中的任何資料。
 
-## 3. Technical Implementation
-- **Enable RLS:** RLS must be enabled on the `daily_outfit_plans` table.
-- **Create Policies:**
-  - A `SELECT` policy must be created to allow users to view only the rows where `user_id` matches their authenticated `auth.uid()`.
-  - An `INSERT` policy must be created to allow users to insert new rows only if the `user_id` in the new row matches their `auth.uid()`.
-  - An `UPDATE` policy must be created to allow users to update existing rows only where `user_id` matches their `auth.uid()`.
-  - A `DELETE` policy should be considered and created, likely with the same condition (`user_id = auth.uid()`), to allow users to delete their own data.
-- **Policy Definition (Example):**
+## 3. 技術實作
+- **啟用 RLS**：必須在 `daily_outfit_plans` 表格上啟用 RLS。
+- **創建策略**：
+  - 必須創建一個 `SELECT` 策略，允許使用者只查看其 `user_id` 與其已驗證的 `auth.uid()` 相符的行。
+  - 必須創建一個 `INSERT` 策略，允許使用者只在其新行中的 `user_id` 與其 `auth.uid()` 相符時插入新行。
+  - 必須創建一個 `UPDATE` 策略，允許使用者只在其 `user_id` 與其 `auth.uid()` 相符時更新現有行。
+  - 應考慮並創建一個 `DELETE` 策略，條件可能相同 (`user_id = auth.uid()`)，以允許使用者刪除自己的資料。
+- **策略定義 (範例)**：
   ```sql
   -- For SELECT, UPDATE, DELETE
   CREATE POLICY "Enable user-specific access"
@@ -30,7 +30,7 @@ To enhance data privacy and integrity by implementing Row Level Security (RLS) p
   WITH CHECK (auth.uid() = user_id);
   ```
 
-## 4. Acceptance Criteria
-- All existing API tests for `/save` and `/plan` routes must pass for authenticated users.
-- New tests should be created to verify that a user cannot access another user's data.
-- Manual verification confirms that RLS is enabled and policies are active in the Supabase dashboard.
+## 4. 驗收標準
+- 所有針對 `/save` 和 `/plan` 路由的現有 API 測試都必須通過已驗證使用者。
+- 應創建新的測試，以驗證使用者無法存取其他使用者的資料。
+- 手動驗證確認 Supabase 儀表板中已啟用 RLS 且策略處於活動狀態。
