@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { timingSafeEqual } from 'crypto';
 
 // Generic error response - intentionally vague to prevent information leakage
 const UNAUTHORIZED_RESPONSE = { error: 'Unauthorized', code: 'AUTH_REQUIRED' };
@@ -105,4 +106,99 @@ export async function requireBffAuth(req: NextRequest): Promise<AuthResult> {
  */
 export function unauthorizedResponse(): NextResponse {
   return NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 });
+}
+
+/**
+ * User-only authentication (for external API endpoints).
+ * Only validates user session - NO internal API key required.
+ *
+ * Use this for endpoints that:
+ * - Accept user requests directly (not proxied through BFF)
+ * - Need user identity but not internal service access
+ *
+ * @param req - The incoming request (unused, but kept for consistency)
+ * @returns AuthResult with user ID if authenticated
+ */
+export async function requireUserAuth(_req: NextRequest): Promise<AuthResult> {
+  const userId = await validateUserSession();
+
+  if (!userId) {
+    return {
+      authorized: false,
+      error: NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 }),
+    };
+  }
+
+  return {
+    authorized: true,
+    userId,
+  };
+}
+
+/**
+ * Internal-only authentication (for service-to-service calls).
+ * ONLY validates X-Internal-API-Key header - NO user session.
+ *
+ * Security hardening:
+ * - Uses crypto.timingSafeEqual to prevent timing attacks
+ * - Rejects API key in query string (only accepts header)
+ * - Length check before comparison to avoid exceptions
+ *
+ * Use this for endpoints that:
+ * - Are called by internal services (cron jobs, workers, etc.)
+ * - Don't have a user context
+ *
+ * WARNING: This should NOT be used for user-facing endpoints.
+ * The API key is a shared secret and cannot identify individual users.
+ *
+ * @param req - The incoming request
+ * @returns AuthResult (userId will be undefined for internal auth)
+ */
+export function requireInternalAuth(req: NextRequest): AuthResult {
+  const expectedKey = process.env.VESTI_INTERNAL_API_KEY;
+
+  if (!expectedKey) {
+    console.error('[Auth] VESTI_INTERNAL_API_KEY is not configured');
+    return {
+      authorized: false,
+      error: NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 }),
+    };
+  }
+
+  // SECURITY: Reject if API key appears in query string (prevents URL logging exposure)
+  const url = new URL(req.url);
+  if (url.searchParams.has('x-internal-api-key') || url.searchParams.has('api_key')) {
+    console.warn('[Auth] Rejected: API key in query string');
+    return {
+      authorized: false,
+      error: NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 }),
+    };
+  }
+
+  // Only accept from header (not query string)
+  const apiKey = req.headers.get('x-internal-api-key');
+
+  // Length check first (required for timingSafeEqual)
+  if (!apiKey || apiKey.length !== expectedKey.length) {
+    return {
+      authorized: false,
+      error: NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 }),
+    };
+  }
+
+  // Use crypto.timingSafeEqual for constant-time comparison
+  const apiKeyBuffer = Buffer.from(apiKey, 'utf-8');
+  const expectedBuffer = Buffer.from(expectedKey, 'utf-8');
+
+  if (!timingSafeEqual(apiKeyBuffer, expectedBuffer)) {
+    return {
+      authorized: false,
+      error: NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 }),
+    };
+  }
+
+  return {
+    authorized: true,
+    // No userId for internal auth - this is intentional
+  };
 }
