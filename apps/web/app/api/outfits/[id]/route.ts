@@ -13,9 +13,9 @@ const VALID_SEASONS: OutfitSeason[] = ['spring', 'summer', 'fall', 'winter'];
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   const userId = req.nextUrl.searchParams.get('userId');
 
   if (!id || typeof id !== 'string') {
@@ -40,9 +40,9 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   const { userId, ...updates } = await req.json() as { userId: string } & UpdateOutfitDto;
 
   if (!id || typeof id !== 'string') {
@@ -78,9 +78,9 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   const userId = req.nextUrl.searchParams.get('userId');
 
   if (!id || typeof id !== 'string') {

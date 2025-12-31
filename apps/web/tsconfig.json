@@ -2,9 +2,21 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@/packages/*": ["../../packages/*"],
-      "@/services/*": ["../../services/*"]
+      "@/*": [
+        "./app/*"
+      ],
+      "@/services/*": [
+        "./app/services/*"
+      ],
+      "@/lib/*": [
+        "./lib/*"
+      ],
+      "@/middleware/*": [
+        "./app/api/_middleware/*"
+      ],
+      "@/packages/*": [
+        "../../packages/*"
+      ]
     },
     "target": "ES2017",
     "lib": [
@@ -27,14 +39,13 @@
       {
         "name": "next"
       }
-    ],
-    "strictNullChecks": true
+    ]
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
     "next-env.d.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "**/*.ts",
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"

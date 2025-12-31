@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// 直接在這裡初始化 supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-);
+import { supabaseAdmin } from '@/lib/supabaseClient';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +9,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: '請求中缺少有效的 userId 參數。' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('clothing_items')
       .select('*')
       .eq('user_id', userId);
@@ -42,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     if (imageUrl) {
-      const { data: existing, error: existingError } = await supabase
+      const { data: existing, error: existingError } = await supabaseAdmin
         .from('clothing_items')
         .select('id')
         .eq('user_id', user_id)
@@ -58,7 +52,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('clothing_items')
       .insert([newItem])
       .select()
@@ -84,7 +78,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ message: '缺少 id 參數' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('clothing_items')
       .update(updateData)
       .eq('id', id)
@@ -111,7 +105,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ message: '缺少 id 參數' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('clothing_items')
       .delete()
       .eq('id', id);

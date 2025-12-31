@@ -3,7 +3,6 @@
 // Security: BFF dual auth required (user session + internal API key)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { requireBffAuth } from '../../_middleware/auth';
 import {
@@ -15,9 +14,9 @@ import {
   type WeatherInfo,
   type OutfitReasons,
 } from '../../../../lib/validation/dailyOutfit';
-import { geocodeLocation, DEFAULT_LOCATION } from '../../../../../services/weather/geocoding.service';
-import { getWeather } from '../../../../../services/weather';
-import type { WardrobeItem } from '../../../../../packages/types/src/wardrobe';
+import { geocodeLocation, DEFAULT_LOCATION } from '@/services/weather/geocoding.service';
+import { getWeather } from '@/services/weather';
+import type { WardrobeItem } from '../../../../../../packages/types/src/wardrobe';
 
 interface ErrorResponse {
   error: string;
@@ -293,7 +292,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
     // 1. BFF dual-layer authentication
     const authResult = await requireBffAuth(req);
     if (!authResult.authorized) {
-      return authResult.error!;
+      return authResult.error! as NextResponse<ErrorResponse>;
     }
 
     const userId = authResult.userId!;
@@ -330,8 +329,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
     if (!parseResult.success) {
       const issues = parseResult.error.issues || [];
       const errorMessages = issues.map(
-        (e: { path: (string | number)[]; message: string; code?: string }) =>
-          `${e.path.join('.')}: ${e.message}`
+        (e: { path: (string | number | symbol)[]; message: string; code?: string }) =>
+          `${e.path.map(String).join('.')}: ${e.message}`
       );
       return NextResponse.json<ErrorResponse>(
         { error: 'Validation failed', code: 'VALIDATION_ERROR', details: errorMessages },
@@ -355,8 +354,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
     };
 
     // 7. Fetch user wardrobe from Supabase
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: wardrobeData, error: wardrobeError } = await supabase
+    // Note: Using supabaseAdmin for server-side operations
+    const { supabaseAdmin } = await import('@/lib/supabaseClient');
+    const { data: wardrobeData, error: wardrobeError } = await supabaseAdmin
       .from('user_wardrobe')
       .select('*')
       .eq('user_id', userId);

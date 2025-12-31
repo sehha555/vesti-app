@@ -3,7 +3,7 @@
 // Security: BFF dual auth required (user session + internal API key)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireBffAuth } from '../../../../_middleware/auth';
+import { requireBffAuth } from '@/middleware/auth';
 
 interface GenerateOutfitRequest {
   occasion?: string;
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateOutfi
     // 1. BFF dual-layer authentication (user session + internal API key)
     const authResult = await requireBffAuth(req);
     if (!authResult.authorized) {
-      return authResult.error!;
+      return authResult.error! as NextResponse<ErrorResponse>;
     }
 
     const userId = authResult.userId!;

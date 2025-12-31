@@ -671,7 +671,7 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
                                       currentSet.add(item.id);
                                     }
                                     
-                                    newSelectedItems.set(card.id, currentSet);
+                                    newSelectedItems.set(card.id, currentSet as Set<number>);
                                     setSelectedItems(newSelectedItems);
                                   }}
                                   className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border-2 transition-all ${

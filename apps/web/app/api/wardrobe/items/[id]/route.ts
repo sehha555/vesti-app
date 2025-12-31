@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../../../lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseClient';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -27,10 +27,10 @@ interface RouteParams {
  *         description: 伺服器內部錯誤。
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { id } = params;
+  const { id } = await params;
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('clothing_items')
       .select('*')
       .eq('id', id)
@@ -79,14 +79,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  *         description: 伺服器內部錯誤。
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const { id } = params;
+  const { id } = await params;
   
   try {
     const updates = await request.json();
     delete updates.id;
     delete updates.user_id;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('clothing_items')
       .update(updates)
       .eq('id', id)
@@ -130,10 +130,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  *         description: 伺服器內部錯誤。
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const { id } = params;
+  const { id } = await params;
 
   try {
-    const { error, count } = await supabase
+    const { error, count } = await supabaseAdmin
       .from('clothing_items')
       .delete({ count: 'exact' })
       .eq('id', id);

@@ -123,12 +123,12 @@ export async function POST(req: NextRequest) {
     const parseResult = RankRequestSchema.safeParse(body);
 
     if (!parseResult.success) {
-      // Zod v4 uses 'issues' instead of 'errors'
-      const issues = parseResult.error.issues || parseResult.error.errors || [];
+      // Zod uses 'issues'
+      const issues = parseResult.error.issues || [];
       // Only expose field path and error code, never the raw value
       const errorMessages = issues.map(
-        (e: { path: (string | number)[]; message: string; code?: string }) =>
-          `${e.path.join('.')}: ${e.code || 'invalid'}`
+        (e: { path: (string | number | symbol)[]; message: string; code?: string }) =>
+          `${e.path.map(String).join('.')}: ${e.code || 'invalid'}`
       );
       return NextResponse.json<ErrorResponse>(
         { error: 'Validation failed', code: 'VALIDATION_ERROR', details: errorMessages },

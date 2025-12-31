@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseClient';
 
 /**
  * 儲存穿搭的請求 body 型別
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // === 檢查是否已存在相同的穿搭（避免重複儲存）===
-    const { data: existingOutfits, error: checkError } = await supabase
+    const { data: existingOutfits, error: checkError } = await supabaseAdmin
       .from('saved_outfits')
       .select('id, outfit_data, created_at')
       .eq('user_id', body.userId)
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // === 寫入 Supabase ===
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('saved_outfits')
       .insert([
         {
@@ -205,7 +205,7 @@ export async function GET(request: NextRequest) {
     }
 
     // === 建立查詢 ===
-    let query = supabase
+    let query = supabaseAdmin
       .from('saved_outfits')
       .select('*')
       .eq('user_id', userId)
