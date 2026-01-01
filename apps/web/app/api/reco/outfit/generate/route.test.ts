@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST, GET } from './route';
 import { NextRequest, NextResponse } from 'next/server';
-
-// Mock the auth middleware
-vi.mock('../../../../_middleware/auth', () => ({
-  requireBffAuth: vi.fn(),
-}));
+import { requireBffAuthMock } from '../../vitest.setup';
 
 import { requireBffAuth } from '../../../../_middleware/auth';
 

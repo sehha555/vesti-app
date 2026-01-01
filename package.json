@@ -36,6 +36,7 @@
     "node-mocks-http": "^1.17.2",
     "react": "^19.1.1",
     "typescript": "^5.9.2",
+    "vite-tsconfig-paths": "^6.0.3",
     "vitest": "^3.2.4",
     "zod": "^4.1.11"
   },

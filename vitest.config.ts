@@ -1,17 +1,28 @@
 import { defineConfig } from 'vitest/config';
+import tsconfigPaths from 'vite-tsconfig-paths';
 import { resolve } from 'path';
 
 export default defineConfig({
+  plugins: [
+    tsconfigPaths({
+      projects: [
+        './tsconfig.json',
+        './apps/web/tsconfig.json',
+      ],
+    }),
+  ],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './'),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
     include: ['**/*.test.ts', '**/*.spec.ts'],
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './'),
-      '@services': resolve(__dirname, './services'),
-      '@packages': resolve(__dirname, './packages'),
-    },
+    setupFiles: ['./vitest.setup.ts'],
+    mockReset: true,
+    restoreMocks: true,
+    clearMocks: false,
   },
 });
