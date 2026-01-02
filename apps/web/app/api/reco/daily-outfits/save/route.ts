@@ -33,20 +33,20 @@ interface DailyOutfitResponse {
 export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitResponse>> {
   try {
     const cookieStore = await cookies();
+    const cookiesToSet: Array<{ name: string; value: string; options: any }> = [];
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
+          getAll() {
+            return cookieStore.getAll();
           },
-          set(name: string, value: string, options: any) {
-            // Handle cookie setting if needed
-          },
-          remove(name: string, options: any) {
-            // Handle cookie removal if needed
+          setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
           },
         },
       }
@@ -56,7 +56,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
 
     if (authError || !user) {
       return NextResponse.json(
-        { ok: false, message: 'Unauthorized' },
+        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
+        { status: 401 }
+      );
+    }
+
+    // 验证 JWT claims
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
       );
     }
@@ -147,14 +156,13 @@ export async function GET(req: NextRequest): Promise<NextResponse<DailyOutfitRes
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
+          getAll() {
+            return cookieStore.getAll();
           },
-          set(name: string, value: string, options: any) {
-            // Handle cookie setting if needed
-          },
-          remove(name: string, options: any) {
-            // Handle cookie removal if needed
+          setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
           },
         },
       }
@@ -164,7 +172,16 @@ export async function GET(req: NextRequest): Promise<NextResponse<DailyOutfitRes
 
     if (authError || !user) {
       return NextResponse.json(
-        { ok: false, message: 'Unauthorized' },
+        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
+        { status: 401 }
+      );
+    }
+
+    // 验证 JWT claims
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
       );
     }

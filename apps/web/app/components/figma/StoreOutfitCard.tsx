@@ -49,7 +49,7 @@ export function StoreOutfitCard({
       toast.error('請至少選擇一件商品');
       return;
     }
-    toast.success(`已加入 ${selectedItems.length} 件商品至試穿籃 👔`);
+    toast.success(`已加入 ${selectedItems.length} 件商品至試穿籃 `);
   };
 
   const handleBuy = () => {
@@ -57,7 +57,7 @@ export function StoreOutfitCard({
       toast.error('請至少選擇一件商品');
       return;
     }
-    toast.success(`準備購買 ${selectedItems.length} 件商品 🛍️`);
+    toast.success(`準備購買 ${selectedItems.length} 件商品 ️`);
   };
 
   const selectedTotal = items

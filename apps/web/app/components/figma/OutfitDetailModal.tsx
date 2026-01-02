@@ -46,7 +46,7 @@ export function OutfitDetailModal({ outfit, isOpen, onClose }: OutfitDetailModal
   const handleSave = () => {
     setIsSaved(!isSaved);
     if (!isSaved) {
-      toast.success('已收藏穿搭靈感 🔖');
+      toast.success('已收藏穿搭靈感 ');
     } else {
       toast('已取消收藏');
     }
@@ -54,7 +54,7 @@ export function OutfitDetailModal({ outfit, isOpen, onClose }: OutfitDetailModal
 
   const handleConfirm = () => {
     setIsConfirmed(true);
-    toast.success('已加入今日穿搭計畫 ✓');
+    toast.success('已加入今日穿搭計畫 ');
     setTimeout(() => {
       setIsConfirmed(false);
       onClose();

@@ -386,7 +386,7 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
 
   const handleQuizComplete = (answers: Record<string, string[]>) => {
     console.log('Quiz answers:', answers);
-    toast.success('正在為您尋找最適合的商品 ✨');
+    toast.success('正在為您尋找最適合的商品 ');
   };
 
   // 如果顯示全部商家頁面

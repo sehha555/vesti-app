@@ -457,8 +457,8 @@ export function OutfitPackCard({ outfits, onSwitchToShopping }: OutfitPackCardPr
                    isFlipped={flippedCardId === card.uniqueId}
                    selectedItems={selectedItemsMap[card.data.id] || []}
                    onToggleItem={(itemId) => handleToggleItem(card.data.id, itemId)}
-                   onAddToBag={() => toast.success('已加入試穿籃 🛒')}
-                   onBuy={() => toast.success('前往結帳... 💳')}
+                   onAddToBag={() => toast.success('已加入試穿籃 ')}
+                   onBuy={() => toast.success('前往結帳... ')}
                    isNew={card.isNew}
                    onSwipe={handleSwipe}
                    exitX={exitX}

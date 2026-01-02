@@ -2,13 +2,13 @@
 
 完整的穿搭儲存與讀取 API 文件
 
-## 🎯 功能概述
+##  功能概述
 
 此 API 提供使用者儲存、讀取和管理每日穿搭推薦的功能。
 
 ---
 
-## 📡 API 端點
+##  API 端點
 
 ### POST /api/saved-outfits
 
@@ -100,10 +100,10 @@
 
 | 參數 | 類型 | 必填 | 預設值 | 說明 |
 |------|------|------|--------|------|
-| `userId` | string | ✅ | - | 使用者 UUID |
-| `outfitType` | string | ❌ | `'saved'` | 穿搭類型：`'saved'` 或 `'confirmed'` |
-| `occasion` | string | ❌ | - | 場合篩選 |
-| `limit` | number | ❌ | `20` | 回傳數量限制 |
+| `userId` | string |  | - | 使用者 UUID |
+| `outfitType` | string |  | `'saved'` | 穿搭類型：`'saved'` 或 `'confirmed'` |
+| `occasion` | string |  | - | 場合篩選 |
+| `limit` | number |  | `20` | 回傳數量限制 |
 
 #### Example Request
 
@@ -149,7 +149,7 @@ GET /api/saved-outfits?userId=xxx&outfitType=saved&limit=10
 
 ---
 
-## 🗄️ 資料表結構
+## ️ 資料表結構
 
 ### saved_outfits
 
@@ -175,7 +175,7 @@ GET /api/saved-outfits?userId=xxx&outfitType=saved&limit=10
 
 ---
 
-## 🔒 安全性
+##  安全性
 
 ### Row Level Security (RLS)
 
@@ -194,7 +194,7 @@ GET /api/saved-outfits?userId=xxx&outfitType=saved&limit=10
 
 ---
 
-## 📊 使用範例
+##  使用範例
 
 ### 前端整合範例
 
@@ -255,7 +255,7 @@ const loadSavedOutfits = async (userId: string) => {
 
 ---
 
-## 🚀 部署步驟
+##  部署步驟
 
 ### 1. 執行 Migration
 
@@ -303,7 +303,7 @@ curl http://localhost:3000/api/saved-outfits?userId=test-uuid
 
 ---
 
-## 🐛 常見問題
+##  常見問題
 
 ### Q1: 為什麼重複儲存沒有被阻止？
 
@@ -319,16 +319,16 @@ A: 不建議關閉 RLS。如需測試，請使用有效的 `auth.uid()`。
 
 ---
 
-## 📝 更新日誌
+##  更新日誌
 
 ### 2024-12-01
-- ✅ 新增 `outfit_data` JSONB 欄位
-- ✅ 實作重複儲存檢查
-- ✅ 統一回傳格式（`success` + `savedOutfit`）
-- ✅ 改善錯誤處理
-- ✅ 新增 GIN 索引
+-  新增 `outfit_data` JSONB 欄位
+-  實作重複儲存檢查
+-  統一回傳格式（`success` + `savedOutfit`）
+-  改善錯誤處理
+-  新增 GIN 索引
 
 ### 2024-11-XX
-- ✅ 初始版本建立
-- ✅ 建立 RLS 政策
-- ✅ 建立基本 CRUD 操作
+-  初始版本建立
+-  建立 RLS 政策
+-  建立基本 CRUD 操作

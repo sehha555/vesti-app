@@ -153,7 +153,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
       toast.error('購物車是空的');
       return;
     }
-    toast.success('訂單已送出！感謝您的購買 ✨');
+    toast.success('訂單已送出！感謝您的購買 ');
     // 這裡可以導航到訂單確認頁面或清空購物車
   };
 
@@ -714,7 +714,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
               {/* 提示訊息 */}
               <div className="mt-3 rounded-xl bg-[var(--vesti-primary)]/5 p-3">
                 <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
-                  💡 請確認轉帳資訊正確，我們將於收到款項後儘快安排出貨。
+                   請確認轉帳資訊正確，我們將於收到款項後儘快安排出貨。
                 </p>
               </div>
             </div>
@@ -797,7 +797,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
               
               <div className="rounded-xl bg-[var(--vesti-primary)]/5 p-3">
                 <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
-                  💡 選擇最近的 {selectedShipping === '7-11' ? '7-ELEVEN' : '全家'} 門市，商品到店後將以簡訊通知。
+                   選擇最近的 {selectedShipping === '7-11' ? '7-ELEVEN' : '全家'} 門市，商品到店後將以簡訊通知。
                 </p>
               </div>
             </div>
@@ -861,7 +861,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
 
               <div className="rounded-xl bg-[var(--vesti-primary)]/5 p-3">
                 <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
-                  💡 請確保收件資訊正確，配送時間為 2-3 個工作天。
+                   請確保收件資訊正確，配送時間為 2-3 個工作天。
                 </p>
               </div>
             </div>
@@ -904,7 +904,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[var(--vesti-primary)]" style={{ fontSize: 'var(--text-label)' }}>
-                    ✨ 優惠券已套用
+                     優惠券已套用
                   </span>
                   <span className="text-[var(--vesti-primary)]" style={{ fontWeight: 700 }}>
                     - NT$ {appliedDiscount}

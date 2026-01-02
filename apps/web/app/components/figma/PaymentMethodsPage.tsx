@@ -258,7 +258,7 @@ export function PaymentMethodsPage({ onBack, savedCards, onCardsUpdate }: Paymen
             className="mt-6 rounded-xl border-2 border-[var(--vesti-secondary)]/30 bg-white p-4"
           >
             <h4 className="mb-2 text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
-              💡 安全提示
+               安全提示
             </h4>
             <ul className="space-y-1 text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
               <li className="flex items-start gap-2">

@@ -53,7 +53,7 @@ export function OutfitCollectionPage() {
     ));
     const outfit = outfits.find(o => o.id === id);
     if (!outfit?.isLiked) {
-      toast.success('已加入最愛 ❤️');
+      toast.success('已加入最愛 ️');
     }
   };
 
@@ -63,7 +63,7 @@ export function OutfitCollectionPage() {
   };
 
   const handleCreateNew = () => {
-    toast.success('創建新搭配功能開發中 ✨');
+    toast.success('創建新搭配功能開發中 ');
   };
 
   return (

@@ -127,7 +127,7 @@ export function BroadcastPage({ onBack }: BroadcastPageProps = {} as BroadcastPa
     const outfit = outfits.find(o => o.id === id);
     if (outfit) {
       if (!outfit.isFavorite) {
-        toast.success('已加入收藏 ❤️');
+        toast.success('已加入收藏 ️');
       } else {
         toast('已取消收藏');
       }
@@ -316,7 +316,7 @@ export function BroadcastPage({ onBack }: BroadcastPageProps = {} as BroadcastPa
             transition={{ duration: 0.3 }}
             className="flex flex-col items-center justify-center pt-20 px-8"
           >
-            <div className="text-6xl mb-4">👗</div>
+            <div className="text-6xl mb-4"></div>
             <h3 className="text-[var(--vesti-dark)] mb-2">
               還沒準備{selectedFilter !== '全部' ? selectedFilter : ''}穿搭？
             </h3>

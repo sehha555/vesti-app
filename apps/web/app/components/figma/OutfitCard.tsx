@@ -16,14 +16,14 @@ export function OutfitCard({ imageUrl, styleName, description }: OutfitCardProps
 
   const handleConfirm = () => {
     setIsConfirmed(true);
-    toast.success('已加入今日穿搭計畫 ✓');
+    toast.success('已加入今日穿搭計畫 ');
     setTimeout(() => setIsConfirmed(false), 1500);
   };
 
   const handleSave = () => {
     setIsSaved(!isSaved);
     if (!isSaved) {
-      toast.success('已收藏穿搭靈感 🔖');
+      toast.success('已收藏穿搭靈感 ');
     }
   };
 

@@ -1,21 +1,26 @@
 const nextConfig = {
   reactStrictMode: true,
   eslint: {
-    // Temporarily disable ESLint errors during build to allow compilation
-    // Original ESLint errors are in existing components and should be fixed separately
+    // Ignore ESLint during builds to unblock CI
+    // Linting is handled separately via 'npm run lint' job
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Disable type checking during build due to existing type issues in components
-    // These should be fixed separately as they are not related to the auth/import path fixes
+    // Ignore TypeScript errors during builds to unblock CI
+    // Type checking issues are handled separately
     ignoreBuildErrors: true,
   },
   webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.watchOptions = {
-        ignored: ['/.git/', '/node_modules/**', 'C:/DumpStack.log.tmp', 'C:/hiberfil.sys', 'C:/swapfile.sys', 'C:/pagefile.sys']
-      };
-    }
+    config.watchOptions = {
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/hiberfil.sys',
+        '**/pagefile.sys',
+        '**/swapfile.sys',
+        '**/DumpStack.log.tmp'
+      ]
+    };
     return config;
   },
   async headers() {
@@ -26,18 +31,6 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value: "connect-src 'self' http://localhost:*"
-          },
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*'
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS'
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'X-Requested-With, Content-Type, Authorization'
           }
         ]
       }

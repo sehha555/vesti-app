@@ -190,7 +190,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
         if (alreadyExists) {
           toast.success('此穿搭已在收藏中');
         } else {
-          toast.success('已儲存穿搭 ✓');
+          toast.success('已儲存穿搭 ');
         }
 
         // 通知 App.tsx 收藏狀態變化
@@ -261,7 +261,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
       }
 
       haptic('success'); // 成功震動
-      toast.success('已加入今日穿搭計畫 ✓');
+      toast.success('已加入今日穿搭計畫 ');
     } catch (error) {
       // 失敗時 Rollback optimistic UI
       setConfirmedCards(prev => {

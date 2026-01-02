@@ -159,10 +159,10 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
         const result = reader.result as string;
         if (uploadType === 'profile') {
           setProfilePhoto(result);
-          toast.success('頭像已更新 ✨');
+          toast.success('頭像已更新 ');
         } else {
           setTryOnPhoto(result);
-          toast.success('試穿照片已上傳 ✨');
+          toast.success('試穿照片已上傳 ');
           if (onTryOnPhotoUpdate) {
             onTryOnPhotoUpdate(result);
           }

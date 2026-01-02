@@ -251,7 +251,7 @@ export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, bask
     }
     
     setIsTryingOn(true);
-    toast.success('正在啟動 AI 虛擬試穿 📸');
+    toast.success('正在啟動 AI 虛擬試穿 ');
     
     // 模擬處理
     setTimeout(() => {
@@ -262,7 +262,7 @@ export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, bask
 
   const handleAnalyzeCompatibility = () => {
     setIsAnalyzing(true);
-    toast.success('正在分析衣櫃適配性 ✨');
+    toast.success('正在分析衣櫃適配性 ');
     
     // 模擬分析
     setTimeout(() => {

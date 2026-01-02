@@ -360,7 +360,7 @@ export function AddPaymentCardModal({ isOpen, onClose, onAdd }: AddPaymentCardMo
               {/* 安全提示 */}
               <div className="rounded-xl border-2 border-[var(--vesti-primary)]/20 bg-[var(--vesti-primary)]/5 p-3">
                 <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
-                  🔒 您的卡片資訊將被安全加密儲存
+                   您的卡片資訊將被安全加密儲存
                 </p>
               </div>
             </div>

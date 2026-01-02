@@ -529,7 +529,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
   }, [viewMode, filteredOutfits.length, layers.length]);
 
   const handleLike = (id: number) => {
-    toast.success('已加入最愛 ❤️');
+    toast.success('已加入最愛 ️');
   };
 
   const handleItemClick = (id: number) => {
@@ -602,7 +602,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
         items: [],
       };
       setLayers(prev => [...prev, newLayer]);
-      toast.success('已創建新層 ✨');
+      toast.success('已創建新層 ');
     }
   };
 
@@ -630,12 +630,12 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
   };
 
   const handleCreateOutfit = () => {
-    toast.success('已加入穿搭組合 ✨');
+    toast.success('已加入穿搭組合 ');
     setIsDetailModalOpen(false);
   };
 
   const handleShareItem = () => {
-    toast.success('已複製分享連結 🔗');
+    toast.success('已複製分享連結 ');
     setIsDetailModalOpen(false);
   };
 
@@ -661,7 +661,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
     if (file) {
       // 創建圖片預覽 URL
       const imageUrl = URL.createObjectURL(file);
-      toast.success('照片已選擇 ✨');
+      toast.success('照片已選擇 ');
       // 延遲一下再跳轉，讓使用者看到成功提示
       setTimeout(() => {
         onNavigateToUpload?.(imageUrl);
@@ -710,7 +710,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
     const outfit = outfits.find(o => o.id === id);
     if (outfit) {
       if (!outfit.isFavorite) {
-        toast.success('已加入收藏 ❤️');
+        toast.success('已加入收藏 ️');
       } else {
         toast('已取消收藏');
       }

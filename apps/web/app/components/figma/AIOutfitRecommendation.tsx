@@ -64,12 +64,12 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
 
   // 模擬店家資料
   const availableStores = [
-    { id: 'uniqlo', name: 'UNIQLO', logo: '🏪' },
-    { id: 'zara', name: 'ZARA', logo: '👔' },
-    { id: 'hm', name: 'H&M', logo: '👕' },
-    { id: 'gu', name: 'GU', logo: '👗' },
-    { id: 'muji', name: 'MUJI', logo: '🧥' },
-    { id: 'gap', name: 'GAP', logo: '👖' },
+    { id: 'uniqlo', name: 'UNIQLO', logo: '' },
+    { id: 'zara', name: 'ZARA', logo: '' },
+    { id: 'hm', name: 'H&M', logo: '' },
+    { id: 'gu', name: 'GU', logo: '' },
+    { id: 'muji', name: 'MUJI', logo: '' },
+    { id: 'gap', name: 'GAP', logo: '' },
   ];
 
   const sourceModes = [
@@ -100,7 +100,7 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
 
   const handleGenerate = () => {
     setIsGenerating(true);
-    toast.success('AI 正在為您生成搭配... ✨');
+    toast.success('AI 正在為您生成搭配... ');
     
     setTimeout(() => {
       // 模擬根據來源模式生成不同搭配
@@ -120,7 +120,7 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
       toast('已取消收藏');
     } else {
       newSaved.add(id);
-      toast.success('已收藏搭配 ❤️');
+      toast.success('已收藏搭配 ️');
     }
     setSavedOutfits(newSaved);
   };
@@ -602,7 +602,7 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toast.success('已加入試穿籃 🛒');
+                                toast.success('已加入試穿籃 ');
                               }}
                               className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[var(--vesti-primary)] shadow-lg transition-all hover:scale-110"
                             >

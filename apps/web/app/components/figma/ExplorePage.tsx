@@ -332,7 +332,7 @@ export function ExplorePage() {
         </motion.section>
         
         <div className="text-center pt-8 pb-4">
-           <p className="text-[var(--vesti-gray-mid)] text-xs uppercase tracking-widest">Designed with ❤️ in Taiwan</p>
+           <p className="text-[var(--vesti-gray-mid)] text-xs uppercase tracking-widest">Designed with ️ in Taiwan</p>
         </div>
       </div>
 
