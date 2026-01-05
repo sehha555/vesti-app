@@ -85,7 +85,7 @@ describe('GET /api/auth/signin', () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
   });
 
-  it('should redirect to OAuth URL with default redirectTo', async () => {
+  it('should redirect to OAuth URL with hardcoded /api/auth/callback', async () => {
     const oauthUrl = 'https://test.supabase.co/auth/v1/authorize?provider=google';
     mockSignInWithOAuth.mockResolvedValue({
       data: { url: oauthUrl },
@@ -97,40 +97,79 @@ describe('GET /api/auth/signin', () => {
 
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe(oauthUrl);
+    // OAuth callback is always /api/auth/callback (hardcoded for security)
     expect(mockSignInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
       options: expect.objectContaining({
-        redirectTo: 'http://localhost:3000/auth/callback',
+        redirectTo: 'http://localhost:3000/api/auth/callback',
       }),
     });
   });
 
-  it('should use custom redirectTo from query params', async () => {
+  it('should set auth_redirect_to cookie with default /reco', async () => {
     const oauthUrl = 'https://test.supabase.co/auth/v1/authorize?provider=google';
     mockSignInWithOAuth.mockResolvedValue({
       data: { url: oauthUrl },
       error: null,
     });
 
-    const req = createRequest({ redirectTo: '/custom/callback' });
+    const req = createRequest();
     const res = await GET(req);
 
     expect(res.status).toBe(302);
-    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
-      provider: 'google',
-      options: expect.objectContaining({
-        redirectTo: 'http://localhost:3000/custom/callback',
-      }),
-    });
+    // Check cookie is set
+    const setCookie = res.headers.get('set-cookie')?.toLowerCase();
+    expect(setCookie).toContain('auth_redirect_to=%2freco'); // /reco URL encoded
+    expect(setCookie).toContain('httponly');
+    expect(setCookie).toContain('samesite=lax');
   });
 
-  it('should reject non-relative redirectTo (open redirect prevention)', async () => {
-    const req = createRequest({ redirectTo: 'https://evil.com/callback' });
+  it('should accept next param from allowlist and set cookie', async () => {
+    const oauthUrl = 'https://test.supabase.co/auth/v1/authorize?provider=google';
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { url: oauthUrl },
+      error: null,
+    });
+
+    const req = createRequest({ next: '/wardrobe' });
     const res = await GET(req);
 
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.code).toBe('INVALID_REDIRECT');
+    expect(res.status).toBe(302);
+    const setCookie = res.headers.get('set-cookie');
+    expect(setCookie).toContain('auth_redirect_to=%2Fwardrobe'); // /wardrobe URL encoded
+  });
+
+  it('should fallback to /reco when next param is not in allowlist (open redirect prevention)', async () => {
+    const oauthUrl = 'https://test.supabase.co/auth/v1/authorize?provider=google';
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { url: oauthUrl },
+      error: null,
+    });
+
+    // Try to redirect to evil URL - should be rejected
+    const req = createRequest({ next: 'https://evil.com/steal' });
+    const res = await GET(req);
+
+    expect(res.status).toBe(302);
+    // Should fallback to /reco, NOT the evil URL
+    const setCookie = res.headers.get('set-cookie');
+    expect(setCookie).toContain('auth_redirect_to=%2Freco');
+    expect(setCookie).not.toContain('evil');
+  });
+
+  it('should fallback to /reco for unknown paths not in allowlist', async () => {
+    const oauthUrl = 'https://test.supabase.co/auth/v1/authorize?provider=google';
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { url: oauthUrl },
+      error: null,
+    });
+
+    const req = createRequest({ next: '/admin/secret' });
+    const res = await GET(req);
+
+    expect(res.status).toBe(302);
+    const setCookie = res.headers.get('set-cookie');
+    expect(setCookie).toContain('auth_redirect_to=%2Freco');
   });
 
   it('should return 500 when Supabase config is missing', async () => {

@@ -48,12 +48,14 @@ describe('GET /api/auth/callback', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('http://localhost:3000/');
+    // Default redirect is /reco (when no auth_redirect_to cookie)
+    expect(res.headers.get('location')).toBe('http://localhost:3000/reco');
 
     const setCookieHeaders = res.headers.getSetCookie();
     const cookieNames = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
 
-    expect(setCookieHeaders.length).toBe(cookieNames.length);
+    // 3 session cookies + 1 cleared auth_redirect_to cookie
+    expect(setCookieHeaders.length).toBe(cookieNames.length + 1);
 
     // Verify each cookie has the correct attributes
     for (const cookieName of cookieNames) {

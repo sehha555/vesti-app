@@ -69,8 +69,11 @@ export async function GET(request: NextRequest) {
 
     const { session } = data;
 
-    // Create response with redirect to home/dashboard
-    const successUrl = new URL('/', request.nextUrl.origin);
+    // Get the redirect path from cookie (set by /api/auth/signin)
+    const redirectTo = request.cookies.get('auth_redirect_to')?.value || '/reco';
+
+    // Create response with redirect to the intended destination
+    const successUrl = new URL(redirectTo, request.nextUrl.origin);
     const response = NextResponse.redirect(successUrl, { status: 302 });
 
     // Set session cookies using the shared helper
@@ -80,7 +83,16 @@ export async function GET(request: NextRequest) {
       userId: session.user.id,
     });
 
-    console.log('[Auth Callback] Session established for user:', session.user.id);
+    // Clear the redirect cookie (one-time use)
+    response.cookies.set('auth_redirect_to', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0, // Delete immediately
+    });
+
+    console.log('[Auth Callback] Session established for user:', session.user.id, '-> redirect to:', redirectTo);
 
     return response;
   } catch (error) {

@@ -37,6 +37,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Mock 已存在的用戶名（實際應該從後端 API 檢查）
   const existingUsernames = ['test', 'admin', 'user', 'vesti'];
@@ -74,6 +75,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
     if (!isLogin) {
       // 註冊驗證
       if (usernameError) {
@@ -88,23 +91,51 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         toast.error('密碼與確認密碼不符');
         return;
       }
-      // 註冊功能未實現，顯示提示
-      toast.error('註冊功能即將推出');
+
+      // 呼叫 POST /api/auth/signup
+      setIsSubmitting(true);
+      try {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, email, password, confirmPassword }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.ok) {
+          if (data.next === '/auth/verify-email') {
+            toast.success('註冊成功！請查收驗證信件');
+            // Could redirect to verify-email page
+          } else {
+            toast.success('註冊成功！');
+            onLogin();
+          }
+        } else if (response.status === 422) {
+          toast.error(data.message || '請輸入有效的資料');
+        } else if (response.status === 429) {
+          const minutes = Math.ceil((data.retryAfter || 60) / 60);
+          toast.error(`嘗試過於頻繁，請 ${minutes} 分鐘後再試`);
+        } else {
+          toast.error(data.message || '註冊失敗，請稍後重試');
+        }
+      } catch {
+        toast.error('網絡連接失敗');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
     // 登入：呼叫 POST /api/auth/signin
+    setIsSubmitting(true);
     try {
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (response.ok) {
@@ -122,22 +153,32 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       } else if (response.status === 429) {
         try {
           const data = await response.json();
-          if (data.retryAfter) {
-            const minutes = Math.ceil(data.retryAfter / 60);
-            toast.error(`尝试过于频繁，约 ${minutes} 分钟后再试`);
-          } else {
-            toast.error('尝试过于频繁，请稍后再试');
-          }
+          const minutes = Math.ceil((data.retryAfter || 60) / 60);
+          toast.error(`嘗試過於頻繁，請 ${minutes} 分鐘後再試`);
         } catch {
-          toast.error('尝试过于频繁，请稍后再试');
+          toast.error('嘗試過於頻繁，請稍後再試');
         }
       } else {
         toast.error('登入失敗，請稍後重試');
       }
-    } catch (error) {
-      console.error('[LoginPage] 登入失敗');
+    } catch {
       toast.error('網絡連接失敗');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  // Google OAuth handler (安全：只允許本站 origin)
+  const handleGoogleLogin = () => {
+    const url = new URL('/api/auth/signin', window.location.origin);
+    // redirectTo 只能是相對路徑，後端會驗證
+    url.searchParams.set('redirectTo', '/auth/callback');
+    window.location.assign(url.toString());
+  };
+
+  // Apple login (暫未實現)
+  const handleAppleLogin = () => {
+    toast.info('Apple 登入即將推出');
   };
 
   // Show forgot password page
@@ -363,13 +404,21 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                  </div>
               )}
 
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <motion.button
+                whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
                 type="submit"
-                className="w-full bg-[var(--vesti-primary)] text-white font-bold py-4 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.2)] transition-all"
+                disabled={isSubmitting}
+                className="w-full bg-[var(--vesti-primary)] text-white font-bold py-4 rounded-2xl shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.2)] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isLogin ? '登入' : '註冊帳號'}
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    處理中...
+                  </span>
+                ) : (
+                  isLogin ? '登入' : '註冊帳號'
+                )}
               </motion.button>
           </form>
 
@@ -380,11 +429,19 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <button className="flex items-center justify-center gap-2 py-3 rounded-xl border border-[var(--vesti-gray-light)] hover:bg-[var(--vesti-gray-light)]/50 transition-colors">
+             <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl border border-[var(--vesti-gray-light)] hover:bg-[var(--vesti-gray-light)]/50 transition-colors"
+             >
                 <GoogleLogo />
                 <span className="text-[var(--vesti-dark)]">Google</span>
              </button>
-             <button className="flex items-center justify-center gap-2 py-3 rounded-xl border border-[var(--vesti-gray-light)] hover:bg-[var(--vesti-gray-light)]/50 transition-colors">
+             <button
+                type="button"
+                onClick={handleAppleLogin}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl border border-[var(--vesti-gray-light)] hover:bg-[var(--vesti-gray-light)]/50 transition-colors opacity-60"
+             >
                 <AppleLogo />
                 <span className="text-[var(--vesti-dark)]">Apple</span>
              </button>

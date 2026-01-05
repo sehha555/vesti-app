@@ -9,12 +9,17 @@ import {
   resetEmailRateLimit,
 } from '@/lib/auth/rateLimit';
 
+// Allowlist of paths users can be redirected to after login
+const ALLOWED_REDIRECTS = ['/', '/reco', '/wardrobe', '/profile'];
+
 /**
  * GET /api/auth/signin
  * Initiates Google OAuth flow by redirecting to Supabase OAuth URL
  *
  * Query params:
- * - redirectTo: The path to redirect after auth callback (default: /auth/callback)
+ * - next: Where to redirect after successful login (must be in allowlist, default: /reco)
+ *
+ * Note: OAuth callback is always /api/auth/callback (hardcoded for security)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -29,21 +34,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get redirectTo from query params, default to /auth/callback
+    // Validate and sanitize the 'next' redirect path (allowlist only)
     const searchParams = request.nextUrl.searchParams;
-    const redirectTo = searchParams.get('redirectTo') || '/auth/callback';
+    const requestedNext = searchParams.get('next') || '/reco';
+    const safeNext = ALLOWED_REDIRECTS.includes(requestedNext) ? requestedNext : '/reco';
 
-    // Validate redirectTo is a relative path (security: prevent open redirect)
-    if (!redirectTo.startsWith('/')) {
-      return NextResponse.json(
-        { error: 'Invalid redirectTo parameter', code: 'INVALID_REDIRECT' },
-        { status: 400 }
-      );
-    }
-
-    // Build the full callback URL
+    // OAuth callback URL is hardcoded to prevent open redirect attacks
     const origin = request.nextUrl.origin;
-    const callbackUrl = `${origin}${redirectTo}`;
+    const callbackUrl = `${origin}/api/auth/callback`;
 
     // Create Supabase client for auth
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -73,8 +71,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Redirect to the OAuth URL
-    return NextResponse.redirect(data.url, { status: 302 });
+    // Store the safe redirect path in a cookie for callback to use
+    const response = NextResponse.redirect(data.url, { status: 302 });
+    response.cookies.set('auth_redirect_to', safeNext, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 10, // 10 minutes (OAuth flow should complete within this)
+    });
+
+    return response;
   } catch (error) {
     console.error('[Auth] signin error:', error);
     return NextResponse.json(
