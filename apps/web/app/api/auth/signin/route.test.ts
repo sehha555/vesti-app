@@ -1,10 +1,26 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GET } from './route';
 import { NextRequest } from 'next/server';
 
-// Mock Supabase client
-const mockSignInWithOAuth = vi.fn();
+// Use vi.hoisted() to ensure mocks are available before vi.mock hoisting
+const {
+  mockSignInWithOAuth,
+  mockSignInWithEmail,
+  mockSetAuthCookies,
+  mockCheckIPRateLimit,
+  mockCheckEmailRateLimit,
+  mockResetIPRateLimit,
+  mockResetEmailRateLimit,
+} = vi.hoisted(() => ({
+  mockSignInWithOAuth: vi.fn(),
+  mockSignInWithEmail: vi.fn(),
+  mockSetAuthCookies: vi.fn(),
+  mockCheckIPRateLimit: vi.fn(),
+  mockCheckEmailRateLimit: vi.fn(),
+  mockResetIPRateLimit: vi.fn(),
+  mockResetEmailRateLimit: vi.fn(),
+}));
 
+// Mock Supabase client
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
     auth: {
@@ -12,6 +28,27 @@ vi.mock('@supabase/supabase-js', () => ({
     },
   })),
 }));
+
+// Mock signInWithEmail
+vi.mock('@/lib/auth/emailAuth', () => ({
+  signInWithEmail: mockSignInWithEmail,
+}));
+
+// Mock setAuthCookies
+vi.mock('@/lib/auth/cookies', () => ({
+  setAuthCookies: mockSetAuthCookies,
+}));
+
+// Mock rate limit functions
+vi.mock('@/lib/auth/rateLimit', () => ({
+  checkIPRateLimit: mockCheckIPRateLimit,
+  checkEmailRateLimit: mockCheckEmailRateLimit,
+  resetIPRateLimit: mockResetIPRateLimit,
+  resetEmailRateLimit: mockResetEmailRateLimit,
+}));
+
+// Import route handlers after mocks are set up
+import { GET, POST } from './route';
 
 const createRequest = (searchParams?: Record<string, string>): NextRequest => {
   const url = new URL('http://localhost:3000/api/auth/signin');
@@ -22,6 +59,21 @@ const createRequest = (searchParams?: Record<string, string>): NextRequest => {
   }
   return new NextRequest(url.toString(), {
     method: 'GET',
+  });
+};
+
+const createPostRequest = (
+  body: unknown,
+  headers?: Record<string, string>
+): NextRequest => {
+  const url = new URL('http://localhost:3000/api/auth/signin');
+  return new NextRequest(url.toString(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body: JSON.stringify(body),
   });
 };
 
@@ -104,5 +156,190 @@ describe('GET /api/auth/signin', () => {
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.code).toBe('OAUTH_INIT_FAILED');
+  });
+});
+
+describe('POST /api/auth/signin', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+    // Default: rate limit allows requests
+    mockCheckIPRateLimit.mockResolvedValue({ allowed: true });
+    mockCheckEmailRateLimit.mockResolvedValue({ allowed: true });
+  });
+
+  it('should return 422 when email is missing', async () => {
+    const req = createPostRequest({ password: 'password123' });
+    const res = await POST(req);
+
+    expect(res.status).toBe(422);
+    const data = await res.json();
+    expect(data.message).toContain('Email');
+  });
+
+  it('should return 422 when password is missing', async () => {
+    const req = createPostRequest({ email: 'user@example.com' });
+    const res = await POST(req);
+
+    expect(res.status).toBe(422);
+    const data = await res.json();
+    expect(data.message).toContain('Password');
+  });
+
+  it('should return 422 for invalid JSON body', async () => {
+    const url = new URL('http://localhost:3000/api/auth/signin');
+    const req = new NextRequest(url.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: 'invalid json {',
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(422);
+    const data = await res.json();
+    expect(data.message).toBe('Invalid request body');
+  });
+
+  it('should return 401 when credentials are invalid', async () => {
+    mockSignInWithEmail.mockResolvedValue({ success: false });
+
+    const req = createPostRequest({
+      email: 'user@example.com',
+      password: 'wrongpassword',
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.message).toBe('Invalid credentials');
+    expect(mockSignInWithEmail).toHaveBeenCalledWith('user@example.com', 'wrongpassword');
+  });
+
+  it('should return 200 and set cookies on successful sign in', async () => {
+    mockSignInWithEmail.mockResolvedValue({
+      success: true,
+      session: {
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        userId: 'test-user-id',
+      },
+    });
+
+    const req = createPostRequest({
+      email: 'user@example.com',
+      password: 'correctpassword',
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.redirectTo).toBe('/');
+    expect(data.accessToken).toBeUndefined();
+    expect(data.refreshToken).toBeUndefined();
+    expect(data.userId).toBeUndefined();
+    expect(mockSetAuthCookies).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        userId: 'test-user-id',
+      })
+    );
+  });
+
+  it('should return 429 when rate limited by email', async () => {
+    mockCheckIPRateLimit.mockReturnValue({ allowed: true });
+    mockCheckEmailRateLimit.mockReturnValue({
+      allowed: false,
+      retryAfter: 120,
+    });
+
+    const req = createPostRequest({
+      email: 'user@example.com',
+      password: 'password123',
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('120');
+    const data = await res.json();
+    expect(data.message).toBe('Too many login attempts. Please try again later.');
+    expect(data.retryAfter).toBe(120);
+  });
+
+  it('should return 429 when rate limited by ip', async () => {
+    mockCheckIPRateLimit.mockReturnValue({
+      allowed: false,
+      retryAfter: 180,
+    });
+
+    const req = createPostRequest(
+      {
+        email: 'user@example.com',
+        password: 'password123',
+      },
+      {
+        'x-forwarded-for': '192.168.1.1',
+      }
+    );
+    const res = await POST(req);
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('180');
+    const data = await res.json();
+    expect(data.message).toBe('Too many login attempts. Please try again later.');
+    expect(data.retryAfter).toBe(180);
+  });
+
+  it('should return 429 when email hash fails in production', async () => {
+    // Set production mode
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    // Mock checkEmailRateLimit to return fail-closed (429)
+    mockCheckIPRateLimit.mockResolvedValue({ allowed: true });
+    mockCheckEmailRateLimit.mockResolvedValue({
+      allowed: false,
+      retryAfter: 60,
+    });
+
+    const req = createPostRequest({
+      email: 'test@example.com',
+      password: '123',
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('60');
+    const data = await res.json();
+    expect(data.message).toBe('Too many login attempts. Please try again later.');
+    expect(data.retryAfter).toBe(60);
+
+    // Restore environment
+    process.env.NODE_ENV = originalEnv;
+  });
+
+  it('should return 429 with retryAfter from failed email rate limit check', async () => {
+    mockCheckIPRateLimit.mockResolvedValue({ allowed: true });
+    mockCheckEmailRateLimit.mockResolvedValue({
+      allowed: false,
+      retryAfter: 300, // 5 minutes
+    });
+
+    const req = createPostRequest({
+      email: 'user@example.com',
+      password: 'password123',
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data.retryAfter).toBe(300);
+    expect(res.headers.get('Retry-After')).toBe('300');
   });
 });

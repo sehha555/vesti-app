@@ -35,31 +35,25 @@ describe('POST /api/auth/signout', () => {
     expect(data.message).toBe('Signed out successfully');
   });
 
-  it('should clear all session cookies', async () => {
+  it('should clear all session cookies with Max-Age=0', async () => {
     mockCookieStore.get.mockReturnValue({ value: 'test-token' });
 
     const req = createRequest('POST');
     const res = await POST(req);
 
     const setCookieHeaders = res.headers.getSetCookie();
+    const cookieNames = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
 
-    // Check that each session cookie is cleared (maxAge=0)
-    expect(setCookieHeaders).toContainEqual(
-      expect.stringContaining('sb-auth-token=')
-    );
-    expect(setCookieHeaders).toContainEqual(
-      expect.stringContaining('sb-refresh-token=')
-    );
-    expect(setCookieHeaders).toContainEqual(
-      expect.stringContaining('sb-user-id=')
-    );
+    expect(setCookieHeaders.length).toBe(cookieNames.length);
 
-    // Verify maxAge is 0 (cookie deletion)
-    setCookieHeaders.forEach((cookie) => {
-      if (cookie.includes('sb-auth-token') || cookie.includes('sb-refresh-token')) {
-        expect(cookie.toLowerCase()).toContain('max-age=0');
-      }
-    });
+    // Verify each cookie is cleared with Max-Age=0
+    for (const cookieName of cookieNames) {
+      const cookieHeader = setCookieHeaders.find((c) =>
+        c.startsWith(`${cookieName}=`)
+      );
+      expect(cookieHeader).toBeDefined();
+      expect(cookieHeader).toContain('Max-Age=0');
+    }
   });
 
   it('should work even if cookies do not exist', async () => {

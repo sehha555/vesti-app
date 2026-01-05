@@ -33,7 +33,7 @@ describe('GET /api/auth/callback', () => {
     process.env.NODE_ENV = 'development';
   });
 
-  it('should exchange code and set session cookies', async () => {
+  it('should exchange code and set secure, HttpOnly, SameSite=Lax cookies', async () => {
     const mockSession = {
       access_token: 'test-access-token',
       refresh_token: 'test-refresh-token',
@@ -50,44 +50,26 @@ describe('GET /api/auth/callback', () => {
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('http://localhost:3000/');
 
-    // Check cookies are set
     const setCookieHeaders = res.headers.getSetCookie();
-    expect(setCookieHeaders).toContainEqual(
-      expect.stringContaining('sb-auth-token=test-access-token')
-    );
-    expect(setCookieHeaders).toContainEqual(
-      expect.stringContaining('sb-refresh-token=test-refresh-token')
-    );
-    expect(setCookieHeaders).toContainEqual(
-      expect.stringContaining('sb-user-id=user-123')
-    );
-  });
+    const cookieNames = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
 
-  it('should set HttpOnly cookie', async () => {
-    const mockSession = {
-      access_token: 'test-access-token',
-      refresh_token: 'test-refresh-token',
-      user: { id: 'user-123' },
-    };
-    mockExchangeCodeForSession.mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    });
+    expect(setCookieHeaders.length).toBe(cookieNames.length);
 
-    const req = createRequest({ code: 'valid_oauth_code_1' });
-    const res = await GET(req);
-
-    const setCookieHeaders = res.headers.getSetCookie();
-    setCookieHeaders.forEach((cookie) => {
-      if (cookie.includes('sb-auth-token') || cookie.includes('sb-refresh-token')) {
-        expect(cookie.toLowerCase()).toContain('httponly');
-      }
-    });
+    // Verify each cookie has the correct attributes
+    for (const cookieName of cookieNames) {
+      const cookieHeader = setCookieHeaders.find((c) =>
+        c.startsWith(`${cookieName}=`)
+      );
+      expect(cookieHeader).toBeDefined();
+      expect(cookieHeader).toContain('HttpOnly');
+      expect(cookieHeader).toContain('SameSite=lax');
+      // Secure attribute should not be present in development
+      expect(cookieHeader).not.toContain('Secure');
+    }
   });
 
   it('should set Secure cookie in production', async () => {
     process.env.NODE_ENV = 'production';
-
     const mockSession = {
       access_token: 'test-access-token',
       refresh_token: 'test-refresh-token',
@@ -98,37 +80,11 @@ describe('GET /api/auth/callback', () => {
       error: null,
     });
 
-    const req = createRequest({ code: 'valid_oauth_code_1' });
+    const req = createRequest({ code: 'valid_oauth_code_2' });
     const res = await GET(req);
-
     const setCookieHeaders = res.headers.getSetCookie();
-    setCookieHeaders.forEach((cookie) => {
-      if (cookie.includes('sb-auth-token')) {
-        expect(cookie.toLowerCase()).toContain('secure');
-      }
-    });
-  });
 
-  it('should set SameSite=Lax cookie', async () => {
-    const mockSession = {
-      access_token: 'test-access-token',
-      refresh_token: 'test-refresh-token',
-      user: { id: 'user-123' },
-    };
-    mockExchangeCodeForSession.mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    });
-
-    const req = createRequest({ code: 'valid_oauth_code_1' });
-    const res = await GET(req);
-
-    const setCookieHeaders = res.headers.getSetCookie();
-    setCookieHeaders.forEach((cookie) => {
-      if (cookie.includes('sb-auth-token')) {
-        expect(cookie.toLowerCase()).toContain('samesite=lax');
-      }
-    });
+    expect(setCookieHeaders.every((c) => c.includes('Secure'))).toBe(true);
   });
 
   it('should redirect to login with error when OAuth error is present', async () => {

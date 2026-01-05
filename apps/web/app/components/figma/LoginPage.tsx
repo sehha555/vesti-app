@@ -71,9 +71,9 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     }, 500);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isLogin) {
       // 註冊驗證
       if (usernameError) {
@@ -88,16 +88,55 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         toast.error('密碼與確認密碼不符');
         return;
       }
+      // 註冊功能未實現，顯示提示
+      toast.error('註冊功能即將推出');
+      return;
     }
 
-    if (isLogin) {
-        // Mock login
+    // 登入：呼叫 POST /api/auth/signin
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      if (response.ok) {
         toast.success('登入成功！');
         onLogin();
-    } else {
-        // Mock signup
-        toast.success('註冊成功！歡迎加入 VESTI');
-        onLogin();
+      } else if (response.status === 422) {
+        try {
+          const data = await response.json();
+          toast.error(data.message || '請輸入有效的信息');
+        } catch {
+          toast.error('請輸入有效的信息');
+        }
+      } else if (response.status === 401) {
+        toast.error('帳號或密碼錯誤');
+      } else if (response.status === 429) {
+        try {
+          const data = await response.json();
+          if (data.retryAfter) {
+            const minutes = Math.ceil(data.retryAfter / 60);
+            toast.error(`尝试过于频繁，约 ${minutes} 分钟后再试`);
+          } else {
+            toast.error('尝试过于频繁，请稍后再试');
+          }
+        } catch {
+          toast.error('尝试过于频繁，请稍后再试');
+        }
+      } else {
+        toast.error('登入失敗，請稍後重試');
+      }
+    } catch (error) {
+      console.error('[LoginPage] 登入失敗');
+      toast.error('網絡連接失敗');
     }
   };
 

@@ -1,23 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-
-/**
- * Session cookie configuration
- * - HttpOnly: Prevents XSS attacks
- * - Secure: Only sent over HTTPS (production)
- * - SameSite: Lax for OAuth redirects compatibility
- * - Path: Root path for all routes
- */
-function getSessionCookieOptions(isProduction: boolean) {
-  return {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax' as const,
-    path: '/',
-    // 7 days expiry (matches Supabase default session)
-    maxAge: 60 * 60 * 24 * 7,
-  };
-}
+import { setAuthCookies } from '../../../../lib/auth/cookies';
 
 /**
  * GET /api/auth/callback
@@ -86,27 +69,16 @@ export async function GET(request: NextRequest) {
 
     const { session } = data;
 
-    // Determine environment
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = getSessionCookieOptions(isProduction);
-
     // Create response with redirect to home/dashboard
     const successUrl = new URL('/', request.nextUrl.origin);
     const response = NextResponse.redirect(successUrl, { status: 302 });
 
-    // Set session cookies
-    // Store access token for session validation
-    response.cookies.set('sb-auth-token', session.access_token, cookieOptions);
-
-    // Store refresh token for session refresh
-    response.cookies.set(
-      'sb-refresh-token',
-      session.refresh_token,
-      cookieOptions
-    );
-
-    // Store user ID for quick access (not sensitive, but still HttpOnly)
-    response.cookies.set('sb-user-id', session.user.id, cookieOptions);
+    // Set session cookies using the shared helper
+    setAuthCookies(response.cookies, {
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      userId: session.user.id,
+    });
 
     console.log('[Auth Callback] Session established for user:', session.user.id);
 

@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-/**
- * Cookie names used for session management
- */
-const SESSION_COOKIES = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
+import { clearAuthCookies } from '../../../../lib/auth/cookies';
 
 /**
  * POST /api/auth/signout
@@ -16,29 +11,14 @@ const SESSION_COOKIES = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
  */
 export async function POST(_request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-
     // Create response
     const response = NextResponse.json(
       { success: true, message: 'Signed out successfully' },
       { status: 200 }
     );
 
-    // Clear all session cookies
-    for (const cookieName of SESSION_COOKIES) {
-      // Check if cookie exists
-      const existingCookie = cookieStore.get(cookieName);
-      if (existingCookie) {
-        // Delete the cookie by setting maxAge to 0
-        response.cookies.set(cookieName, '', {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 0,
-        });
-      }
-    }
+    // Clear all session cookies using the shared helper
+    clearAuthCookies(response.cookies);
 
     console.log('[Auth] User signed out successfully');
 
@@ -64,16 +44,8 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(redirectUrl, { status: 302 });
 
-    // Clear all session cookies
-    for (const cookieName of SESSION_COOKIES) {
-      response.cookies.set(cookieName, '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 0,
-      });
-    }
+    // Clear all session cookies using the shared helper
+    clearAuthCookies(response.cookies);
 
     console.log('[Auth] User signed out via GET redirect');
 

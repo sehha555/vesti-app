@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { signInWithEmail } from '@/lib/auth/emailAuth';
+import { setAuthCookies } from '@/lib/auth/cookies';
+import {
+  checkIPRateLimit,
+  checkEmailRateLimit,
+  resetIPRateLimit,
+  resetEmailRateLimit,
+} from '@/lib/auth/rateLimit';
 
 /**
  * GET /api/auth/signin
@@ -71,6 +79,129 @@ export async function GET(request: NextRequest) {
     console.error('[Auth] signin error:', error);
     return NextResponse.json(
       { error: 'Internal server error', code: 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/auth/signin
+ * Sign in user with email and password
+ *
+ * Body:
+ * - email: User email address
+ * - password: User password
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Get client IP for rate limiting
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+
+    let body: Record<string, unknown>;
+
+    try {
+      body = await request.json();
+    } catch {
+      console.error('[Auth] Invalid JSON body');
+      return NextResponse.json(
+        { message: 'Invalid request body' },
+        { status: 422 }
+      );
+    }
+
+    let { email, password } = body;
+
+    // Validate email and password are provided and are strings
+    if (typeof email !== 'string' || !email.trim()) {
+      return NextResponse.json(
+        { message: 'Email is required' },
+        { status: 422 }
+      );
+    }
+
+    if (typeof password !== 'string' || !password.trim()) {
+      return NextResponse.json(
+        { message: 'Password is required' },
+        { status: 422 }
+      );
+    }
+
+    // Normalize email (trim + lowercase) for consistent rate limiting
+    email = email.trim().toLowerCase();
+
+    // Check IP rate limit first (skip if IP is unknown to avoid false positives)
+    if (ip !== 'unknown') {
+      const ipLimitResult = await checkIPRateLimit(ip);
+      if (!ipLimitResult.allowed) {
+        const retryAfter = ipLimitResult.retryAfter || 60;
+        return NextResponse.json(
+          {
+            message: 'Too many login attempts. Please try again later.',
+            retryAfter,
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(retryAfter),
+            },
+          }
+        );
+      }
+    }
+
+    // Check email rate limit
+    const emailLimitResult = await checkEmailRateLimit(email);
+    if (!emailLimitResult.allowed) {
+      const retryAfter = emailLimitResult.retryAfter || 60;
+      return NextResponse.json(
+        {
+          message: 'Too many login attempts. Please try again later.',
+          retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfter),
+          },
+        }
+      );
+    }
+
+    // Attempt to sign in with email and password
+    const result = await signInWithEmail(email, password);
+
+    if (!result.success) {
+      console.error('[Auth] Email/password sign in failed for:', email);
+      // Return a generic 401 message to prevent account enumeration
+      return NextResponse.json(
+        { message: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Reset rate limits on successful login
+    const resetPromises = [resetEmailRateLimit(email)];
+    if (ip !== 'unknown') {
+      resetPromises.push(resetIPRateLimit(ip));
+    }
+    await Promise.all(resetPromises);
+
+    // Success: create response and set auth cookies
+    const response = NextResponse.json({
+      success: true,
+      redirectTo: '/',
+    });
+
+    setAuthCookies(response.cookies, result.session!);
+
+    return response;
+  } catch (error) {
+    console.error('[Auth] POST signin error:', error);
+    return NextResponse.json(
+      { message: 'Server error' },
       { status: 500 }
     );
   }
