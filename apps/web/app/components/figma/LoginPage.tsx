@@ -171,8 +171,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   // Google OAuth handler (安全：只允許本站 origin)
   const handleGoogleLogin = () => {
     const url = new URL('/api/auth/signin', window.location.origin);
-    // redirectTo 只能是相對路徑，後端會驗證
-    url.searchParams.set('redirectTo', '/auth/callback');
+    // next 參數指定登入後目的地（allowlist: /, /reco, /wardrobe, /profile）
+    url.searchParams.set('next', '/reco');
     window.location.assign(url.toString());
   };
 

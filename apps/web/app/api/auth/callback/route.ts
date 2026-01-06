@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
 
-    // Handle OAuth errors
+    // Handle OAuth errors - redirect to home page with error params
     if (error) {
       console.error('[Auth Callback] OAuth error:', error, errorDescription);
-      const errorUrl = new URL('/login', request.nextUrl.origin);
-      errorUrl.searchParams.set('error', error);
+      const errorUrl = new URL('/', request.nextUrl.origin);
+      errorUrl.searchParams.set('auth_error', error);
       if (errorDescription) {
         errorUrl.searchParams.set('error_description', errorDescription);
       }
@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
     // Validate code is present
     if (!code) {
       console.error('[Auth Callback] Missing authorization code');
-      const errorUrl = new URL('/login', request.nextUrl.origin);
-      errorUrl.searchParams.set('error', 'missing_code');
+      const errorUrl = new URL('/', request.nextUrl.origin);
+      errorUrl.searchParams.set('auth_error', 'missing_code');
       return NextResponse.redirect(errorUrl, { status: 302 });
     }
 
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error('[Auth Callback] Missing Supabase configuration');
-      const errorUrl = new URL('/login', request.nextUrl.origin);
-      errorUrl.searchParams.set('error', 'config_error');
+      const errorUrl = new URL('/', request.nextUrl.origin);
+      errorUrl.searchParams.set('auth_error', 'config_error');
       return NextResponse.redirect(errorUrl, { status: 302 });
     }
 
@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
 
     if (exchangeError || !data?.session) {
       console.error('[Auth Callback] Code exchange failed:', exchangeError);
-      const errorUrl = new URL('/login', request.nextUrl.origin);
-      errorUrl.searchParams.set('error', 'exchange_failed');
+      const errorUrl = new URL('/', request.nextUrl.origin);
+      errorUrl.searchParams.set('auth_error', 'exchange_failed');
       return NextResponse.redirect(errorUrl, { status: 302 });
     }
 
@@ -97,8 +97,8 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('[Auth Callback] Unexpected error:', error);
-    const errorUrl = new URL('/login', request.nextUrl.origin);
-    errorUrl.searchParams.set('error', 'internal_error');
+    const errorUrl = new URL('/', request.nextUrl.origin);
+    errorUrl.searchParams.set('auth_error', 'internal_error');
     return NextResponse.redirect(errorUrl, { status: 302 });
   }
 }

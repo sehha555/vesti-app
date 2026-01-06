@@ -89,7 +89,7 @@ describe('GET /api/auth/callback', () => {
     expect(setCookieHeaders.every((c) => c.includes('Secure'))).toBe(true);
   });
 
-  it('should redirect to login with error when OAuth error is present', async () => {
+  it('should redirect to home with error when OAuth error is present', async () => {
     const req = createRequest({
       error: 'access_denied',
       error_description: 'User denied access',
@@ -98,21 +98,21 @@ describe('GET /api/auth/callback', () => {
 
     expect(res.status).toBe(302);
     const location = res.headers.get('location');
-    expect(location).toContain('/login');
-    expect(location).toContain('error=access_denied');
+    expect(location).toContain('http://localhost:3000/?');
+    expect(location).toContain('auth_error=access_denied');
   });
 
-  it('should redirect to login when code is missing', async () => {
+  it('should redirect to home when code is missing', async () => {
     const req = createRequest();
     const res = await GET(req);
 
     expect(res.status).toBe(302);
     const location = res.headers.get('location');
-    expect(location).toContain('/login');
-    expect(location).toContain('error=missing_code');
+    expect(location).toContain('http://localhost:3000/?');
+    expect(location).toContain('auth_error=missing_code');
   });
 
-  it('should redirect to login when code exchange fails', async () => {
+  it('should redirect to home when code exchange fails', async () => {
     mockExchangeCodeForSession.mockResolvedValue({
       data: null,
       error: { message: 'Invalid code' },
@@ -123,7 +123,7 @@ describe('GET /api/auth/callback', () => {
 
     expect(res.status).toBe(302);
     const location = res.headers.get('location');
-    expect(location).toContain('/login');
-    expect(location).toContain('error=exchange_failed');
+    expect(location).toContain('http://localhost:3000/?');
+    expect(location).toContain('auth_error=exchange_failed');
   });
 });
