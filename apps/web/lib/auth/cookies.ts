@@ -27,6 +27,7 @@ const SESSION_COOKIE_NAMES = [
   'sb-auth-token',
   'sb-refresh-token',
   'sb-user-id',
+  'sb-auth-status', // Client-readable marker (NOT httpOnly)
 ];
 
 /**
@@ -69,6 +70,16 @@ export function setAuthCookies(
     ...options,
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
+
+  // Client-readable marker cookie (NOT httpOnly) for frontend auth detection
+  // This allows JavaScript to check if user is logged in without exposing tokens
+  cookiesApi.set('sb-auth-status', 'authenticated', {
+    httpOnly: false, // Intentionally readable by JavaScript
+    secure: isProduction,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+  });
 }
 
 /**
@@ -81,9 +92,11 @@ export function clearAuthCookies(cookiesApi: CookiesAPI): void {
   const options = getCookieOptions(isProduction);
 
   for (const cookieName of SESSION_COOKIE_NAMES) {
-    cookiesApi.set(cookieName, '', {
-      ...options,
-      maxAge: 0, // Expire the cookie immediately
-    });
+    // sb-auth-status needs httpOnly: false to match how it was set
+    const cookieOptions = cookieName === 'sb-auth-status'
+      ? { ...options, httpOnly: false, maxAge: 0 }
+      : { ...options, maxAge: 0 };
+
+    cookiesApi.set(cookieName, '', cookieOptions);
   }
 }

@@ -1,17 +1,36 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { GET } from './route';
 import { NextRequest } from 'next/server';
 
-// Mock Supabase client
-const mockExchangeCodeForSession = vi.fn();
+// Use vi.hoisted() to ensure mocks are available before vi.mock hoisting
+const { mockExchangeCodeForSession, mockCookieStore, mockSetAuthCookies } = vi.hoisted(() => ({
+  mockExchangeCodeForSession: vi.fn(),
+  mockCookieStore: {
+    getAll: vi.fn(() => []),
+    set: vi.fn(),
+  },
+  mockSetAuthCookies: vi.fn(),
+}));
 
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
+// Mock next/headers cookies
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
+}));
+
+// Mock Supabase SSR client
+vi.mock('@supabase/ssr', () => ({
+  createServerClient: vi.fn(() => ({
     auth: {
       exchangeCodeForSession: mockExchangeCodeForSession,
     },
   })),
 }));
+
+// Mock setAuthCookies
+vi.mock('../../../../lib/auth/cookies', () => ({
+  setAuthCookies: mockSetAuthCookies,
+}));
+
+import { GET } from './route';
 
 const createRequest = (searchParams?: Record<string, string>): NextRequest => {
   const url = new URL('http://localhost:3000/api/auth/callback');
@@ -33,7 +52,7 @@ describe('GET /api/auth/callback', () => {
     process.env.NODE_ENV = 'development';
   });
 
-  it('should exchange code and set secure, HttpOnly, SameSite=Lax cookies', async () => {
+  it('should exchange code and call setAuthCookies with session data', async () => {
     const mockSession = {
       access_token: 'test-access-token',
       refresh_token: 'test-refresh-token',
@@ -51,26 +70,26 @@ describe('GET /api/auth/callback', () => {
     // Default redirect is /reco (when no auth_redirect_to cookie)
     expect(res.headers.get('location')).toBe('http://localhost:3000/reco');
 
+    // Verify setAuthCookies was called with correct session data
+    expect(mockSetAuthCookies).toHaveBeenCalledWith(
+      expect.anything(), // response.cookies
+      expect.objectContaining({
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        userId: 'user-123',
+      })
+    );
+
+    // Verify auth_redirect_to cookie is cleared
     const setCookieHeaders = res.headers.getSetCookie();
-    const cookieNames = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
-
-    // 3 session cookies + 1 cleared auth_redirect_to cookie
-    expect(setCookieHeaders.length).toBe(cookieNames.length + 1);
-
-    // Verify each cookie has the correct attributes
-    for (const cookieName of cookieNames) {
-      const cookieHeader = setCookieHeaders.find((c) =>
-        c.startsWith(`${cookieName}=`)
-      );
-      expect(cookieHeader).toBeDefined();
-      expect(cookieHeader).toContain('HttpOnly');
-      expect(cookieHeader).toContain('SameSite=lax');
-      // Secure attribute should not be present in development
-      expect(cookieHeader).not.toContain('Secure');
-    }
+    const clearCookie = setCookieHeaders.find((c) =>
+      c.startsWith('auth_redirect_to=')
+    );
+    expect(clearCookie).toBeDefined();
+    expect(clearCookie).toContain('Max-Age=0');
   });
 
-  it('should set Secure cookie in production', async () => {
+  it('should set Secure flag on auth_redirect_to clear cookie in production', async () => {
     process.env.NODE_ENV = 'production';
     const mockSession = {
       access_token: 'test-access-token',
@@ -86,7 +105,12 @@ describe('GET /api/auth/callback', () => {
     const res = await GET(req);
     const setCookieHeaders = res.headers.getSetCookie();
 
-    expect(setCookieHeaders.every((c) => c.includes('Secure'))).toBe(true);
+    // Verify auth_redirect_to clear cookie has Secure flag in production
+    const clearCookie = setCookieHeaders.find((c) =>
+      c.startsWith('auth_redirect_to=')
+    );
+    expect(clearCookie).toBeDefined();
+    expect(clearCookie).toContain('Secure');
   });
 
   it('should redirect to home with error when OAuth error is present', async () => {

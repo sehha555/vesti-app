@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Bell, ShoppingCart } from 'lucide-react';
 import type { WeatherSummary } from '@/packages/types/src/weather';
@@ -121,7 +121,7 @@ const pageHierarchy: Record<PageType, number> = {
 
 export default function Page() {
   // --- State Management ---
-  const [currentPage, setCurrentPage] = useState<PageType>('login');
+  const [currentPage, setCurrentPage] = useState<PageType | null>(null); // null = loading
   const [previousPage, setPreviousPage] = useState<PageType>('login');
   const [navigationDirection, setNavigationDirection] = useState<'forward' | 'back'>('forward');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -139,7 +139,31 @@ export default function Page() {
   const [tryOnBasketItems, setTryOnBasketItems] = useState<any[]>([]); // Mock state
 
   // --- Hooks ---
-  useScrollMemory(currentPage);
+  useScrollMemory(currentPage || 'home');
+
+  // Check auth session on mount to determine initial page
+  useEffect(() => {
+    const checkAuthSession = () => {
+      try {
+        // Check for sb-auth-status cookie (client-readable marker set by OAuth callback)
+        // Note: sb-auth-token is httpOnly and cannot be read by JavaScript
+        const hasAuthStatus = document.cookie.includes('sb-auth-status=authenticated');
+
+        if (hasAuthStatus) {
+          console.log('[Page] Auth status cookie found, showing home');
+          setCurrentPage('home');
+        } else {
+          console.log('[Page] No auth status cookie, showing login');
+          setCurrentPage('login');
+        }
+      } catch (error) {
+        console.error('[Page] Auth check failed:', error);
+        setCurrentPage('login');
+      }
+    };
+
+    checkAuthSession();
+  }, []);
 
   // 輔助函數：將單品資料映射到白板槽位
   const createLayoutSlots = (items: any): LayoutSlot[] => {
@@ -366,6 +390,18 @@ export default function Page() {
   };
 
   // --- Main JSX Structure ---
+  // Show loading while checking auth
+  if (currentPage === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-sm">載入中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary onReset={() => navigateTo('home')}>
       <div className={`min-h-screen bg-background ${currentPage === 'login' ? '' : 'pb-28'}`}>

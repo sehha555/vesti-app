@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { signInWithEmail } from '@/lib/auth/emailAuth';
 import { setAuthCookies } from '@/lib/auth/cookies';
 import {
@@ -11,6 +12,20 @@ import {
 
 // Allowlist of paths users can be redirected to after login
 const ALLOWED_REDIRECTS = ['/', '/reco', '/wardrobe', '/profile'];
+
+// Allowlist key mapping (prevents open redirect via query param)
+// Key is short string, value is the actual path
+const NEXT_KEYS: Record<string, string> = {
+  home: '/',
+  reco: '/reco',
+  wardrobe: '/wardrobe',
+  profile: '/profile',
+};
+
+// Reverse lookup: path -> key
+const PATH_TO_KEY: Record<string, string> = Object.fromEntries(
+  Object.entries(NEXT_KEYS).map(([k, v]) => [v, k])
+);
 
 /**
  * GET /api/auth/signin
@@ -38,20 +53,30 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const requestedNext = searchParams.get('next') || '/reco';
     const safeNext = ALLOWED_REDIRECTS.includes(requestedNext) ? requestedNext : '/reco';
+    const nextKey = PATH_TO_KEY[safeNext] || 'reco';
+    console.log('[Auth Signin] next param:', requestedNext, '-> safeNext:', safeNext, '-> nextKey:', nextKey);
 
-    // OAuth callback URL is hardcoded to prevent open redirect attacks
+    // OAuth callback URL with nk (next key) as fallback when cookie is lost
+    // nk is an allowlist key, not an arbitrary path, preventing open redirect
     const origin = request.nextUrl.origin;
-    const callbackUrl = `${origin}/api/auth/callback`;
+    const callbackUrl = `${origin}/api/auth/callback?nk=${nextKey}`;
 
-    // Create Supabase client for auth
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+    // Create Supabase SSR client for OAuth (handles PKCE code_verifier automatically)
+    const cookieStore = await cookies();
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
       },
     });
 
-    // Generate OAuth URL for Google
+    // Generate OAuth URL for Google (PKCE code_verifier is set automatically)
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -71,17 +96,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log('[Auth Signin] OAuth URL generated:', data.url);
+
     // Store the safe redirect path in a cookie for callback to use
-    const response = NextResponse.redirect(data.url, { status: 302 });
-    response.cookies.set('auth_redirect_to', safeNext, {
+    // Note: PKCE code_verifier is set automatically by Supabase SSR via cookies()
+    const isProduction = process.env.NODE_ENV === 'production';
+    cookieStore.set('auth_redirect_to', safeNext, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 10, // 10 minutes (OAuth flow should complete within this)
+      maxAge: 60 * 10, // 10 minutes
     });
+    console.log('[Auth Signin] Set auth_redirect_to cookie:', safeNext);
 
-    return response;
+    // Use 302 redirect - cookies from cookies() will be included automatically
+    return NextResponse.redirect(data.url, { status: 302 });
   } catch (error) {
     console.error('[Auth] signin error:', error);
     return NextResponse.json(
