@@ -406,22 +406,23 @@ export default function Page() {
     <ErrorBoundary onReset={() => navigateTo('home')}>
       <div className={`min-h-screen bg-background ${currentPage === 'login' ? '' : 'pb-28'}`}>
         <Toaster position="top-center" />
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={currentPage}
-            initial={{ x: navigationDirection === 'forward' ? 30 : -30, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: navigationDirection === 'forward' ? -30 : 30, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 350, damping: 35, opacity: { duration: 0.2 } }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
           >
             {renderPage()}
           </motion.div>
         </AnimatePresence>
         <OutfitDetailModal outfit={selectedOutfit} isOpen={isModalOpen} onClose={handleCloseModal} />
-        {currentPage !== 'login' && (
-          <BottomNav currentPage={currentPage} onPageChange={navigateTo} />
-        )}
       </div>
+      {/* BottomNav 獨立於動畫容器，避免頁面切換時閃爍 */}
+      {currentPage !== 'login' && (
+        <BottomNav currentPage={currentPage} onPageChange={navigateTo} />
+      )}
     </ErrorBoundary>
   );
 }

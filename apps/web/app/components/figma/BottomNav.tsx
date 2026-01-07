@@ -1,5 +1,4 @@
-import { Home, Archive, Compass, Store, User, Bookmark } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Home, Archive, Compass, Store, User } from 'lucide-react';
 import { haptic } from './hooks/useHaptic';
 
 type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile';
@@ -18,36 +17,23 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
   };
 
   return (
-    <motion.button 
+    <button
       onClick={handleClick}
-      whileTap={{ scale: 0.85 }}
-      className="relative flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-all"
+      className="relative flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
     >
       {/* Active Indicator */}
       {isActive && (
-        <motion.div
-          layoutId="activeTab"
-          className="absolute top-0 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-[var(--vesti-primary)]"
-          transition={{ type: "spring", stiffness: 380, damping: 30 }}
-        />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-primary" />
       )}
-      
-      <motion.div 
-        className={isActive ? 'text-[var(--vesti-primary)]' : 'text-[var(--vesti-gray-mid)]'}
-        animate={{ scale: isActive ? 1.1 : 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      >
+
+      <div className={`transition-transform ${isActive ? 'text-primary scale-110' : 'text-muted-foreground'}`}>
         {icon}
-      </motion.div>
-      
-      <motion.span 
-        className={isActive ? 'text-[var(--vesti-primary)]' : 'text-[var(--vesti-gray-mid)]'} 
-        style={{ fontSize: 'var(--text-label)', fontWeight: isActive ? 600 : 400 }}
-        animate={{ opacity: isActive ? 1 : 0.7 }}
-      >
+      </div>
+
+      <span className={`text-xs transition-colors ${isActive ? 'text-primary font-semibold' : 'text-muted-foreground opacity-70'}`}>
         {label}
-      </motion.span>
-    </motion.button>
+      </span>
+    </button>
   );
 }
 
@@ -58,7 +44,7 @@ interface BottomNavProps {
 
 export function BottomNav({ currentPage, onPageChange }: BottomNavProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-sm">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm">
       <div className="flex h-16 items-center justify-around">
         <NavItem 
           icon={<Home className="h-5 w-5" strokeWidth={2} />} 
