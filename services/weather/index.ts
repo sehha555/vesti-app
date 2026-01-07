@@ -18,13 +18,27 @@ interface CacheEntry {
   timestamp: number;
 }
 
-/** 天氣條件對應表 */
+/** 天氣條件對應表 - OpenWeather main 條件 -> UI 條件 */
 const CONDITION_MAP: Record<string, WeatherSummary['condition']> = {
+  // 晴朗
   clear: 'sunny',
+  // 雨水相關
   rain: 'rainy',
-  clouds: 'cloudy',
-  snow: 'snowy',
   drizzle: 'rainy',
+  thunderstorm: 'rainy',
+  // 雲類
+  clouds: 'cloudy',
+  mist: 'cloudy',
+  smoke: 'cloudy',
+  haze: 'cloudy',
+  dust: 'cloudy',
+  fog: 'cloudy',
+  sand: 'cloudy',
+  ash: 'cloudy',
+  squall: 'windy',
+  tornado: 'windy',
+  // 雪
+  snow: 'snowy',
 };
 
 /**
@@ -84,9 +98,12 @@ class WeatherServiceManager {
 
   /** 將 Weather 轉換為 WeatherSummary */
   private weatherToSummary(weather: Weather): Omit<WeatherSummary, 'locationName'> {
-    const condition = CONDITION_MAP[weather.condition] || 'cloudy';
+    const rawCondition = weather.condition;
+    const condition = CONDITION_MAP[rawCondition] || 'cloudy';
     const windSpeedKmh = Math.round(weather.windSpeed * 3.6 * 10) / 10;
     const feelsLike = this.calculateFeelsLike(weather.temperature, weather.humidity, weather.windSpeed);
+
+    console.log(`[Weather] Mapping condition: "${rawCondition}" -> "${condition}"`);
 
     return {
       temperature: weather.temperature,
@@ -113,7 +130,7 @@ class WeatherServiceManager {
     // 1. 檢查快取
     const cached = WeatherServiceManager.cache.get(cacheKey);
     if (cached && this.isCacheValid(cached)) {
-      console.log(`[Cache] Hit: ${cacheKey} (${this.formatCacheAge(cached.timestamp)})`);
+      console.log(`[Cache] Hit: ${cacheKey} (${this.formatCacheAge(cached.timestamp)}) condition=${cached.weather.condition}`);
       return cached.weather;
     }
 

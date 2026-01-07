@@ -31,9 +31,17 @@ export function WeatherCard({ weather }: WeatherCardProps) {
   const feelsLike = Math.round(weather?.feelsLike ?? temperature);
   const humidity = Math.round(weather?.humidity ?? 60);
   const windSpeed = Math.round(weather?.windSpeed ?? 0);
-  const conditionDesc = conditionDescriptions[currentWeather];
+
+  // 保證背景和文字描述總是有效值
+  const bgClass = weatherBackgrounds[currentWeather] ?? weatherBackgrounds.cloudy;
+  const conditionDesc = conditionDescriptions[currentWeather] ?? conditionDescriptions.cloudy;
   const locationName = weather?.locationName || '載入中...';
-  
+
+  // 除錯日誌（診斷用）
+  if (weather) {
+    console.log('[WeatherCard] condition:', weather.condition, 'mapped:', currentWeather, 'bgClass exists:', !!weatherBackgrounds[currentWeather]);
+  }
+
   const WeatherIcon = () => {
     switch (currentWeather) {
       case 'sunny':
@@ -50,7 +58,7 @@ export function WeatherCard({ weather }: WeatherCardProps) {
   };
 
   return (
-    <div className={`relative mx-5 mt-2 overflow-hidden rounded-2xl ${weatherBackgrounds[currentWeather]} transition-all duration-700 shadow-md`}>
+    <div className={`relative mx-5 mt-2 overflow-hidden rounded-2xl ${bgClass} transition-all duration-700 shadow-md`}>
       {/* 背景裝飾 - 縮小尺寸 */}
       <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
       <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/10" />
