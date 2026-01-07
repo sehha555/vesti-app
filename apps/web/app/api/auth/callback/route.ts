@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { setAuthCookies } from '../../../../lib/auth/cookies';
-
-// Allowlist key mapping (must match signin/route.ts)
-// Prevents open redirect - only these keys are valid
-const NEXT_KEYS: Record<string, string> = {
-  home: '/',
-  reco: '/reco',
-  wardrobe: '/wardrobe',
-  profile: '/profile',
-};
-
-// Valid paths for cookie validation
-const ALLOWED_REDIRECTS = ['/', '/reco', '/wardrobe', '/profile'];
 
 /**
  * GET /api/auth/callback
@@ -61,24 +48,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl, { status: 302 });
     }
 
-    // Create Supabase SSR client with cookie access for PKCE code_verifier
-    const cookieStore = await cookies();
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
+    // Create Supabase client
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     });
 
-    console.log('[Auth Callback] Exchanging code for session...');
-
-    // Exchange code for session (requires code_verifier from PKCE)
+    // Exchange code for session
     const { data, error: exchangeError } =
       await supabase.auth.exchangeCodeForSession(code);
 
@@ -91,31 +69,8 @@ export async function GET(request: NextRequest) {
 
     const { session } = data;
 
-    // Determine redirect path using dual fallback (cookie + nk query param)
-    // Priority: 1) cookie (if valid) -> 2) nk param (if valid) -> 3) default /reco
-    const allCookies = request.cookies.getAll();
-    console.log('[Auth Callback] All cookies:', allCookies.map(c => c.name).join(', ') || '(none)');
-
-    const redirectCookie = request.cookies.get('auth_redirect_to');
-    const cookieValue = redirectCookie?.value;
-    const nkParam = searchParams.get('nk');
-
-    let redirectTo = '/reco'; // default
-    let source = 'default';
-
-    // 1) Try cookie first (validate against allowlist)
-    if (cookieValue && ALLOWED_REDIRECTS.includes(cookieValue)) {
-      redirectTo = cookieValue;
-      source = 'cookie';
-    }
-    // 2) Fallback to nk query param (validate against NEXT_KEYS)
-    else if (nkParam && NEXT_KEYS[nkParam]) {
-      redirectTo = NEXT_KEYS[nkParam];
-      source = 'nk-param';
-    }
-
-    console.log('[Auth Callback] cookie:', cookieValue || '(none)', '| nk:', nkParam || '(none)');
-    console.log('[Auth Callback] Final redirectTo:', redirectTo, `(source: ${source})`);
+    // Get the redirect path from cookie (set by /api/auth/signin)
+    const redirectTo = request.cookies.get('auth_redirect_to')?.value ||'/reco';
 
     // Create response with redirect to the intended destination
     const successUrl = new URL(redirectTo, request.nextUrl.origin);
@@ -129,11 +84,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Clear the redirect cookie (one-time use)
-    const isProduction = process.env.NODE_ENV === 'production';
     response.cookies.set('auth_redirect_to', '', {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       path: '/',
       maxAge: 0, // Delete immediately
     });

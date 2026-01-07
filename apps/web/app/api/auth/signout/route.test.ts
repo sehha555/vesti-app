@@ -42,7 +42,7 @@ describe('POST /api/auth/signout', () => {
     const res = await POST(req);
 
     const setCookieHeaders = res.headers.getSetCookie();
-    const cookieNames = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
+    const cookieNames = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id', 'sb-auth-status'];
 
     expect(setCookieHeaders.length).toBe(cookieNames.length);
 

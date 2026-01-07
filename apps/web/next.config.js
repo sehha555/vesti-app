@@ -1,5 +1,12 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const nextConfig = {
   reactStrictMode: true,
+  // Fix monorepo workspace root detection (prevents "multiple lockfiles" warning)
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   eslint: {
     // Ignore ESLint during builds to unblock CI
     // Linting is handled separately via 'npm run lint' job
