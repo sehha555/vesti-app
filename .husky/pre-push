@@ -1,29 +1,26 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+# Pre-push hook: Run tests before pushing
+# This ensures your changes pass tests before pushing to remote
 
-# Pre-push hook: Run local CI verification with act
-# This ensures your changes pass CI before pushing to remote
-
-# Allow skipping with: SKIP_ACT=1 git push
-if [ "${SKIP_ACT:-}" = "1" ]; then
-  echo "⏭️  SKIP_ACT=1 detected -> skipping local act CI verification"
+# Allow skipping with: SKIP_TESTS=1 git push
+if [ "${SKIP_TESTS:-}" = "1" ]; then
+  echo "[SKIP] SKIP_TESTS=1 detected -> skipping pre-push tests"
   exit 0
 fi
 
-echo "🔄 Running local GitHub Actions CI verification..."
+echo "[INFO] Running tests before push..."
 echo ""
 
-# Run the combined act test + build
-if npm run ci:act; then
+# Run vitest
+if npm test -- --run; then
   echo ""
-  echo "✅ Local CI verification passed - proceeding with push"
+  echo "[OK] Tests passed - proceeding with push"
   exit 0
 else
   echo ""
-  echo "❌ Local CI verification failed - push aborted"
+  echo "[FAIL] Tests failed - push aborted"
   echo ""
-  echo "💡 To skip this check (not recommended), run:"
-  echo "   SKIP_ACT=1 git push"
+  echo "[TIP] To skip this check (not recommended), run:"
+  echo "      SKIP_TESTS=1 git push"
   echo ""
   exit 1
 fi
