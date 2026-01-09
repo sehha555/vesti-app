@@ -425,8 +425,6 @@ export default function Page() {
       {currentPage !== null && currentPage !== 'login' && (
         <BottomNav currentPage={currentPage} onPageChange={navigateTo} />
       )}
-      {/* FIX: 關閉 min-h-screen 容器 */}
-      </div>
       </ErrorBoundary>
     </div>
   );
