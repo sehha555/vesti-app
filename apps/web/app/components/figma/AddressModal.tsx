@@ -81,6 +81,7 @@ export function AddressModal({ isOpen, onClose, onSave, editingAddress }: Addres
 
         {/* Modal 內容 */}
         <motion.div
+          data-testid="address-modal"
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}

@@ -284,7 +284,7 @@ export function DeliveryTrackingPage({ onBack, initialMerchant }: DeliveryTracki
   return (
     <div className="min-h-screen bg-[var(--vesti-background)] pb-6">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-border">
+      <header data-testid="delivery-tracking-header" className="sticky top-0 z-50 bg-white border-b border-border">
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={onBack}

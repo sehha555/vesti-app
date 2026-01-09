@@ -79,6 +79,7 @@ export function OutfitDetailModal({ outfit, isOpen, onClose }: OutfitDetailModal
 
           {/* 詳細卡片 - 從底部滑出 */}
           <motion.div
+            data-testid="outfit-detail-modal"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}

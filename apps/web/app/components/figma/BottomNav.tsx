@@ -44,7 +44,10 @@ interface BottomNavProps {
 
 export function BottomNav({ currentPage, onPageChange }: BottomNavProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm">
+    <div
+      data-testid="bottom-nav"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm"
+    >
       <div className="flex h-16 items-center justify-around">
         <NavItem 
           icon={<Home className="h-5 w-5" strokeWidth={2} />} 

@@ -317,6 +317,7 @@ export default function Page() {
         return (
           <>
             <motion.header
+              data-testid="page-header"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15 }}
@@ -393,7 +394,7 @@ export default function Page() {
   // Show loading while checking auth
   if (currentPage === null) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div data-testid="loading-screen" className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground text-sm">載入中...</p>
@@ -403,8 +404,9 @@ export default function Page() {
   }
 
   return (
-    <ErrorBoundary onReset={() => navigateTo('home')}>
-      <div className={`min-h-screen bg-background ${currentPage === 'login' ? '' : 'pb-28'}`}>
+    <div data-testid="error-boundary">
+      <ErrorBoundary onReset={() => navigateTo('home')}>
+        <div className={`min-h-screen bg-background ${currentPage === 'login' ? '' : 'pb-28'}`}>
         <Toaster position="top-center" />
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
@@ -420,9 +422,12 @@ export default function Page() {
         <OutfitDetailModal outfit={selectedOutfit} isOpen={isModalOpen} onClose={handleCloseModal} />
       </div>
       {/* BottomNav 獨立於動畫容器，避免頁面切換時閃爍 */}
-      {currentPage !== 'login' && (
+      {currentPage !== null && currentPage !== 'login' && (
         <BottomNav currentPage={currentPage} onPageChange={navigateTo} />
       )}
-    </ErrorBoundary>
+      {/* FIX: 關閉 min-h-screen 容器 */}
+      </div>
+      </ErrorBoundary>
+    </div>
   );
 }

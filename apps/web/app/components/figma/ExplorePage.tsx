@@ -114,7 +114,8 @@ export function ExplorePage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] pb-24">
       {/* Header / Search */}
-      <motion.div 
+      <motion.div
+        data-testid="explore-header"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="sticky top-0 z-40 bg-[#FDFBF7]/95 backdrop-blur-sm px-5 py-4 border-b border-[#E5E5E5]"

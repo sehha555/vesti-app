@@ -235,7 +235,7 @@ export function CPWRankingFullPage({ onBack }: CPWRankingFullPageProps) {
   return (
     <div className="min-h-screen bg-[var(--vesti-background)]">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-border">
+      <header data-testid="cpw-ranking-header" className="sticky top-0 z-50 bg-white border-b border-border">
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={onBack}

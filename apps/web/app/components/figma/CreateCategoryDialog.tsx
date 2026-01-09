@@ -40,6 +40,7 @@ export function CreateCategoryDialog({ isOpen, onClose, onConfirm }: CreateCateg
 
           {/* 對話框 */}
           <motion.div
+            data-testid="create-category-dialog"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}

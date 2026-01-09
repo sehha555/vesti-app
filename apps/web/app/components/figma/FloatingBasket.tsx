@@ -48,6 +48,7 @@ export function FloatingBasket({ items, onRemoveItem, onNavigateToTryOn, onAddIt
     <>
       {/* 籃子按鈕 */}
       <motion.div
+        data-testid="floating-basket"
         ref={drop}
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

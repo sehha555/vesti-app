@@ -13,7 +13,7 @@ export function CardSkeleton({ count = 4, aspectRatio = '4:5' }: CardSkeletonPro
   }[aspectRatio];
 
   return (
-    <div className="grid grid-cols-2 gap-3 px-5">
+    <div data-testid="card-skeleton" className="grid grid-cols-2 gap-3 px-5">
       {Array.from({ length: count }).map((_, index) => (
         <motion.div
           key={index}

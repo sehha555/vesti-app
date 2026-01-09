@@ -247,6 +247,7 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
     <div className="min-h-screen bg-[var(--vesti-background)] pb-24">
       {/* Header */}
       <motion.header
+        data-testid="profile-header"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm border-b border-border"

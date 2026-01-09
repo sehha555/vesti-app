@@ -157,6 +157,7 @@ export function BroadcastPage({ onBack }: BroadcastPageProps = {} as BroadcastPa
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Sticky Header */}
       <motion.div
+        data-testid="broadcast-header"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}

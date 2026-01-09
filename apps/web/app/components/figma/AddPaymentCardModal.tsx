@@ -151,6 +151,7 @@ export function AddPaymentCardModal({ isOpen, onClose, onAdd }: AddPaymentCardMo
 
         {/* Modal 內容 */}
         <motion.div
+          data-testid="payment-card-modal"
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}

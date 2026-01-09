@@ -59,7 +59,10 @@ export function UploadOptionsDialog({
               }}
               className="w-full max-w-md pointer-events-auto mb-32 mx-4"
             >
-              <div className="relative rounded-3xl bg-white/95 backdrop-blur-xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+              <div
+                data-testid="upload-options-dialog"
+                className="relative rounded-3xl bg-white/95 backdrop-blur-xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+              >
                 {/* Close Button */}
                 <button
                   onClick={onClose}

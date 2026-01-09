@@ -395,6 +395,7 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
       <div className="min-h-screen bg-[var(--vesti-background)] pb-20">
         {/* Header */}
         <motion.header
+          data-testid="store-header"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm px-5 pt-5 pb-4"

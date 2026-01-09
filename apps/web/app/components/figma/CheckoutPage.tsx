@@ -274,7 +274,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
     return (
       <div className="flex min-h-screen flex-col bg-[var(--vesti-gray-light)]">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-white/90 px-5 py-4 backdrop-blur-md">
+        <header data-testid="checkout-header" className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-white/90 px-5 py-4 backdrop-blur-md">
           <button
             onClick={onBack}
             className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-[var(--vesti-gray-light)] transition-colors"
@@ -946,7 +946,7 @@ export function CheckoutPage({ onBack }: CheckoutPageProps) {
       </div>
 
       {/* 底部固定結帳欄 */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-white/95 backdrop-blur-md">
+      <div data-testid="checkout-action-bar" className="fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-white/95 backdrop-blur-md">
         {/* 價格明細 */}
         <div className="px-5 py-4">
           <div className="mb-3 space-y-2">

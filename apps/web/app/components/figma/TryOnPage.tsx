@@ -434,6 +434,7 @@ export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, bask
       <div className="pb-44">
         {/* Header */}
         <motion.header
+          data-testid="tryon-header"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="sticky top-0 z-40 bg-[var(--vesti-background)]/95 backdrop-blur-sm border-b border-border"
@@ -630,7 +631,7 @@ export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, bask
         </AnimatePresence>
 
         {/* Actions */}
-        <div className="fixed bottom-16 left-0 right-0 bg-[var(--vesti-background)]/95 backdrop-blur-md border-t border-border px-4 py-3 flex gap-3 z-30">
+        <div data-testid="tryon-action-bar" className="fixed bottom-16 left-0 right-0 bg-[var(--vesti-background)]/95 backdrop-blur-md border-t border-border px-4 py-3 flex gap-3 z-30">
            {/* Secondary Action: Checkout */}
           {tryOnItems.length > 0 && onNavigateToCheckout && (
             <motion.button
