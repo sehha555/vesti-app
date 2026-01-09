@@ -22,11 +22,11 @@ CREATE TABLE IF NOT EXISTS public.closet_items (
   color         text        DEFAULT NULL,
   size          text        DEFAULT NULL,
   season        text        DEFAULT NULL,
-  tags          text[]      DEFAULT '{}',
+  tags          text[]      NOT NULL DEFAULT '{}',
   image_url     text        DEFAULT NULL,
   custom_group  text        DEFAULT NULL,
-  is_archived   boolean     DEFAULT false,
-  source_type   text        DEFAULT 'OWNED',
+  is_archived   boolean     NOT NULL DEFAULT false,
+  source_type   text        NOT NULL DEFAULT 'OWNED',
   source_ref_id text        DEFAULT NULL,
   status        text        DEFAULT 'ACTIVE',
   acquired_at   timestamptz DEFAULT NULL,
@@ -42,14 +42,14 @@ CREATE TABLE IF NOT EXISTS public.closet_items (
 CREATE INDEX IF NOT EXISTS closet_items_user_id_idx
   ON public.closet_items (user_id);
 
-CREATE INDEX IF NOT EXISTS closet_items_user_id_category_idx
+CREATE INDEX IF NOT EXISTS closet_items_user_category_idx
   ON public.closet_items (user_id, category);
 
-CREATE INDEX IF NOT EXISTS closet_items_user_id_source_status_idx
+CREATE INDEX IF NOT EXISTS closet_items_user_source_status_idx
   ON public.closet_items (user_id, source_type, status);
 
 -- 4. Create updated_at trigger
-CREATE TRIGGER closet_items_set_updated_at
+CREATE TRIGGER trg_closet_items_updated_at
   BEFORE UPDATE ON public.closet_items
   FOR EACH ROW
   EXECUTE FUNCTION public.set_updated_at();
@@ -58,19 +58,19 @@ CREATE TRIGGER closet_items_set_updated_at
 ALTER TABLE public.closet_items ENABLE ROW LEVEL SECURITY;
 
 -- 6. Create RLS policies
-CREATE POLICY closet_items_select_policy
+CREATE POLICY closet_items_select_own
   ON public.closet_items FOR SELECT
   USING (user_id = auth.uid());
 
-CREATE POLICY closet_items_insert_policy
+CREATE POLICY closet_items_insert_own
   ON public.closet_items FOR INSERT
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY closet_items_update_policy
+CREATE POLICY closet_items_update_own
   ON public.closet_items FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY closet_items_delete_policy
+CREATE POLICY closet_items_delete_own
   ON public.closet_items FOR DELETE
   USING (user_id = auth.uid());
