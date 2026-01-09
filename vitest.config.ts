@@ -19,7 +19,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['**/*.test.ts', '**/*.spec.ts'],
+    include: ['**/*.test.ts', '**/*.spec.ts', '**/*.test.tsx', '**/*.spec.tsx'],
+    exclude: ['**/node_modules/**', '**/e2e/**', '**/dist/**'],
     setupFiles: ['./vitest.setup.ts'],
     mockReset: true,
     restoreMocks: true,
