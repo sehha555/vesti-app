@@ -123,12 +123,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
   }
 
-  // Get public URL (signed URL for private bucket)
-  const { data: urlData } = supabase.storage
+  // Get signed URL for private bucket (1 hour expiration)
+  const { data: urlData, error: signedUrlError } = await supabase.storage
     .from(BUCKET_NAME)
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 3600);
 
-  let imageUrl = urlData.publicUrl;
+  if (signedUrlError || !urlData?.signedUrl) {
+    console.error('[closet-items/upload] Signed URL error:', signedUrlError?.message);
+    // Cleanup uploaded file
+    await supabase.storage.from(BUCKET_NAME).remove([filePath]);
+    return NextResponse.json({ error: 'Failed to generate image URL' }, { status: 500 });
+  }
+
+  let imageUrl = urlData.signedUrl;
   let removedBgUrl: string | undefined;
 
   // Optional: Remove background using remove.bg API
@@ -154,14 +161,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         });
 
       if (!noBgUploadError) {
-        const { data: noBgUrlData } = supabase.storage
+        const { data: noBgUrlData } = await supabase.storage
           .from(BUCKET_NAME)
-          .getPublicUrl(noBgPath);
-        removedBgUrl = noBgUrlData.publicUrl;
-        // Use background-removed image as main image
-        imageUrl = removedBgUrl;
+          .createSignedUrl(noBgPath, 3600);
+        if (noBgUrlData?.signedUrl) {
+          removedBgUrl = noBgUrlData.signedUrl;
+          // Use background-removed image as main image
+          imageUrl = removedBgUrl;
+        }
       }
-    } catch (removeBgError) {
+    } catch {
       console.error('[closet-items/upload] Background removal failed');
       // Continue without background removal
     }
