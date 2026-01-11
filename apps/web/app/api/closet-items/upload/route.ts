@@ -11,6 +11,11 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const BUCKET_NAME = 'closet-images';
 
+// Signed URL expiration (server-controlled, not client-configurable)
+const SIGNED_URL_EXPIRES_IN = process.env.SIGNED_URL_EXPIRES_SECONDS
+  ? Math.min(parseInt(process.env.SIGNED_URL_EXPIRES_SECONDS, 10), 900)
+  : 300; // Default 5 minutes, max 15 minutes
+
 // Zod schema for metadata (whitelist only allowed fields)
 const UploadMetadataSchema = z.object({
   name: z.string().min(1),
@@ -126,7 +131,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Get signed URL for private bucket (1 hour expiration)
   const { data: urlData, error: signedUrlError } = await supabase.storage
     .from(BUCKET_NAME)
-    .createSignedUrl(filePath, 3600);
+    .createSignedUrl(filePath, SIGNED_URL_EXPIRES_IN);
 
   if (signedUrlError || !urlData?.signedUrl) {
     console.error('[closet-items/upload] Signed URL error:', signedUrlError?.message);
@@ -163,7 +168,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (!noBgUploadError) {
         const { data: noBgUrlData } = await supabase.storage
           .from(BUCKET_NAME)
-          .createSignedUrl(noBgPath, 3600);
+          .createSignedUrl(noBgPath, SIGNED_URL_EXPIRES_IN);
         if (noBgUrlData?.signedUrl) {
           removedBgUrl = noBgUrlData.signedUrl;
           // Use background-removed image as main image
@@ -224,11 +229,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
   }
 
+  // Calculate expiration timestamp for frontend cache management
+  const expiresAt = new Date(Date.now() + SIGNED_URL_EXPIRES_IN * 1000).toISOString();
+
   return NextResponse.json(
     {
       data: closetItem as ClosetItem,
       imageUrl,
       removedBgUrl,
+      expiresAt,
     },
     { status: 201 }
   );
