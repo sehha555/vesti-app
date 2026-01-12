@@ -226,3 +226,53 @@ export function getClientIP(headers: Headers): string {
   // Rate limit will still work but shared across all unknown IPs
   return 'unknown';
 }
+
+/**
+ * Cache a response for rate-limited requests (Redis only).
+ * Used to return cached response when user exceeds rate limit.
+ *
+ * @param key - Cache key (should match rate limit key pattern)
+ * @param response - Response object to cache
+ * @param ttlSeconds - Cache TTL in seconds
+ */
+export async function cacheResponse(
+  key: string,
+  response: unknown,
+  ttlSeconds: number
+): Promise<void> {
+  const redis = getRedisClient();
+  if (!redis) return;
+
+  const cacheKey = `cache:${key}`;
+  try {
+    await redis.set(cacheKey, JSON.stringify(response), { ex: ttlSeconds });
+  } catch (error) {
+    console.error('[rateLimit] Failed to cache response:', error);
+  }
+}
+
+/**
+ * Get cached response for rate-limited requests.
+ *
+ * @param key - Cache key (should match rate limit key pattern)
+ * @returns Cached response or null
+ */
+export async function getCachedResponse<T>(key: string): Promise<T | null> {
+  const redis = getRedisClient();
+  if (!redis) return null;
+
+  const cacheKey = `cache:${key}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached && typeof cached === 'string') {
+      return JSON.parse(cached) as T;
+    }
+    if (cached && typeof cached === 'object') {
+      return cached as T;
+    }
+    return null;
+  } catch (error) {
+    console.error('[rateLimit] Failed to get cached response:', error);
+    return null;
+  }
+}

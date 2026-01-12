@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { checkRateLimit, cacheResponse, getCachedResponse } from '@/lib/rateLimit';
 
 const BUCKET_NAME = 'closet-images';
 
@@ -8,22 +9,20 @@ const SIGNED_URL_EXPIRES_IN = process.env.SIGNED_URL_EXPIRES_SECONDS
   ? Math.min(parseInt(process.env.SIGNED_URL_EXPIRES_SECONDS, 10), 900)
   : 300; // Default 5 minutes, max 15 minutes
 
-// Rate limiting: 5 requests per 10 seconds per user+item
-const RATE_LIMIT_WINDOW_MS = 10_000;
-const RATE_LIMIT_MAX_REQUESTS = 5;
+// Rate limiting config: 5 requests per 10 seconds per user+item
+const RATE_LIMIT_CONFIG = {
+  windowMs: 10_000,
+  maxRequests: 5,
+  keyPrefix: 'refresh-url',
+};
 
-// In-memory rate limit store (for single instance; use Redis for multi-instance)
-const rateLimitStore = new Map<string, { count: number; resetAt: number; cachedResponse?: { imageUrl: string; expiresAt: string } }>();
+// Minimum remaining time to serve cached response (30 seconds)
+const MIN_CACHE_REMAINING_MS = 30_000;
 
-// Cleanup stale entries periodically (every 60 seconds)
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of rateLimitStore.entries()) {
-    if (value.resetAt < now) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, 60_000);
+interface RefreshResponse {
+  imageUrl: string;
+  expiresAt: string;
+}
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -38,7 +37,8 @@ interface RouteContext {
  * Security:
  * - Only uses DB-stored image_url (no querystring input)
  * - Returns 404 for non-owner or non-existent items (prevents enumeration)
- * - Rate limited: 5 requests per 10 seconds per user+item
+ * - Rate limited: 5 requests per 10 seconds per user+item (Redis-backed)
+ * - Cache-Control: private, no-store (prevents browser/CDN caching)
  *
  * Returns: 200 { imageUrl, expiresAt }
  */
@@ -50,28 +50,41 @@ export async function GET(
   const { supabase, user } = await getSupabaseAndUser();
 
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   }
 
-  // Rate limiting check
+  // Rate limiting check (Redis-backed for multi-instance)
   const rateLimitKey = `${user.id}:${id}`;
-  const now = Date.now();
-  const rateLimit = rateLimitStore.get(rateLimitKey);
+  const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIG);
 
-  if (rateLimit && rateLimit.resetAt > now) {
-    if (rateLimit.count >= RATE_LIMIT_MAX_REQUESTS) {
-      // Return cached response if available (avoid 429 by serving stale)
-      if (rateLimit.cachedResponse) {
-        return NextResponse.json(rateLimit.cachedResponse);
+  if (!rateLimitResult.allowed) {
+    // Try to return cached response if still valid (>= 30s remaining)
+    const cached = await getCachedResponse<RefreshResponse>(rateLimitKey);
+    if (cached) {
+      const expiresAtMs = new Date(cached.expiresAt).getTime();
+      const remainingMs = expiresAtMs - Date.now();
+
+      if (remainingMs >= MIN_CACHE_REMAINING_MS) {
+        return NextResponse.json(cached, {
+          headers: { 'Cache-Control': 'private, no-store' },
+        });
       }
-      return NextResponse.json(
-        { error: 'Too many requests' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimit.resetAt - now) / 1000)) } }
-      );
     }
-    rateLimit.count++;
-  } else {
-    rateLimitStore.set(rateLimitKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+
+    // No valid cache, return 429
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+        },
+      }
+    );
   }
 
   // Fetch item to verify ownership and get image_url (DB is source of truth)
@@ -84,11 +97,17 @@ export async function GET(
 
   // Return 404 for any access issue (prevents user enumeration)
   if (fetchError || !item) {
-    return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Item not found' },
+      { status: 404, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   }
 
   if (!item.image_url) {
-    return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Item not found' },
+      { status: 404, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   }
 
   // Extract file path from DB-stored image_url
@@ -111,7 +130,10 @@ export async function GET(
   // Verify path belongs to user (defense in depth)
   if (!filePath.startsWith(`${user.id}/`)) {
     // Return 404 instead of 403 to prevent enumeration
-    return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Item not found' },
+      { status: 404, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   }
 
   // Generate new signed URL
@@ -121,17 +143,19 @@ export async function GET(
 
   if (signedUrlError || !urlData?.signedUrl) {
     console.error('[closet-items/refresh-url] Signed URL error:', signedUrlError?.message);
-    return NextResponse.json({ error: 'Failed to generate URL' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to generate URL' },
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   }
 
   const expiresAt = new Date(Date.now() + SIGNED_URL_EXPIRES_IN * 1000).toISOString();
-  const response = { imageUrl: urlData.signedUrl, expiresAt };
+  const response: RefreshResponse = { imageUrl: urlData.signedUrl, expiresAt };
 
-  // Cache response for rate limiting
-  const currentLimit = rateLimitStore.get(rateLimitKey);
-  if (currentLimit) {
-    currentLimit.cachedResponse = response;
-  }
+  // Cache response for rate limiting (TTL = signed URL TTL)
+  await cacheResponse(rateLimitKey, response, SIGNED_URL_EXPIRES_IN);
 
-  return NextResponse.json(response);
+  return NextResponse.json(response, {
+    headers: { 'Cache-Control': 'private, no-store' },
+  });
 }
