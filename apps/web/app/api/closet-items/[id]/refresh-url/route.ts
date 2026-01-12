@@ -142,7 +142,8 @@ export async function GET(
     .createSignedUrl(filePath, SIGNED_URL_EXPIRES_IN);
 
   if (signedUrlError || !urlData?.signedUrl) {
-    console.error('[closet-items/refresh-url] Signed URL error:', signedUrlError?.message);
+    // Log only error name/code, NOT the message (may contain sensitive URLs/tokens)
+    console.error('[closet-items/refresh-url] Signed URL generation failed');
     return NextResponse.json(
       { error: 'Failed to generate URL' },
       { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
