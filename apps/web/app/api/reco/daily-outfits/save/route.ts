@@ -1,257 +1,122 @@
-// apps/web/app/api/reco/daily-outfits/save/route.ts
-// 使用 Supabase 持久化每日穿搭計畫
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { z } from 'zod';
+import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { checkRateLimit } from '@/lib/rateLimit';
 
-// TypeScript Interface 定義
-interface SaveDailyOutfitRequest {
-  // userId is removed from request, will be retrieved from session
-  date: string;
-  outfitId: number;
-  layoutSlots: Record<string, any>;
-  occasion?: string;
-  weather?: Record<string, any>;
+const OutfitItemSchema = z.object({
+  closet_item_id: z.string().uuid().optional(),
+  catalog_item_id: z.string().uuid().optional(),
+  item_type: z.enum(['closet', 'catalog']),
+}).refine(
+  obj => obj.closet_item_id || obj.catalog_item_id,
+  { message: 'Either closet_item_id or catalog_item_id required' }
+);
+
+const SaveDailyOutfitRequestSchema = z.object({
+  items: z.array(OutfitItemSchema).min(1),
+  season: z.string().nullable().optional(),
+  occasion: z.string().nullable().optional(),
+  weather_info: z.record(z.any()).nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+type SaveDailyOutfitRequest = z.infer<typeof SaveDailyOutfitRequestSchema>;
+
+interface OutfitResponse {
+  id: string;
+  user_id: string;
+  created_at: string;
 }
 
-interface DailyOutfitResponse {
-  ok: boolean;
-  saved?: boolean;
-  date?: string;
-  outfits?: Array<{
-    outfitId: number;
-    layoutSlots: Record<string, any>;
-  }>;
-  message?: string;
-}
+// Rate limit config: 20 requests per 60 seconds per user
+const RATE_LIMIT_CONFIG = {
+  windowMs: 60_000,
+  maxRequests: 20,
+  keyPrefix: 'reco-save:daily',
+};
 
 /**
  * POST /api/reco/daily-outfits/save
- * 保存/更新今日穿搭計畫（upsert）。userId 從 session 取得。
+ *
+ * Saves daily outfit recommendation to outfits table via RPC.
+ * Enforces rate limiting per user (separate bucket from basket-mixmatch).
+ *
+ * Returns: 201 { id, user_id, created_at }
  */
-export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitResponse>> {
-  try {
-    const cookieStore = await cookies();
-    const cookiesToSet: Array<{ name: string; value: string; options: any }> = [];
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const { supabase, user } = await getSupabaseAndUser();
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  }
+
+  // Rate limit check (separate bucket for daily)
+  const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
       {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
+        status: 429,
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
         },
       }
     );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
-        { status: 401 }
-      );
-    }
-
-    // 验证 JWT claims
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
-        { status: 401 }
-      );
-    }
-    
-    // 驗證 Content-Type
-    const contentType = req.headers.get('content-type');
-    if (!contentType?.includes('application/json')) {
-      return NextResponse.json(
-        { ok: false, message: '必須使用 application/json' },
-        { status: 400 }
-      );
-    }
-
-    // 解析請求體
-    const body = await req.json() as SaveDailyOutfitRequest;
-
-    // 驗證必填字段 (不再包含 userId)
-    if (!body.date || !body.outfitId || !body.layoutSlots) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: '缺少必填字段: date, outfitId, layoutSlots'
-        },
-        { status: 400 }
-      );
-    }
-
-    // 驗證 date 格式 (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
-      return NextResponse.json(
-        { ok: false, message: '日期格式無效，應為 YYYY-MM-DD' },
-        { status: 400 }
-      );
-    }
-
-    // 執行 Upsert（衝突時更新，無衝突時新增）
-    // Unique key: (user_id, date)
-    const { error } = await supabase
-      .from('daily_outfit_plans')
-      .upsert(
-        {
-          user_id: user.id, // 從 session 取得 userId
-          date: body.date,
-          outfit_id: body.outfitId,
-          layout_slots: body.layoutSlots,
-          occasion: body.occasion || null,
-          weather: body.weather || null,
-          updated_at: new Date().toISOString()
-        },
-        {
-          onConflict: 'user_id,date' // 複合唯一鍵
-        }
-      )
-      .select();
-
-    if (error) {
-      console.error('[API] Supabase upsert error:', error.code, error.message);
-      // TODO: RLS 失敗時，error.code 可能為 '42501' (permission denied)，需做對應處理
-      return NextResponse.json(
-        { ok: false, message: '無法保存穿搭計畫' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(
-      { ok: true, saved: true },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('[API] POST /api/reco/daily-outfits/save error:', error);
-    return NextResponse.json(
-      { ok: false, message: '伺服器錯誤' },
-      { status: 500 }
-    );
   }
-}
 
-/**
- * GET /api/reco/daily-outfits/save?date=...
- * 回填今日已選定的穿搭計畫。userId 從 session 取得。
- */
-export async function GET(req: NextRequest): Promise<NextResponse<DailyOutfitResponse>> {
+  // Parse and validate request body
+  let body: SaveDailyOutfitRequest;
   try {
-    const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      }
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const rawBody = await req.json();
+    const validation = SaveDailyOutfitRequestSchema.safeParse(rawBody);
+    if (!validation.success) {
+      const issues = validation.error.issues.map(i => i.path.join('.'));
+      console.info('[reco/daily-outfits/save] Validation failed', { issueCount: issues.length, paths: issues });
       return NextResponse.json(
-        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
-        { status: 401 }
+        { error: 'Invalid request', issues: validation.error.flatten().fieldErrors },
+        { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
-
-    // 验证 JWT claims
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { ok: false, error: 'Unauthorized', code: 'AUTH_REQUIRED' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(req.url);
-    const date = searchParams.get('date');
-
-    if (!date) {
-      return NextResponse.json(
-        { ok: false, message: 'date 為必填參數' },
-        { status: 400 }
-      );
-    }
-
-    // 驗證 date 格式
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return NextResponse.json(
-        { ok: false, message: '日期格式無效，應為 YYYY-MM-DD' },
-        { status: 400 }
-      );
-    }
-
-    // 查詢該用戶在指定日期的穿搭計畫
-    const { data, error } = await supabase
-      .from('daily_outfit_plans')
-      .select('outfit_id, layout_slots')
-      .eq('user_id', user.id) // 從 session 取得 userId
-      .eq('date', date)
-      .single(); // 期望只有一筆記錄
-
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 = no rows returned，這不是錯誤
-      console.error('[API] Supabase select error:', error);
-      // TODO: RLS 失敗時，error.code 可能為 '42501' (permission denied)，需做對應處理
-      return NextResponse.json(
-        { ok: false, message: '無法查詢穿搭計畫' },
-        { status: 500 }
-      );
-    }
-
-    // 如果沒有找到記錄，回傳空陣列
-    if (!data) {
-      return NextResponse.json(
-        {
-          ok: true,
-          date: date,
-          outfits: []
-        },
-        { status: 200 }
-      );
-    }
-
+    body = validation.data;
+  } catch {
     return NextResponse.json(
-      {
-        ok: true,
-        date: date,
-        outfits: [
-          {
-            outfitId: data.outfit_id,
-            layoutSlots: data.layout_slots
-          }
-        ]
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('[API] GET /api/reco/daily-outfits/save error:', error);
-    return NextResponse.json(
-      { ok: false, message: '伺服器錯誤' },
-      { status: 500 }
+      { error: 'Invalid request format' },
+      { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
     );
   }
+
+  // Call RPC to save outfit (atomic write + RLS enforcement)
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('create_outfit_with_items', {
+    p_source: 'daily',
+    p_items: body.items,
+    p_season: body.season ?? null,
+    p_occasion: body.occasion ?? null,
+    p_weather_info: body.weather_info ?? null,
+    p_notes: body.notes ?? null,
+  });
+
+  if (rpcError) {
+    console.error('[reco/daily-outfits/save] RPC failed', { code: rpcError.code });
+    return NextResponse.json(
+      { error: 'Failed to save outfit' },
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  }
+
+  if (!rpcResult || rpcResult.length === 0) {
+    return NextResponse.json(
+      { error: 'Failed to save outfit' },
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  }
+
+  const outfit = rpcResult[0] as OutfitResponse;
+  return NextResponse.json(outfit, {
+    status: 201,
+    headers: { 'Cache-Control': 'private, no-store' },
+  });
 }
