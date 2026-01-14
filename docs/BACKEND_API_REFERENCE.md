@@ -98,10 +98,79 @@ apps/web/app/api/
 - **路徑**: `/api/outfits`
 - **方法**: `GET`, `POST`
 - **功能**: 管理使用者的穿搭組合。
-- **相依服務**: `shared-outfit-store` (In-memory store)
-- **詳細說明**:
-  - `GET`: 根據 `userId`, `tag`, `season` 等查詢參數獲取搭配列表。
-  - `POST`: 建立一個新的搭配。
+- **相依服務**: Supabase (Database persistence via RLS)
+- **認證**: 必須登入（user session 提供 `user.id`）
+- **快取**: `Cache-Control: private, no-store` (所有回應)
+
+**GET `/api/outfits`**
+- **功能**: 取得該使用者最近 10 個搭配
+- **回應狀態**:
+  - `200`: 搭配列表 (最多 10 筆，按 created_at 降冪排列)
+  - `401`: 未認證
+  - `500`: 伺服器錯誤
+- **回應範例**:
+  ```json
+  [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "title": "Weekend Casual",
+      "notes": "Relaxed weekend look",
+      "created_at": "2025-12-01T10:00:00Z",
+      "updated_at": "2025-12-01T10:00:00Z"
+    }
+  ]
+  ```
+
+**POST `/api/outfits`** (新格式 - 建議使用)
+- **功能**: 建立新搭配及其內部物品
+- **請求格式** (推薦):
+  ```json
+  {
+    "title": "Weekend Casual",
+    "notes": "Relaxed weekend look (optional)",
+    "items": [
+      {
+        "closetItemId": "uuid-1",
+        "position": 1,
+        "layer": "top"
+      },
+      {
+        "closetItemId": "uuid-2",
+        "position": 2,
+        "layer": "bottom"
+      }
+    ]
+  }
+  ```
+- **回應狀態**:
+  - `201`: 搭配建立成功
+  - `400`: 請求格式無效 (缺少 title 或 items)
+  - `401`: 未認證
+  - `403`: 衣物不屬於該使用者或不存在
+  - `500`: 伺服器錯誤
+
+**POST `/api/outfits`** (舊格式 - 已棄用，2026-03-01 停止支援)
+- **警告**: 此格式已棄用，請升級至新格式
+- **棄用期限**: 2026-03-01
+- **請求格式** (已棄用):
+  ```json
+  {
+    "name": "Weekend Casual",
+    "description": "Relaxed weekend look (optional)",
+    "itemIds": ["uuid-1", "uuid-2", "uuid-3"]
+  }
+  ```
+- **自動轉換規則**:
+  - `title = name`
+  - `notes = description` (若無則省略)
+  - `items[].closetItemId = itemIds[i]`
+  - `items[].position = i+1`
+  - `items[].layer = 'unknown'` (舊格式未指定 layer)
+- **棄用信號**:
+  - 回應 header `Deprecation: true`
+  - 回應 header `Sunset: 2026-03-01T00:00:00Z`
+  - 回應 header `Link: <...>; rel="deprecation"`
+  - 伺服器日誌記錄: `[outfits] Deprecated payload: POST /api/outfits used legacy format`
 
 ---
 
@@ -109,7 +178,7 @@ apps/web/app/api/
 - **路徑**: `/api/outfits/[id]`
 - **方法**: `GET`, `PUT`, `DELETE`
 - **功能**: 操作單一的穿搭組合。
-- **相依服務**: `shared-outfit-store` (In-memory store)
+- **相依服務**: Supabase (Database persistence via RLS)
 - **詳細說明**: 根據路徑中的 `id` 查詢、更新或刪除一個搭配。
 
 ---

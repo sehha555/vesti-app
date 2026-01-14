@@ -1,75 +1,208 @@
-// apps/web/app/api/outfits/route.ts
-// Migrated from pages/api/outfits/index.ts
-
 import { NextRequest, NextResponse } from 'next/server';
-import type { Outfit, CreateOutfitDto, OutfitSeason } from '../../../../../packages/types/src/outfit';
-import {
-  getAllOutfits,
-  createOutfit,
-  getOutfitsByTag,
-  getOutfitsBySeason,
-  getOutfitsByOccasion,
-} from '../../../lib/shared-outfit-store';
+import { z } from 'zod';
+import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { logDeprecationMetric } from '@/lib/metrics';
 
-const VALID_SEASONS: OutfitSeason[] = ['spring', 'summer', 'fall', 'winter'];
+const OutfitItemSchema = z.object({
+  closetItemId: z.string().uuid(),
+  position: z.number().int().positive(),
+  layer: z.enum(['top', 'bottom', 'outer', 'accessory', 'feet']),
+});
 
-export async function GET(req: NextRequest) {
+const CreateOutfitSchema = z.object({
+  title: z.string().min(1),
+  notes: z.string().optional(),
+  items: z.array(OutfitItemSchema).min(1),
+});
+
+type CreateOutfitRequest = z.infer<typeof CreateOutfitSchema>;
+
+// Legacy format support for backward compatibility
+const LegacyCreateOutfitSchema = z.object({
+  userId: z.string().uuid().optional(), // Ignored (user_id from session)
+  name: z.string().min(1),
+  itemIds: z.array(z.string().uuid()).min(1),
+  description: z.string().optional(),
+  season: z.string().optional(),
+  rating: z.number().optional(),
+});
+
+/**
+ * GET /api/outfits
+ * Returns user's recent outfits (last 10)
+ */
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const { supabase, user } = await getSupabaseAndUser();
+
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  }
+
   try {
-    const userId = req.nextUrl.searchParams.get('userId');
-    const tag = req.nextUrl.searchParams.get('tag');
-    const season = req.nextUrl.searchParams.get('season');
-    const occasion = req.nextUrl.searchParams.get('occasion');
+    const { data: outfits, error } = await supabase
+      .from('outfits')
+      .select('id, title, notes, created_at, updated_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-    if (!userId) {
-      return NextResponse.json({ error: '缺少 userId 參數' }, { status: 400 });
+    if (error) {
+      console.error('[outfits] GET error:', error.code);
+      return NextResponse.json(
+        { error: 'Failed to fetch outfits' },
+        { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
+      );
     }
 
-    let outfits: Outfit[];
-
-    // Apply filters based on provided query parameters
-    if (typeof season === 'string') {
-      outfits = getOutfitsBySeason(userId, season as OutfitSeason);
-    } else if (typeof tag === 'string') {
-      outfits = getOutfitsByTag(userId, tag);
-    } else if (typeof occasion === 'string') {
-      outfits = getOutfitsByOccasion(userId, occasion);
-    } else {
-      outfits = getAllOutfits(userId);
-    }
-
-    return NextResponse.json(outfits, { status: 200 });
-  } catch (error: any) {
-    console.error('API Error in /api/outfits (GET):', error);
-    return NextResponse.json({ error: error.message || '內部伺服器錯誤' }, { status: 500 });
+    return NextResponse.json(outfits || [], {
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const { userId, name, itemIds, season, rating } = await req.json() as CreateOutfitDto;
+/**
+ * POST /api/outfits
+ * Create new outfit with items
+ *
+ * Request body: { title, notes?, items: [{closetItemId, position, layer}] }
+ */
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const { supabase, user } = await getSupabaseAndUser();
 
-    // --- Validation ---
-    if (!userId || !name || !itemIds) {
-      return NextResponse.json({ error: '缺少必要欄位 (userId, name, itemIds)' }, { status: 400 });
-    }
-    if (!Array.isArray(itemIds) || itemIds.length === 0) {
-      return NextResponse.json({ error: 'itemIds 必須至少包含一件衣物' }, { status: 400 });
-    }
-    if (season && !VALID_SEASONS.includes(season as OutfitSeason)) {
-      return NextResponse.json({ error: `無效的季節參數。必須是 ${VALID_SEASONS.join(', ')} 其中之一` }, { status: 400 });
-    }
-    if (rating !== undefined && (typeof rating !== 'number' || rating < 1 || rating > 5)) {
-      return NextResponse.json({ error: 'rating 必須是 1-5 之間的數字' }, { status: 400 });
-    }
-
-    const newOutfit = createOutfit(userId, { userId, name, itemIds, season, rating } as CreateOutfitDto);
-    return NextResponse.json(newOutfit, { status: 201 });
-  } catch (error: any) {
-    console.error('API Error in /api/outfits (POST):', error);
-    // Handle specific errors from createOutfit, e.g., empty itemIds
-    if (error.message.includes('at least one item')) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message || '內部伺服器錯誤' }, { status: 500 });
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   }
+
+  // Parse and validate request body (supports both new and legacy formats)
+  let body: CreateOutfitRequest;
+  let isLegacyFormat = false;
+  const responseHeaders: Record<string, string> = { 'Cache-Control': 'private, no-store' };
+
+  try {
+    const rawBody = await req.json();
+
+    // Try new format first
+    const newFormatValidation = CreateOutfitSchema.safeParse(rawBody);
+    if (newFormatValidation.success) {
+      body = newFormatValidation.data;
+    } else {
+      // Try legacy format
+      const legacyValidation = LegacyCreateOutfitSchema.safeParse(rawBody);
+      if (legacyValidation.success) {
+        isLegacyFormat = true;
+        const legacy = legacyValidation.data;
+        // Transform legacy format to new format
+        body = {
+          title: legacy.name,
+          notes: legacy.description || undefined,
+          items: legacy.itemIds.map((id, idx) => ({
+            closetItemId: id,
+            position: idx + 1,
+            layer: 'unknown' as const,
+          })),
+        };
+        // Log deprecation metric for observability
+        logDeprecationMetric({
+          endpoint: 'POST /api/outfits',
+          format: 'legacy',
+          userId: user.id,
+          itemCount: legacy.itemIds.length,
+          userAgent: req.headers.get('user-agent') || undefined,
+        });
+
+        // Add deprecation headers
+        console.warn('[outfits] Deprecated payload: POST /api/outfits used legacy format');
+        responseHeaders['Deprecation'] = 'true';
+        responseHeaders['Sunset'] = '2026-03-01T00:00:00Z';
+        responseHeaders['Link'] = '<https://github.com/vesti-app/vesti/blob/master/docs/BACKEND_API_REFERENCE.md#api-apiotfits>; rel="deprecation"';
+      } else {
+        return NextResponse.json(
+          { error: 'Invalid request', issues: newFormatValidation.error.flatten().fieldErrors },
+          { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
+        );
+      }
+    }
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid request format' },
+      { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  }
+
+  // Verify closet items belong to user
+  const closetItemIds = body.items
+    .filter(item => item.closetItemId)
+    .map(item => item.closetItemId);
+
+  if (closetItemIds.length > 0) {
+    const { count, error: countError } = await supabase
+      .from('closet_items')
+      .select('id', { count: 'exact' })
+      .eq('user_id', user.id)
+      .in('id', closetItemIds);
+
+    if (countError || count !== closetItemIds.length) {
+      return NextResponse.json(
+        { error: 'One or more closet items not found or unauthorized' },
+        { status: 403, headers: { 'Cache-Control': 'private, no-store' } }
+      );
+    }
+  }
+
+  // Create outfit
+  const { data: outfit, error: outfitError } = await supabase
+    .from('outfits')
+    .insert({
+      user_id: user.id,
+      title: body.title,
+      notes: body.notes || null,
+    })
+    .select('id, title, notes, created_at, updated_at')
+    .single();
+
+  if (outfitError || !outfit) {
+    console.error('[outfits] POST outfit insert error:', outfitError?.code);
+    return NextResponse.json(
+      { error: 'Failed to create outfit' },
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  }
+
+  // Create outfit items
+  const outfitItemsPayload = body.items.map(item => ({
+    outfit_id: outfit.id,
+    closet_item_id: item.closetItemId,
+    position: item.position,
+    layer: item.layer,
+  }));
+
+  const { error: itemsError } = await supabase
+    .from('outfit_items')
+    .insert(outfitItemsPayload);
+
+  if (itemsError) {
+    console.error('[outfits] POST items insert error:', itemsError.code);
+    // Note: outfit already created, items failed (inconsistent state)
+    // Consider using RPC transaction in future
+    return NextResponse.json(
+      { error: 'Failed to add items to outfit' },
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  }
+
+  return NextResponse.json(outfit, {
+    status: 201,
+    headers: responseHeaders,
+  });
 }
