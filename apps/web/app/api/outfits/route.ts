@@ -2,7 +2,8 @@
 // Migrated from pages/api/outfits/index.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import type { Outfit, CreateOutfitDto, OutfitSeason } from '../../../../../packages/types/src/outfit';
+import type { Outfit, CreateOutfitDto, OutfitSeason, OutfitsCreateRequest } from '../../../../../packages/types/src/outfit';
+import { OutfitsCreateRequestSchema } from '../../../../../packages/types/src/outfit';
 import {
   getAllOutfits,
   createOutfit,
@@ -10,6 +11,8 @@ import {
   getOutfitsBySeason,
   getOutfitsByOccasion,
 } from '../../../lib/shared-outfit-store';
+import { sanitizeUserAgent, logDeprecationMetric } from '../../../lib/metrics';
+import { getSupabaseAndUser } from '../../../lib/supabase/server';
 
 const VALID_SEASONS: OutfitSeason[] = ['spring', 'summer', 'fall', 'winter'];
 
@@ -46,20 +49,71 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, name, itemIds, season, rating } = await req.json() as CreateOutfitDto;
+    const body = await req.json();
 
-    // --- Validation ---
-    if (!userId || !name || !itemIds) {
-      return NextResponse.json({ error: '缺少必要欄位 (userId, name, itemIds)' }, { status: 400 });
+    // Validate against schema
+    const parseResult = OutfitsCreateRequestSchema.safeParse(body);
+    if (!parseResult.success) {
+      const response: { error: string; details?: any } = {
+        error: 'Invalid request payload',
+      };
+      if (process.env.NODE_ENV !== 'production') {
+        response.details = parseResult.error.errors;
+      }
+      return NextResponse.json(response, {
+        status: 400,
+        headers: { 'Cache-Control': 'private, no-store' },
+      });
     }
-    if (!Array.isArray(itemIds) || itemIds.length === 0) {
-      return NextResponse.json({ error: 'itemIds 必須至少包含一件衣物' }, { status: 400 });
+
+    let { userId, name, itemIds, season, rating } = parseResult.data;
+
+    // Check if this is a legacy payload (userId is undefined after validation)
+    const isMissingUserId = userId === undefined;
+    const enableLegacyOutfits = process.env.ENABLE_LEGACY_OUTFITS_PAYLOAD !== "false";
+
+    // If legacy payload and env flag is "false", return 400 with Cache-Control header
+    if (isMissingUserId && !enableLegacyOutfits) {
+      return NextResponse.json(
+        { error: '缺少必要欄位 (userId, name, itemIds)' },
+        {
+          status: 400,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
+      );
     }
-    if (season && !VALID_SEASONS.includes(season as OutfitSeason)) {
-      return NextResponse.json({ error: `無效的季節參數。必須是 ${VALID_SEASONS.join(', ')} 其中之一` }, { status: 400 });
+
+    // Log deprecation if legacy payload is allowed
+    if (isMissingUserId && enableLegacyOutfits) {
+      const userAgent = req.headers.get('user-agent') || '';
+      console.warn('Deprecated: legacy outfits endpoint used without userId');
+      logDeprecationMetric({
+        endpoint: 'POST /api/outfits',
+        format: 'legacy',
+        itemCount: itemIds.length,
+        userAgent: sanitizeUserAgent(userAgent),
+      });
+
+      // Get userId from authenticated Supabase session for legacy payload
+      try {
+        const { user } = await getSupabaseAndUser();
+        if (user?.id) {
+          userId = user.id;
+        }
+      } catch (err) {
+        console.warn('Failed to get authenticated user for legacy payload:', err);
+      }
     }
-    if (rating !== undefined && (typeof rating !== 'number' || rating < 1 || rating > 5)) {
-      return NextResponse.json({ error: 'rating 必須是 1-5 之間的數字' }, { status: 400 });
+
+    // Validate userId exists (either from payload or from authenticated session)
+    if (!userId) {
+      return NextResponse.json(
+        { error: '缺少必要欄位 userId' },
+        {
+          status: 401,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
+      );
     }
 
     const newOutfit = createOutfit(userId, { userId, name, itemIds, season, rating } as CreateOutfitDto);

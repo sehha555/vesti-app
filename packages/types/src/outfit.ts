@@ -97,3 +97,19 @@ export type CreateOutfitDto = Omit<Outfit, 'id' | 'createdAt' | 'updatedAt'>;
  * All fields are optional, and immutable fields cannot be changed.
  */
 export type UpdateOutfitDto = Partial<Omit<Outfit, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>;
+
+/**
+ * Zod schema for creating outfits via API
+ * Supports both modern (with userId) and legacy (without userId) payloads
+ */
+import { z } from 'zod';
+
+export const OutfitsCreateRequestSchema = z.object({
+  userId: z.string().uuid().optional(),
+  name: z.string().trim().min(1, 'name must be non-empty after trim'),
+  itemIds: z.array(z.string().uuid()).min(1, 'itemIds must contain at least one UUID'),
+  season: z.enum(['spring', 'summer', 'fall', 'winter']).optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+});
+
+export type OutfitsCreateRequest = z.infer<typeof OutfitsCreateRequestSchema>;
