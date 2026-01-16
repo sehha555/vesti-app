@@ -184,4 +184,66 @@ describe('POST /api/outfits - Legacy Payload Env Flag', () => {
     const body = await response.json();
     expect(body.error).toBeDefined();
   });
+
+  it('should return 200 with only user own outfits when GET authenticated', async () => {
+    const userA = { id: UUID_MOCK };
+    const userB = { id: '660e8400-e29b-41d4-a716-446655440000' };
+
+    // Create outfit for userA
+    vi.spyOn(supabaseServer, 'getSupabaseAndUser').mockResolvedValue({
+      user: userA as any,
+      supabase: {} as any,
+    });
+
+    const outfitAPayload = { userId: userA.id, name: 'outfit A', itemIds: [UUID_MOCK] };
+    const reqA = new NextRequest(new URL('http://localhost:3000/api/outfits'), {
+      method: 'POST',
+      body: JSON.stringify(outfitAPayload),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const responseA = await POST(reqA);
+    expect(responseA.status).toBe(201);
+
+    // Create outfit for userB
+    vi.spyOn(supabaseServer, 'getSupabaseAndUser').mockResolvedValue({
+      user: userB as any,
+      supabase: {} as any,
+    });
+
+    const outfitBPayload = { userId: userB.id, name: 'outfit B', itemIds: [UUID_MOCK] };
+    const reqB = new NextRequest(new URL('http://localhost:3000/api/outfits'), {
+      method: 'POST',
+      body: JSON.stringify(outfitBPayload),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const responseB = await POST(reqB);
+    expect(responseB.status).toBe(201);
+
+    // Get outfits as userA
+    vi.spyOn(supabaseServer, 'getSupabaseAndUser').mockResolvedValue({
+      user: userA as any,
+      supabase: {} as any,
+    });
+
+    const reqGet = new NextRequest(new URL('http://localhost:3000/api/outfits'), {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const responseGet = await GET(reqGet);
+    expect(responseGet.status).toBe(200);
+
+    const responseHeaders = Object.fromEntries(responseGet.headers);
+    expect(responseHeaders['cache-control']).toBe('private, no-store');
+
+    const outfits = await responseGet.json();
+    // Verify all returned outfits belong to userA
+    if (Array.isArray(outfits)) {
+      outfits.forEach((outfit: any) => {
+        expect(outfit.userId).toBe(userA.id);
+      });
+    }
+  });
 });
