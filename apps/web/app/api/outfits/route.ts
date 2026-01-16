@@ -18,14 +18,23 @@ const VALID_SEASONS: OutfitSeason[] = ['spring', 'summer', 'fall', 'winter'];
 
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get('userId');
+    // Authenticate user
+    const { user } = await getSupabaseAndUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        {
+          status: 401,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
+      );
+    }
+
+    // Only allow fetching own outfits
+    const userId = user.id;
     const tag = req.nextUrl.searchParams.get('tag');
     const season = req.nextUrl.searchParams.get('season');
     const occasion = req.nextUrl.searchParams.get('occasion');
-
-    if (!userId) {
-      return NextResponse.json({ error: '缺少 userId 參數' }, { status: 400 });
-    }
 
     let outfits: Outfit[];
 
@@ -49,6 +58,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate user
+    const { user } = await getSupabaseAndUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        {
+          status: 401,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
+      );
+    }
+
     const body = await req.json();
 
     // Validate against schema
@@ -94,15 +115,8 @@ export async function POST(req: NextRequest) {
         userAgent: sanitizeUserAgent(userAgent),
       });
 
-      // Get userId from authenticated Supabase session for legacy payload
-      try {
-        const { user } = await getSupabaseAndUser();
-        if (user?.id) {
-          userId = user.id;
-        }
-      } catch (err) {
-        console.warn('Failed to get authenticated user for legacy payload:', err);
-      }
+      // Use authenticated session userId for legacy payload
+      userId = user.id;
     }
 
     // Validate userId exists (either from payload or from authenticated session)
@@ -111,6 +125,17 @@ export async function POST(req: NextRequest) {
         { error: '缺少必要欄位 userId' },
         {
           status: 401,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
+      );
+    }
+
+    // Verify ownership: userId from payload must match authenticated user
+    if (userId !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden: userId does not match authenticated user' },
+        {
+          status: 403,
           headers: { 'Cache-Control': 'private, no-store' },
         }
       );
