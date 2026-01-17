@@ -17,7 +17,11 @@
     "dev": "cd apps/web && npm run dev",
     "dev:web": "cd apps/web && npm run dev",
     "build": "cd apps/web && npm run build",
-    "build:web": "cd apps/web && npm run build"
+    "build:web": "cd apps/web && npm run build",
+    "supabase:link": "supabase link",
+    "supabase:db:pull": "supabase db pull",
+    "supabase:db:push": "supabase db push",
+    "supabase:migration:new": "supabase migration new"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +43,7 @@
     "next": "^15.5.4",
     "node-mocks-http": "^1.17.2",
     "react": "^19.1.1",
+    "supabase": "^2.72.8",
     "typescript": "^5.9.2",
     "vite-tsconfig-paths": "^6.0.3",
     "vitest": "^3.2.4",
