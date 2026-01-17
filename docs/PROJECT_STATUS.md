@@ -30,13 +30,19 @@
 
 ### 虛擬衣櫃 (Virtual Wardrobe)
 
-此為專案目前最完整、已達到生產標準的核心功能。
+此為專案目前最完整、已達到生產標準的核心功能，並已加強安全防護。
 
 -   **核心結構**: `WardrobeItem` (定義於 `packages/types/src/wardrobe.ts`)。此模型非常詳盡，包含了衣物的基本資訊、AI 識別屬性（顏色、風格）、用戶自訂標籤、來源等。
 -   **主要 API**:
     -   `POST /api/wardrobe/upload`: 處理衣物圖片上傳、背景移除、存入 Cloudinary，並將中繼資料寫入 Supabase 資料庫。
+        - ✅ **速率限制** (2026-01-17): 10 requests per 10 minutes per user，使用 Upstash Redis（支援在記憶體容錯回退）
+        - ✅ **檔案簽名驗證** (2026-01-17): 檢驗 Magic Bytes 防止 MIME 類型偽造 (JPEG/PNG/WebP)
+        - ✅ **BFF 雙層認證**: 使用者 ID 來自會話，不信任 FormData
+        - ✅ **安全日誌**: 全部錯誤均記錄至結構化 JSON 日誌（無敏感數據）
     -   `GET, POST, PUT, DELETE /api/wardrobe/items/*`: 提供對衣物項目 (`clothing_items` 表) 完整的 CRUD (增、刪、改、查) 功能，直接對接 Supabase 資料庫。
--   **功能狀態**: **已實作**。功能完整且已連接到真實的後端資料庫。
+        - ✅ **所有權驗證** (2026-01-17): 所有端點檢查 `.eq('user_id', user.id)` 防止跨用戶存取
+        - ✅ **安全日誌**: PUT/DELETE 失敗時記錄事件
+-   **功能狀態**: **已實作**。功能完整且已連接到真實的後端資料庫，安全防護已就位。
 
 ### 穿搭組合 (Outfits)
 
@@ -75,17 +81,68 @@
 
 ## 4. 後端狀態總結與建議
 
-**總結** (更新於 2026-01-16):
-專案後端基礎良好，技術選型現代化。核心的「虛擬衣櫃」功能已基本完成；「穿搭組合」API 層安全性已強化（Zod schema、Supabase Auth、deprecation logging）。然而，專案整體仍處於從原型向產品過渡的階段，多數核心業務（推薦、購物）尚未實現，資料持久化不完整，ownership verification 尚缺。
+**總結** (更新於 2026-01-17):
+專案後端基礎良好，技術選型現代化。核心的「虛擬衣櫃」功能已完全達到生產標準，包括速率限制、檔案簽名驗證、所有權驗證與安全日誌；「穿搭組合」API 層安全性已強化（Zod schema、Supabase Auth、deprecation logging）。基礎設施已完成 Supabase CLI 整合與資料庫 schema 版本控制。然而，專案整體仍處於從原型向產品過渡的階段，多數核心業務（推薦、購物）尚未實現，Outfits 資料持久化不完整。
 
-**優先級建議** (更新版):
+**優先級建議** (更新版 2026-01-17):
 
 | 優先級 | 建議項目 | 狀態 | 說明與理由 |
 | :--- | :--- | :--- | :--- |
-| **1 (最高)** | **Ownership Verification + Authorization** | 🔄 進行中 | **(安全性)** 已完成 Outfits API 的 Supabase Auth 集成，但仍需在所有 CRUD 端點加入 ownership 檢查（防止用戶 A 查看/修改用戶 B 的資料）。GET /api/outfits 也須驗證已登入用戶身份。 |
-| **2 (高)** | **資料持久化：Outfits 對接資料庫** | ⏳ 待開始 | **(功能性)** 將「穿搭組合」從 in-memory store 遷移至 Supabase PostgreSQL，確保資料持久化。建議與資料庫遷移工具一併推進。 |
-| **3 (高)** | **引入資料庫遷移工具 + Schema 版本控制** | ⏳ 待開始 | **(穩定性)** 為專案添加資料庫結構的版本控制（如 Supabase Migrations 或 Prisma），確保團隊和不同環境間的資料庫結構一致性。 |
-| **4 (中)** | **標準化 API 錯誤處理與安全日誌** | 🔄 進行中 | **(可維護性)** 已為 Outfits API 建立基礎的 `logDeprecationMetric()` 與環境感知的錯誤回應。需推廣至其他 API 端點，建立統一的安全事件記錄機制。 |
-| **5 (中)** | **完成核心功能後端邏輯** | ⏳ 待開始 | **(功能性)** 逐步替換 AI 推薦和購物功能中的模擬數據，實現真正的業務邏輯。 |
-| **6 (低)** | **API 文件與測試覆蓋率** | 🔄 進行中 | **(品質)** 已為 Outfits API 加入基礎測試覆蓋。建議持續擴展至其他 API，並建立 Swagger 文件。 |
+| **1 (最高)** | **Wardrobe Upload 測試完整化 + Gherkin 驗收測試** | 🔄 進行中 | **(品質 + 文件化)** 已完成所有 19 項測試。下一步建議使用 Cucumber + Gherkin 編寫商業可讀的驗收測試，覆蓋上傳、限流、檔案驗證等場景。 |
+| **2 (高)** | **資料持久化：Outfits 對接資料庫** | ⏳ 待開始 | **(功能性)** 將「穿搭組合」從 in-memory store 遷移至 Supabase PostgreSQL，確保資料持久化。需建立 `saved_outfits` 表，完成所有權驗證（參考 Wardrobe 模式），並添加 RLS 策略。 |
+| **3 (高)** | **API 層面安全防護推廣** | ⏳ 待開始 | **(安全性)** 將 Wardrobe 已驗證的安全模式（限流、檔案驗證、安全日誌）推廣至其他敏感端點（Outfits、推薦 API）。建議建立安全檢查清單。 |
+| **4 (中)** | **完成核心功能後端邏輯** | ⏳ 待開始 | **(功能性)** 逐步替換 AI 推薦和購物功能中的模擬數據，實現真正的業務邏輯。需與推薦算法團隊協調。 |
+| **5 (中)** | **標準化 API 錯誤處理與安全日誌** | ✅ 完成 (Wardrobe) | **(可維護性)** 已為 Wardrobe 和 Outfits API 建立基礎的 `logSecurityEvent()` 與環境感知的錯誤回應。需推廣至其他 API 端點。 |
+| **6 (低)** | **API 文件與型別共享** | 🔄 進行中 | **(品質)** Zod schema 已在多個端點使用。建議建立自動從 Zod 生成 OpenAPI/Swagger 文件的流程，並確保 `packages/types/` 的持續更新。 |
+
+## 5. 最近改進 (Recent Improvements - 2026-01-17)
+
+### Wardrobe Upload 安全強化
+
+**完成項目**:
+1. **速率限制 (Rate Limiting)**
+   - 使用 Upstash Redis REST API（支援橫向擴展）
+   - 設定：10 requests per 10 minutes per user
+   - 返回標準 RFC 6585 429 狀態碼 + IETF draft RateLimit 頭
+   - 記憶體容錯：無 Redis 時自動切換至 in-memory store
+
+2. **檔案簽名驗證 (File Signature Verification)**
+   - 驗證 Magic Bytes 防止 MIME 類型偽造
+   - 支援格式：JPEG (FF D8 FF), PNG (89 50 4E 47 0D 0A 1A 0A), WebP (RIFF...WEBP)
+   - 在 Content-Type 檢查後、上傳前執行
+
+3. **BFF 雙層認證**
+   - 使用者 ID 來自 Supabase session，不信任 FormData
+   - 所有 CRUD 操作驗證 `.eq('user_id', user.id)`
+
+4. **安全日誌系統**
+   - 強型別 `SecurityReason` allowlist
+   - User-Agent 內部清理（CRLF、多重空白、256 字元截斷）
+   - 無敏感數據（token、email、cookie）記錄
+
+5. **資料庫 Schema 版本控制**
+   - 已安裝 Supabase CLI v2.72.8
+   - 清理並重新同步遠端 schema
+   - 建立 `supabase/migrations/` 版本控制目錄
+
+### Wardrobe Items 所有權驗證
+
+- GET: 傳入 user.id 進行驗證，防止未授權存取
+- POST: 強制設定 user_id 自 session，不允許外部指定
+- PUT/DELETE: 檢查是否影響行數，404 if 0 rows
+
+### 測試覆蓋
+
+- ✅ 全部 319 個單位測試通過
+- ✅ wardrobe/upload 端點 19 項測試全數通過
+- ✅ 19 項單位測試 + 詳細的端到端場景覆蓋
+
+### 提交歷史
+
+```
+8ce6660 fix(wardrobe upload): 修復導入路徑和測試模擬
+ec774a9 新增 Supabase CLI 和同步遠端資料庫 schema
+83117e4 強化 wardrobe items 所有權驗證和安全日誌
+276d0df 安全增強：wardrobe 上傳端點的限流和檔案簽名驗證
+```
 
