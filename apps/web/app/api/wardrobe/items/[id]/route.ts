@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
+import { jsonNoStore } from '@/lib/http/no-store';
+import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { logSecurityEvent } from '@/lib/metrics';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -28,12 +31,24 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
+  const { user } = await getSupabaseAndUser();
+
+  if (!user) {
+    logSecurityEvent({
+      endpoint: '/api/wardrobe/items/[id]',
+      statusCode: 401,
+      reason: 'auth_required',
+      userAgent: request.headers.get('user-agent') || '',
+    });
+    return jsonNoStore({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     const { data, error } = await supabaseAdmin
       .from('clothing_items')
       .select('*')
       .eq('id', id)
+      .eq('user_id', user.id)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -41,13 +56,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     if (!data) {
-      return NextResponse.json({ message: '找不到指定的衣物。' }, { status: 404 });
+      return jsonNoStore({ message: '找不到指定的衣物。' }, { status: 404 });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return jsonNoStore(data, { status: 200 });
   } catch (error: any) {
     console.error(`Supabase GET /items/${id} 錯誤:`, error);
-    return NextResponse.json({ message: '讀取衣物時發生錯誤。', error: error.message }, { status: 500 });
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? '讀取衣物時發生錯誤。'
+      : error.message;
+    return jsonNoStore({ message: '讀取衣物時發生錯誤。', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -80,7 +98,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  
+  const { user } = await getSupabaseAndUser();
+
+  if (!user) {
+    logSecurityEvent({
+      endpoint: '/api/wardrobe/items/[id]',
+      statusCode: 401,
+      reason: 'auth_required',
+      userAgent: request.headers.get('user-agent') || '',
+    });
+    return jsonNoStore({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const updates = await request.json();
     delete updates.id;
@@ -90,6 +119,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from('clothing_items')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -98,13 +128,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     if (!data) {
-      return NextResponse.json({ message: '找不到要更新的衣物。' }, { status: 404 });
+      return jsonNoStore({ message: '找不到要更新的衣物。' }, { status: 404 });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return jsonNoStore(data, { status: 200 });
   } catch (error: any) {
     console.error(`Supabase PUT /items/${id} 錯誤:`, error);
-    return NextResponse.json({ message: '更新衣物時發生錯誤。', error: error.message }, { status: 500 });
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? '更新衣物時發生錯誤。'
+      : error.message;
+    return jsonNoStore({ message: '更新衣物時發生錯誤。', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -131,24 +164,39 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
+  const { user } = await getSupabaseAndUser();
+
+  if (!user) {
+    logSecurityEvent({
+      endpoint: '/api/wardrobe/items/[id]',
+      statusCode: 401,
+      reason: 'auth_required',
+      userAgent: request.headers.get('user-agent') || '',
+    });
+    return jsonNoStore({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     const { error, count } = await supabaseAdmin
       .from('clothing_items')
       .delete({ count: 'exact' })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (error) {
       throw error;
     }
 
     if (count === 0) {
-      return NextResponse.json({ message: '找不到要刪除的衣物。' }, { status: 404 });
+      return jsonNoStore({ message: '找不到要刪除的衣物。' }, { status: 404 });
     }
 
-    return NextResponse.json({ message: '衣物已成功刪除。' }, { status: 200 });
+    return jsonNoStore({ message: '衣物已成功刪除。' }, { status: 200 });
   } catch (error: any) {
     console.error(`Supabase DELETE /items/${id} 錯誤:`, error);
-    return NextResponse.json({ message: '刪除衣物時發生錯誤。', error: error.message }, { status: 500 });
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? '刪除衣物時發生錯誤。'
+      : error.message;
+    return jsonNoStore({ message: '刪除衣物時發生錯誤。', error: errorMessage }, { status: 500 });
   }
 }
