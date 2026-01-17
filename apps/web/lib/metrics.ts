@@ -43,3 +43,39 @@ export function logDeprecationMetric(params: {
   // Output as structured JSON
   console.log(JSON.stringify(metric));
 }
+
+type SecurityReason = 'auth_required' | 'forbidden' | 'invalid_payload';
+
+/**
+ * Logs security events (401, 403, suspicious activity, etc.)
+ * Outputs structured JSON only - no sensitive data logging (tokens, cookies, email, etc.)
+ *
+ * @param endpoint - API endpoint name (e.g., '/api/wardrobe/items')
+ * @param statusCode - HTTP status code (401, 403, etc.)
+ * @param reason - Brief reason for security event (must be from allowlist)
+ * @param userAgent - Raw User-Agent string (sanitized internally)
+ *
+ * NOTE: userAgent is automatically sanitized inside this function.
+ * Do NOT pass raw request headers (Authorization, Cookie, etc.)
+ */
+export function logSecurityEvent(params: {
+  endpoint: string;
+  statusCode: number;
+  reason: SecurityReason;
+  userAgent: string;
+}): void {
+  // 內部強制清洗 userAgent
+  const sanitizedUA = sanitizeUserAgent(params.userAgent);
+
+  const event = {
+    timestamp: new Date().toISOString(),
+    type: 'security_event',
+    endpoint: params.endpoint,
+    statusCode: params.statusCode,
+    reason: params.reason,
+    userAgent: sanitizedUA,
+  };
+
+  // Output as structured JSON
+  console.warn(JSON.stringify(event));
+}

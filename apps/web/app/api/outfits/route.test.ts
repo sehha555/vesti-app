@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { POST, GET } from './route';
 import { NextRequest } from 'next/server';
 import * as supabaseServer from '../../../lib/supabase/server';
+import { __resetOutfitsStoreForTest } from '../../../lib/shared-outfit-store';
 
 const UUID_MOCK = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -10,6 +11,7 @@ describe('POST /api/outfits - Legacy Payload Env Flag', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    __resetOutfitsStoreForTest();
     if (ORIGINAL_ENABLE_LEGACY === undefined) {
       delete process.env.ENABLE_LEGACY_OUTFITS_PAYLOAD;
     } else {

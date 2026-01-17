@@ -1,7 +1,7 @@
 // apps/web/app/api/outfits/route.ts
 // Migrated from pages/api/outfits/index.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import type { Outfit, CreateOutfitDto, OutfitSeason, OutfitsCreateRequest } from '../../../../../packages/types/src/outfit';
 import { OutfitsCreateRequestSchema } from '../../../../../packages/types/src/outfit';
 import {
@@ -13,8 +13,7 @@ import {
 } from '../../../lib/shared-outfit-store';
 import { sanitizeUserAgent, logDeprecationMetric } from '../../../lib/metrics';
 import { getSupabaseAndUser } from '../../../lib/supabase/server';
-
-const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' } as const;
+import { jsonNoStore } from '../../../lib/http/no-store';
 const VALID_SEASONS: OutfitSeason[] = ['spring', 'summer', 'fall', 'winter'];
 
 export async function GET(req: NextRequest) {
@@ -22,12 +21,9 @@ export async function GET(req: NextRequest) {
     // Authenticate user
     const { user } = await getSupabaseAndUser();
     if (!user) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: 'Unauthorized' },
-        {
-          status: 401,
-          headers: NO_STORE_HEADERS,
-        }
+        { status: 401 }
       );
     }
 
@@ -50,10 +46,10 @@ export async function GET(req: NextRequest) {
       outfits = getAllOutfits(userId);
     }
 
-    return NextResponse.json(outfits, { status: 200, headers: NO_STORE_HEADERS });
+    return jsonNoStore(outfits, { status: 200 });
   } catch (error: any) {
     console.error('API Error in /api/outfits (GET):', error);
-    return NextResponse.json({ error: error.message || '內部伺服器錯誤' }, { status: 500, headers: NO_STORE_HEADERS });
+    return jsonNoStore({ error: error.message || '內部伺服器錯誤' }, { status: 500 });
   }
 }
 
@@ -62,12 +58,9 @@ export async function POST(req: NextRequest) {
     // Authenticate user
     const { user } = await getSupabaseAndUser();
     if (!user) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: 'Unauthorized' },
-        {
-          status: 401,
-          headers: NO_STORE_HEADERS,
-        }
+        { status: 401 }
       );
     }
 
@@ -82,10 +75,7 @@ export async function POST(req: NextRequest) {
       if (process.env.NODE_ENV !== 'production') {
         response.details = parseResult.error.errors;
       }
-      return NextResponse.json(response, {
-        status: 400,
-        headers: NO_STORE_HEADERS,
-      });
+      return jsonNoStore(response, { status: 400 });
     }
 
     let { userId, name, itemIds, season, rating } = parseResult.data;
@@ -96,12 +86,9 @@ export async function POST(req: NextRequest) {
 
     // If legacy payload and env flag is "false", return 400 with Cache-Control header
     if (isMissingUserId && !enableLegacyOutfits) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: '缺少必要欄位 (userId, name, itemIds)' },
-        {
-          status: 400,
-          headers: NO_STORE_HEADERS,
-        }
+        { status: 400 }
       );
     }
 
@@ -122,34 +109,28 @@ export async function POST(req: NextRequest) {
 
     // Validate userId exists (either from payload or from authenticated session)
     if (!userId) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: '缺少必要欄位 userId' },
-        {
-          status: 401,
-          headers: NO_STORE_HEADERS,
-        }
+        { status: 401 }
       );
     }
 
     // Verify ownership: userId from payload must match authenticated user
     if (userId !== user.id) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: 'Forbidden: userId does not match authenticated user' },
-        {
-          status: 403,
-          headers: NO_STORE_HEADERS,
-        }
+        { status: 403 }
       );
     }
 
     const newOutfit = createOutfit(userId, { userId, name, itemIds, season, rating } as CreateOutfitDto);
-    return NextResponse.json(newOutfit, { status: 201, headers: NO_STORE_HEADERS });
+    return jsonNoStore(newOutfit, { status: 201 });
   } catch (error: any) {
     console.error('API Error in /api/outfits (POST):', error);
     // Handle specific errors from createOutfit, e.g., empty itemIds
     if (error.message.includes('at least one item')) {
-        return NextResponse.json({ error: error.message }, { status: 400, headers: NO_STORE_HEADERS });
+        return jsonNoStore({ error: error.message }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || '內部伺服器錯誤' }, { status: 500, headers: NO_STORE_HEADERS });
+    return jsonNoStore({ error: error.message || '內部伺服器錯誤' }, { status: 500 });
   }
 }

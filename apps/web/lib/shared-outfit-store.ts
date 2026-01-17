@@ -130,3 +130,16 @@ export function getOutfitsByOccasion(userId: string, occasion: string): Outfit[]
   const userOutfits = getAllOutfits(userId);
   return userOutfits.filter((outfit) => outfit.occasion === occasion);
 }
+
+// --- Test Helpers (for isolation between tests) ---
+
+/**
+ * Resets the in-memory outfit store (clears all data).
+ * Used in test suites to ensure no data leakage between tests.
+ *
+ * **WARNING:** This function should ONLY be used in test environments.
+ * Do not call in production code.
+ */
+export function __resetOutfitsStoreForTest(): void {
+  inMemoryOutfits.clear();
+}

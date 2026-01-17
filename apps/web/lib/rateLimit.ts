@@ -45,14 +45,15 @@ export interface RateLimitResult {
  * Check rate limit using Redis atomic INCR + EXPIRE.
  * Falls back to in-memory store if Redis is not configured.
  *
- * Key format: {prefix}:{identifier}
- * Example: tags:user123:203.0.113.10
+ * Key format:
+ * - With keyPrefix: {prefix}:{identifier} (e.g., upload:user123, tags:user123:203.0.113.10)
+ * - Without keyPrefix: identifier as-is (e.g., when identifier already includes namespace)
  */
 export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
-  const key = `${config.keyPrefix}:${identifier}`;
+  const key = config.keyPrefix ? `${config.keyPrefix}:${identifier}` : identifier;
   const redis = getRedisClient();
 
   if (redis) {

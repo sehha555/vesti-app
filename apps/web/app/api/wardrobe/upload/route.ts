@@ -8,6 +8,10 @@ import { removeBackgroundFromImageUrl } from 'remove.bg';
 import { Readable } from 'stream';
 import { createClient } from '@supabase/supabase-js';
 import { requireBffAuth } from '../../_middleware/auth';
+import { jsonNoStore } from '@/lib/http/no-store';
+import { logSecurityEvent } from '@/lib/metrics';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { verifyFileSignature } from '@/lib/security/file-signature';
 
 // Force Node.js runtime for stream compatibility (required for Cloudinary upload_stream)
 export const runtime = 'nodejs';
@@ -40,6 +44,14 @@ cloudinary.config({
 // Allowed file types and size limit
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const CONTENT_LENGTH_TOLERANCE = 1 * 1024 * 1024; // 1MB tolerance for multipart overhead
+
+// Rate limit configuration
+const RATE_LIMIT_CONFIG = {
+  keyPrefix: 'upload',
+  maxRequests: 10,
+  windowMs: 600 * 1000, // 10 minutes in milliseconds
+};
 
 interface ErrorResponse {
   error: string;
@@ -84,23 +96,67 @@ const uploadStream = (buffer: Buffer, options: object): Promise<UploadApiRespons
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const startTime = Date.now();
+  const rawUA = req.headers.get('user-agent') || '';
 
   try {
+    // 0. Early rejection: Check Content-Length before parsing FormData
+    const contentLength = req.headers.get('content-length');
+    if (contentLength) {
+      const size = parseInt(contentLength, 10);
+      if (size > MAX_FILE_SIZE + CONTENT_LENGTH_TOLERANCE) {
+        logSecurityEvent({
+          endpoint: '/api/wardrobe/upload',
+          statusCode: 400,
+          reason: 'invalid_payload',
+          userAgent: rawUA,
+        });
+        return jsonNoStore({ error: '檔案大小不能超過 10MB', code: 'FILE_TOO_LARGE' }, { status: 400 });
+      }
+    }
+
     // 1. BFF dual-layer authentication (userId from session, NOT from formData)
     const authResult = await requireBffAuth(req);
     if (!authResult.authorized) {
-      return authResult.error!;
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const userId = authResult.userId!;
 
+    // 1.5. Rate limit check (per user, keyPrefix 'upload'组合在 checkRateLimit 内)
+    const rl = await checkRateLimit(userId, RATE_LIMIT_CONFIG);
+    if (!rl.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: rawUA,
+      });
+      return jsonNoStore(
+        { error: 'Too Many Requests', code: 'RATE_LIMITED' },
+        {
+          status: 429,
+          headers: {
+            // IETF RateLimit headers draft: https://datatracker.ietf.org/doc/html/draft-polli-ratelimit-headers-00
+            'RateLimit-Limit': String(rl.limit),
+            'RateLimit-Remaining': String(rl.remaining),
+            'RateLimit-Reset': String(rl.resetAfter),
+            // RFC 6585 (429 Too Many Requests) / RFC 7231 (Retry-After)
+            'Retry-After': String(rl.retryAfter ?? rl.resetAfter ?? 60),
+          },
+        }
+      );
+    }
+
     // 2. Validate Cloudinary configuration
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
       console.error('[Upload] Cloudinary configuration incomplete');
-      return NextResponse.json<ErrorResponse>(
-        { error: '圖片上傳失敗，請稍後再試', code: 'UPLOAD_FAILED' },
-        { status: 500 }
-      );
+      return jsonNoStore({ error: '圖片上傳失敗，請稍後再試', code: 'UPLOAD_FAILED' }, { status: 500 });
     }
 
     // 3. Parse FormData
@@ -108,34 +164,59 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       formData = await req.formData();
     } catch {
-      return NextResponse.json<ErrorResponse>(
-        { error: '無效的請求格式', code: 'INVALID_REQUEST' },
-        { status: 400 }
-      );
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 400,
+        reason: 'invalid_payload',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: '無效的請求格式', code: 'INVALID_REQUEST' }, { status: 400 });
     }
 
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json<ErrorResponse>(
-        { error: '請選擇要上傳的圖片檔案', code: 'FILE_REQUIRED' },
-        { status: 400 }
-      );
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 400,
+        reason: 'invalid_payload',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: '請選擇要上傳的圖片檔案', code: 'FILE_REQUIRED' }, { status: 400 });
     }
 
     // 4. File validation
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json<ErrorResponse>(
-        { error: '不支援的檔案類型。請上傳 JPG, PNG, 或 WebP 格式。', code: 'INVALID_FILE_TYPE' },
-        { status: 400 }
-      );
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 400,
+        reason: 'invalid_payload',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: '不支援的檔案類型。請上傳 JPG, PNG, 或 WebP 格式。', code: 'INVALID_FILE_TYPE' }, { status: 400 });
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json<ErrorResponse>(
-        { error: '檔案大小不能超過 10MB', code: 'FILE_TOO_LARGE' },
-        { status: 400 }
-      );
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 400,
+        reason: 'invalid_payload',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: '檔案大小不能超過 10MB', code: 'FILE_TOO_LARGE' }, { status: 400 });
+    }
+
+    // 4.5. File signature verification (magic bytes)
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const signatureCheck = verifyFileSignature(fileBuffer, file.type);
+    if (!signatureCheck.valid) {
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 400,
+        reason: 'invalid_payload',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: '檔案內容與格式不符', code: 'INVALID_FILE_SIGNATURE' }, { status: 400 });
     }
 
     // 5. Validate required fields
@@ -143,21 +224,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const type = formData.get('type') as string;
 
     if (!name || !type) {
-      return NextResponse.json<ErrorResponse>(
-        { error: '名稱和類型為必填欄位', code: 'MISSING_REQUIRED_FIELDS' },
-        { status: 400 }
-      );
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 400,
+        reason: 'invalid_payload',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: '名稱和類型為必填欄位', code: 'MISSING_REQUIRED_FIELDS' }, { status: 400 });
     }
 
     const validTypes = ['top', 'bottom', 'outerwear', 'shoes', 'accessory'];
     if (!validTypes.includes(type.toLowerCase())) {
-      return NextResponse.json<ErrorResponse>(
-        { error: '無效的衣物類型', code: 'INVALID_TYPE' },
-        { status: 400 }
-      );
+      logSecurityEvent({
+        endpoint: '/api/wardrobe/upload',
+        statusCode: 400,
+        reason: 'invalid_payload',
+        userAgent: rawUA,
+      });
+      return jsonNoStore({ error: '無效的衣物類型', code: 'INVALID_TYPE' }, { status: 400 });
     }
-
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
 
     // 6. Upload original image to Cloudinary
     const originalResult = await uploadStream(fileBuffer, {
@@ -233,17 +318,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (dbError) {
       // Log without exposing DB details
       console.error('[Upload] Database insert failed');
-      return NextResponse.json<ErrorResponse>(
-        { error: '圖片上傳失敗，請稍後再試', code: 'UPLOAD_FAILED' },
-        { status: 500 }
-      );
+      return jsonNoStore({ error: '圖片上傳失敗，請稍後再試', code: 'UPLOAD_FAILED' }, { status: 500 });
     }
 
     const processingTime = (Date.now() - startTime) / 1000;
     console.log(`[Upload] Success for user, processing time: ${processingTime.toFixed(2)}s`);
 
     // 11. Return success response (no sensitive data)
-    return NextResponse.json(
+    return jsonNoStore(
       {
         success: true,
         wardrobeItem,
@@ -262,17 +344,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.error('[Upload] Unexpected error:', error instanceof Error ? error.message : 'Unknown');
 
     // Sanitized error response - NO internal details
-    return NextResponse.json<ErrorResponse>(
-      { error: '圖片上傳失敗，請稍後再試', code: 'UPLOAD_FAILED' },
-      { status: 500 }
-    );
+    return jsonNoStore({ error: '圖片上傳失敗，請稍後再試', code: 'UPLOAD_FAILED' }, { status: 500 });
   }
 }
 
 // GET method not allowed
 export async function GET(): Promise<NextResponse<ErrorResponse>> {
-  return NextResponse.json<ErrorResponse>(
-    { error: 'Method not allowed. Use POST.', code: 'METHOD_NOT_ALLOWED' },
-    { status: 405 }
-  );
+  return jsonNoStore({ error: 'Method not allowed. Use POST.', code: 'METHOD_NOT_ALLOWED' }, { status: 405 });
 }
