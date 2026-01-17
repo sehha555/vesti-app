@@ -8,10 +8,10 @@ import { removeBackgroundFromImageUrl } from 'remove.bg';
 import { Readable } from 'stream';
 import { createClient } from '@supabase/supabase-js';
 import { requireBffAuth } from '../../_middleware/auth';
-import { jsonNoStore } from '@/lib/http/no-store';
-import { logSecurityEvent } from '@/lib/metrics';
-import { checkRateLimit } from '@/lib/rateLimit';
-import { verifyFileSignature } from '@/lib/security/file-signature';
+import { jsonNoStore } from '../../../../lib/http/no-store';
+import { logSecurityEvent } from '../../../../lib/metrics';
+import { checkRateLimit } from '../../../../lib/rateLimit';
+import { verifyFileSignature } from '../../../../lib/security/file-signature';
 
 // Force Node.js runtime for stream compatibility (required for Cloudinary upload_stream)
 export const runtime = 'nodejs';
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         reason: 'auth_required',
         userAgent: rawUA,
       });
-      return jsonNoStore({ error: 'Unauthorized' }, { status: 401 });
+      return jsonNoStore({ error: 'Unauthorized', code: 'AUTH_REQUIRED' }, { status: 401 });
     }
 
     const userId = authResult.userId!;

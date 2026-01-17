@@ -59,6 +59,26 @@ vi.mock('@supabase/supabase-js', () => ({
   })),
 }));
 
+// Mock rate limit
+vi.mock('../../../../lib/rateLimit', () => ({
+  checkRateLimit: vi.fn(() => Promise.resolve({
+    allowed: true,
+    remaining: 9,
+    limit: 10,
+    resetAfter: 600,
+    resetAt: Math.floor(Date.now() / 1000) + 600,
+  })),
+}));
+
+// Mock security functions
+vi.mock('../../../../lib/metrics', () => ({
+  logSecurityEvent: vi.fn(),
+}));
+
+vi.mock('../../../../lib/security/file-signature', () => ({
+  verifyFileSignature: vi.fn(() => ({ valid: true })),
+}));
+
 import { requireBffAuth } from '../../_middleware/auth';
 
 // Helper to create FormData request
