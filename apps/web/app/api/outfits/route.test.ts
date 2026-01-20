@@ -334,4 +334,5 @@ describe('POST /api/outfits - Supabase Integration', () => {
     const responseHeaders = Object.fromEntries(responseGet.headers);
     expect(responseHeaders['cache-control']).toBe('private, no-store');
   });
+
 });

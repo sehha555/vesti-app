@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { jsonNoStore } from '@/lib/http/no-store';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { logSecurityEvent } from '@/lib/metrics';
 
 /**
  * 儲存穿搭的請求 body 型別
@@ -61,9 +63,43 @@ export async function POST(request: NextRequest) {
     // === 認證使用者 ===
     const { user } = await getSupabaseAndUser();
     if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: request.headers.get('user-agent') || '',
+      });
       return jsonNoStore(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // === 限流檢查 ===
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 20,
+      keyPrefix: 'saved-outfits-post',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: request.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { success: false, error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
       );
     }
 
@@ -194,9 +230,43 @@ export async function GET(request: NextRequest) {
     // === 認證使用者 ===
     const { user } = await getSupabaseAndUser();
     if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: request.headers.get('user-agent') || '',
+      });
       return jsonNoStore(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // === 限流檢查 ===
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 30,
+      keyPrefix: 'saved-outfits-get',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: request.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { success: false, error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
       );
     }
 

@@ -7,6 +7,8 @@ import { OutfitsCreateRequestSchema } from '../../../../../packages/types/src/ou
 import { getSupabaseAndUser } from '../../../lib/supabase/server';
 import { supabaseAdmin } from '../../../lib/supabaseClient';
 import { jsonNoStore } from '../../../lib/http/no-store';
+import { checkRateLimit } from '../../../lib/rateLimit';
+import { logSecurityEvent } from '../../../lib/metrics';
 
 const VALID_SEASONS: OutfitSeason[] = ['spring', 'summer', 'fall', 'winter'];
 
@@ -15,9 +17,43 @@ export async function GET(req: NextRequest) {
     // 認證使用者
     const { user, supabase } = await getSupabaseAndUser();
     if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: req.headers.get('user-agent') || '',
+      });
       return jsonNoStore(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // 限流檢查 (GET /api/outfits)
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 30,
+      keyPrefix: 'outfits-get',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: req.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
       );
     }
 
@@ -84,9 +120,43 @@ export async function POST(req: NextRequest) {
     // 認證使用者
     const { user } = await getSupabaseAndUser();
     if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: req.headers.get('user-agent') || '',
+      });
       return jsonNoStore(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // 限流檢查 (POST /api/outfits)
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 20,
+      keyPrefix: 'outfits-post',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: req.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
       );
     }
 
