@@ -80,6 +80,8 @@ vi.mock('../../../../lib/security/file-signature', () => ({
 }));
 
 import { requireBffAuth } from '../../_middleware/auth';
+import { checkRateLimit } from '../../../../lib/rateLimit';
+import { verifyFileSignature } from '../../../../lib/security/file-signature';
 
 // Helper to create FormData request
 const createFormDataRequest = (formData: FormData): NextRequest => {
@@ -354,6 +356,80 @@ describe('POST /api/wardrobe/upload', () => {
         const res = await POST(req);
 
         expect(res.status).toBe(201);
+      });
+    });
+  });
+
+  describe('Gherkin Acceptance Tests', () => {
+    describe('場景: 成功上傳正常圖片', () => {
+      it('should return 201 with Cache-Control and success fields', async () => {
+        const formData = new FormData();
+        formData.append('file', createMockFile('ok.jpg', 'image/jpeg', 10240));
+        formData.append('name', 'Test Item');
+        formData.append('type', 'top');
+
+        const req = createFormDataRequest(formData);
+        const res = await POST(req);
+        const data = await res.json();
+
+        expect(res.status).toBe(201);
+        expect(res.headers.get('Cache-Control')).toBe('private, no-store');
+        expect(data.success).toBe(true);
+        expect(data.wardrobeItem).toBeDefined();
+      });
+    });
+
+    describe('場景: 觸發限流時應回傳 429 與標準 headers', () => {
+      it('should return 429 with RateLimit headers when rate limit exceeded', async () => {
+        // Mock rate limit to deny the request
+        vi.mocked(checkRateLimit).mockResolvedValueOnce({
+          allowed: false,
+          remaining: 0,
+          limit: 10,
+          resetAfter: 600,
+          resetAt: Math.floor(Date.now() / 1000) + 600,
+          retryAfter: 600,
+        });
+
+        const formData = new FormData();
+        formData.append('file', createMockFile('ok.jpg', 'image/jpeg', 10240));
+        formData.append('name', 'Test Item');
+        formData.append('type', 'top');
+
+        const req = createFormDataRequest(formData);
+        const res = await POST(req);
+        const data = await res.json();
+
+        expect(res.status).toBe(429);
+        expect(res.headers.get('Retry-After')).toBe('600');
+        expect(res.headers.get('RateLimit-Limit')).toBe('10');
+        expect(res.headers.get('RateLimit-Remaining')).toBe('0');
+        expect(res.headers.get('RateLimit-Reset')).toBe('600');
+        expect(data.code).toBe('RATE_LIMITED');
+      });
+    });
+
+    describe('場景: 檔案簽名不符應回 400', () => {
+      it('should return 400 INVALID_FILE_SIGNATURE when file signature invalid', async () => {
+        // Mock file signature verification to fail
+        vi.mocked(verifyFileSignature).mockReturnValueOnce({
+          valid: false,
+          reason: 'File signature does not match declared type',
+        });
+
+        const formData = new FormData();
+        // PNG signature in JPEG disguise
+        formData.append('file', createMockFile('fake.jpg', 'image/jpeg', 10240));
+        formData.append('name', 'Test Item');
+        formData.append('type', 'top');
+
+        const req = createFormDataRequest(formData);
+        const res = await POST(req);
+        const data = await res.json();
+
+        expect(res.status).toBe(400);
+        expect(data.code).toBe('INVALID_FILE_SIGNATURE');
+        expect(data.error).toBeDefined();
       });
     });
   });

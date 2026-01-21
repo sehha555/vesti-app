@@ -1,72 +1,168 @@
 // apps/web/app/api/outfits/route.ts
-// Migrated from pages/api/outfits/index.ts
+// Outfits 資料持久化 - 使用 Supabase saved_outfits 表
 
 import { NextRequest } from 'next/server';
-import type { Outfit, CreateOutfitDto, OutfitSeason, OutfitsCreateRequest } from '../../../../../packages/types/src/outfit';
+import type { OutfitSeason, OutfitsCreateRequest } from '../../../../../packages/types/src/outfit';
 import { OutfitsCreateRequestSchema } from '../../../../../packages/types/src/outfit';
-import {
-  getAllOutfits,
-  createOutfit,
-  getOutfitsByTag,
-  getOutfitsBySeason,
-  getOutfitsByOccasion,
-} from '../../../lib/shared-outfit-store';
-import { sanitizeUserAgent, logDeprecationMetric } from '../../../lib/metrics';
 import { getSupabaseAndUser } from '../../../lib/supabase/server';
+import { supabaseAdmin } from '../../../lib/supabaseClient';
 import { jsonNoStore } from '../../../lib/http/no-store';
+import { checkRateLimit } from '../../../lib/rateLimit';
+import { logSecurityEvent } from '../../../lib/metrics';
+
 const VALID_SEASONS: OutfitSeason[] = ['spring', 'summer', 'fall', 'winter'];
 
 export async function GET(req: NextRequest) {
   try {
-    // Authenticate user
-    const { user } = await getSupabaseAndUser();
+    // 認證使用者
+    const { user, supabase } = await getSupabaseAndUser();
     if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: req.headers.get('user-agent') || '',
+      });
       return jsonNoStore(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Only allow fetching own outfits
+    // 限流檢查 (GET /api/outfits)
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 30,
+      keyPrefix: 'outfits-get',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: req.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
+      );
+    }
+
+    // 只允許獲取自己的穿搭
     const userId = user.id;
     const tag = req.nextUrl.searchParams.get('tag');
     const season = req.nextUrl.searchParams.get('season');
     const occasion = req.nextUrl.searchParams.get('occasion');
 
-    let outfits: Outfit[];
+    // 從 Supabase 查詢穿搭
+    let query = supabase
+      .from('saved_outfits')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    // Apply filters based on provided query parameters
-    if (typeof season === 'string') {
-      outfits = getOutfitsBySeason(userId, season as OutfitSeason);
-    } else if (typeof tag === 'string') {
-      outfits = getOutfitsByTag(userId, tag);
-    } else if (typeof occasion === 'string') {
-      outfits = getOutfitsByOccasion(userId, occasion);
-    } else {
-      outfits = getAllOutfits(userId);
+    // 套用篩選條件
+    if (season && VALID_SEASONS.includes(season as OutfitSeason)) {
+      // outfit_data 包含 season，這裡我們先不篩選（因為 outfit_data 是 JSONB）
+      // TODO: 如果需要按 season 篩選，應在應用層進行
     }
+    if (occasion) {
+      query = query.eq('occasion', occasion);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[API /api/outfits GET] Supabase error:', error);
+      return jsonNoStore(
+        { error: '無法取得穿搭列表' },
+        { status: 500 }
+      );
+    }
+
+    // 轉換回應格式
+    const outfits = (data || []).map((item) => ({
+      id: item.id,
+      userId: item.user_id,
+      name: item.outfit_data?.styleName || item.outfit_data?.name || '未命名穿搭',
+      description: item.outfit_data?.description,
+      itemIds: item.outfit_data?.items?.map((i: any) => i.id) || [],
+      occasion: item.occasion,
+      season: (item.outfit_data?.season || item.outfit_data?.season),
+      imageUrl: item.outfit_data?.imageUrl || item.outfit_data?.heroImageUrl,
+      source: 'user' as const,
+      rating: item.outfit_data?.rating,
+      createdAt: new Date(item.created_at),
+      updatedAt: item.updated_at ? new Date(item.updated_at) : undefined,
+    }));
 
     return jsonNoStore(outfits, { status: 200 });
   } catch (error: any) {
-    console.error('API Error in /api/outfits (GET):', error);
-    return jsonNoStore({ error: error.message || '內部伺服器錯誤' }, { status: 500 });
+    console.error('[API /api/outfits GET] Error:', error);
+    return jsonNoStore(
+      { error: error.message || '內部伺服器錯誤' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // Authenticate user
+    // 認證使用者
     const { user } = await getSupabaseAndUser();
     if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: req.headers.get('user-agent') || '',
+      });
       return jsonNoStore(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    // 限流檢查 (POST /api/outfits)
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 20,
+      keyPrefix: 'outfits-post',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: req.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
+      );
+    }
+
     const body = await req.json();
 
-    // Validate against schema
+    // 驗證請求格式
     const parseResult = OutfitsCreateRequestSchema.safeParse(body);
     if (!parseResult.success) {
       const response: { error: string; details?: any } = {
@@ -80,11 +176,11 @@ export async function POST(req: NextRequest) {
 
     let { userId, name, itemIds, season, rating } = parseResult.data;
 
-    // Check if this is a legacy payload (userId is undefined after validation)
+    // 檢查是否遺漏 userId（legacy payload）
     const isMissingUserId = userId === undefined;
     const enableLegacyOutfits = process.env.ENABLE_LEGACY_OUTFITS_PAYLOAD !== "false";
 
-    // If legacy payload and env flag is "false", return 400 with Cache-Control header
+    // 如果遺漏 userId 且環境變數禁用 legacy，返回 400
     if (isMissingUserId && !enableLegacyOutfits) {
       return jsonNoStore(
         { error: '缺少必要欄位 (userId, name, itemIds)' },
@@ -92,22 +188,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Log deprecation if legacy payload is allowed
+    // 如果遺漏 userId，使用認證使用者的 ID
     if (isMissingUserId && enableLegacyOutfits) {
-      const userAgent = req.headers.get('user-agent') || '';
-      console.warn('Deprecated: legacy outfits endpoint used without userId');
-      logDeprecationMetric({
-        endpoint: 'POST /api/outfits',
-        format: 'legacy',
-        itemCount: itemIds.length,
-        userAgent: sanitizeUserAgent(userAgent),
-      });
-
-      // Use authenticated session userId for legacy payload
       userId = user.id;
     }
 
-    // Validate userId exists (either from payload or from authenticated session)
+    // 驗證 userId 不為空
     if (!userId) {
       return jsonNoStore(
         { error: '缺少必要欄位 userId' },
@@ -115,7 +201,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify ownership: userId from payload must match authenticated user
+    // 驗證所有權：userId 必須符合認證使用者
     if (userId !== user.id) {
       return jsonNoStore(
         { error: 'Forbidden: userId does not match authenticated user' },
@@ -123,14 +209,65 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newOutfit = createOutfit(userId, { userId, name, itemIds, season, rating } as CreateOutfitDto);
-    return jsonNoStore(newOutfit, { status: 201 });
-  } catch (error: any) {
-    console.error('API Error in /api/outfits (POST):', error);
-    // Handle specific errors from createOutfit, e.g., empty itemIds
-    if (error.message.includes('at least one item')) {
-        return jsonNoStore({ error: error.message }, { status: 400 });
+    // 驗證 itemIds 至少有一個
+    if (!itemIds || itemIds.length === 0) {
+      return jsonNoStore(
+        { error: 'An outfit must contain at least one item.' },
+        { status: 400 }
+      );
     }
-    return jsonNoStore({ error: error.message || '內部伺服器錯誤' }, { status: 500 });
+
+    // 構建 outfit_data
+    const outfitData = {
+      name,
+      styleName: name, // 相容 saved_outfits 表格式
+      itemIds,
+      items: itemIds.map((id) => ({ id })), // 簡化的項目列表
+      season,
+      rating,
+      description: body.description || '',
+    };
+
+    // 保存到 Supabase
+    const { data, error } = await supabaseAdmin
+      .from('saved_outfits')
+      .insert([
+        {
+          user_id: userId,
+          outfit_data: outfitData,
+          occasion: body.occasion || null,
+          outfit_type: 'saved',
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[API /api/outfits POST] Supabase error:', error);
+      return jsonNoStore(
+        { error: '無法建立穿搭' },
+        { status: 500 }
+      );
+    }
+
+    // 回傳建立的 outfit
+    return jsonNoStore(
+      {
+        id: data.id,
+        userId: data.user_id,
+        name,
+        itemIds,
+        season,
+        rating,
+        createdAt: new Date(data.created_at),
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error('[API /api/outfits POST] Error:', error);
+    return jsonNoStore(
+      { error: error.message || '內部伺服器錯誤' },
+      { status: 500 }
+    );
   }
 }

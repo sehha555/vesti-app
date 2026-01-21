@@ -1,9 +1,11 @@
 // apps/web/app/api/reco/outfit/generate/route.ts
 // POST /api/reco/outfit/generate - AI outfit generation
-// Security: BFF dual auth required (user session + internal API key)
+// Security: BFF dual auth required (user session + internal API key) + rate limiting
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireBffAuth } from '@/middleware/auth';
+import { requireBffAuth } from '../../../_middleware/auth';
+import { checkRateLimit } from '../../../../../lib/rateLimit';
+import { logSecurityEvent } from '../../../../../lib/metrics';
 
 interface GenerateOutfitRequest {
   occasion?: string;
@@ -63,23 +65,58 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateOutfi
     // 1. BFF dual-layer authentication (user session + internal API key)
     const authResult = await requireBffAuth(req);
     if (!authResult.authorized) {
+      logSecurityEvent({
+        endpoint: '/api/reco/outfit/generate',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: req.headers.get('user-agent') || '',
+      });
       return authResult.error! as NextResponse<ErrorResponse>;
     }
 
     const userId = authResult.userId!;
 
-    // 2. Parse and validate request body
+    // 2. Rate limiting check (昂貴端點：AI 調用)
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 60 * 1000, // 1 hour
+      maxRequests: 10, // 10 requests per hour per user
+      keyPrefix: 'outfit-generate',
+    };
+    const rateLimitResult = await checkRateLimit(userId, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/reco/outfit/generate',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: req.headers.get('user-agent') || '',
+      });
+      return NextResponse.json<ErrorResponse>(
+        { error: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+            'Cache-Control': 'private, no-store',
+          },
+        }
+      );
+    }
+
+    // 3. Parse and validate request body
     let body: GenerateOutfitRequest;
     try {
       body = await req.json();
     } catch {
       return NextResponse.json<ErrorResponse>(
         { error: 'Invalid JSON body', code: 'INVALID_JSON' },
-        { status: 400 }
+        { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
-    // 3. Generate outfits (placeholder - integrate with actual AI service)
+    // 4. Generate outfits (placeholder - integrate with actual AI service)
     // TODO: Integrate with actual outfit generation service
     const generatedOutfits: GeneratedOutfit[] = [
       {
@@ -102,14 +139,14 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateOutfi
         ok: true,
         outfits: generatedOutfits,
       },
-      { status: 200 }
+      { status: 200, headers: { 'Cache-Control': 'private, no-store' } }
     );
   } catch (error) {
     // Log error without exposing sensitive information
     console.error('[API] POST /api/reco/outfit/generate error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json<ErrorResponse>(
       { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
     );
   }
 }
@@ -118,6 +155,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateOutfi
 export async function GET(): Promise<NextResponse<ErrorResponse>> {
   return NextResponse.json<ErrorResponse>(
     { error: 'Method not allowed. Use POST.', code: 'METHOD_NOT_ALLOWED' },
-    { status: 405 }
+    { status: 405, headers: { 'Cache-Control': 'private, no-store' } }
   );
 }

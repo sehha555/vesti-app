@@ -1,11 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
+import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { jsonNoStore } from '@/lib/http/no-store';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { logSecurityEvent } from '@/lib/metrics';
 
 /**
  * 儲存穿搭的請求 body 型別
  */
 interface SaveOutfitRequest {
-  userId: string;
   outfitData: {
     imageUrl: string;
     styleName: string;
@@ -37,7 +40,6 @@ interface SaveOutfitRequest {
  *
  * Body:
  * {
- *   "userId": "uuid",
  *   "outfitData": {
  *     "imageUrl": "...",
  *     "styleName": "...",
@@ -47,36 +49,72 @@ interface SaveOutfitRequest {
  *   },
  *   "weather": { ... },
  *   "occasion": "casual",
- *   "outfitType": "saved" | "confirmed",
- *   "timestamp": "ISO 8601 timestamp" (optional)
+ *   "outfitType": "saved" | "confirmed"
  * }
  *
  * Response:
  * - 201: { success: true, savedOutfit: {...} }
  * - 400: { success: false, error: "..." }
+ * - 401: { success: false, error: "Unauthorized" }
  * - 500: { success: false, error: "..." }
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as SaveOutfitRequest;
-
-    // === 驗證必要欄位 ===
-    if (!body.userId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: userId' },
-        { status: 400 }
+    // === 認證使用者 ===
+    const { user } = await getSupabaseAndUser();
+    if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: request.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
+    // === 限流檢查 ===
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 20,
+      keyPrefix: 'saved-outfits-post',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: request.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { success: false, error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
+      );
+    }
+
+    const body = (await request.json()) as SaveOutfitRequest;
+
+    // === 驗證必要欄位 ===
     if (!body.outfitData || typeof body.outfitData !== 'object') {
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: 'Missing or invalid field: outfitData' },
         { status: 400 }
       );
     }
 
     if (!body.outfitData.imageUrl || !body.outfitData.styleName) {
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: 'outfitData must contain imageUrl and styleName' },
         { status: 400 }
       );
@@ -86,7 +124,7 @@ export async function POST(request: NextRequest) {
     const { data: existingOutfits, error: checkError } = await supabaseAdmin
       .from('saved_outfits')
       .select('id, outfit_data, created_at')
-      .eq('user_id', body.userId)
+      .eq('user_id', user.id)
       .eq('outfit_type', body.outfitType || 'saved')
       .order('created_at', { ascending: false })
       .limit(5); // 只檢查最近 5 筆
@@ -111,7 +149,7 @@ export async function POST(request: NextRequest) {
         const timeDiff = new Date().getTime() - new Date(duplicate.created_at).getTime();
         if (timeDiff < 60000) { // 1 分鐘 = 60000ms
           console.log('[API /saved-outfits] Duplicate outfit detected (within 1 min):', duplicate.id);
-          return NextResponse.json(
+          return jsonNoStore(
             {
               success: true,
               savedOutfit: duplicate,
@@ -128,7 +166,7 @@ export async function POST(request: NextRequest) {
       .from('saved_outfits')
       .insert([
         {
-          user_id: body.userId,
+          user_id: user.id, // 使用認證使用者的 ID
           outfit_data: body.outfitData,
           weather_info: body.weather || null,
           occasion: body.occasion || 'casual',
@@ -140,7 +178,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[API /saved-outfits] Supabase error:', error);
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: 'Failed to save outfit', details: error.message },
         { status: 500 }
       );
@@ -148,7 +186,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[API /saved-outfits] Outfit saved successfully:', data.id);
 
-    return NextResponse.json(
+    return jsonNoStore(
       {
         success: true,
         savedOutfit: data,
@@ -161,11 +199,11 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
       type: typeof error
     });
-    return NextResponse.json(
+    return jsonNoStore(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Internal server error',
-        details: error instanceof Error ? error.toString() : String(error)
+        details: process.env.NODE_ENV !== 'production' && error instanceof Error ? error.toString() : undefined
       },
       { status: 500 }
     );
@@ -173,42 +211,75 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/saved-outfits?userId=xxx
+ * GET /api/saved-outfits
  *
- * 取得使用者儲存的穿搭列表
+ * 取得已認證使用者儲存的穿搭列表
  *
  * Query Parameters:
- * - userId (required): 使用者 ID
  * - outfitType (optional): 'saved' | 'confirmed'，預設 'saved'
  * - occasion (optional): 'casual' | 'work' | 'date' | 'formal' | 'outdoor'
  * - limit (optional): 限制回傳數量，預設 20
  *
  * Response:
  * - 200: { success: true, outfits: [...], count: number }
- * - 400: { success: false, error: "..." }
+ * - 401: { success: false, error: "Unauthorized" }
  * - 500: { success: false, error: "..." }
  */
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
-    const outfitType = searchParams.get('outfitType') || 'saved';
-    const occasion = searchParams.get('occasion');
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
-
-    // === 驗證必要參數 ===
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required parameter: userId' },
-        { status: 400 }
+    // === 認證使用者 ===
+    const { user } = await getSupabaseAndUser();
+    if (!user) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: request.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
     }
+
+    // === 限流檢查 ===
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 1000, // 60 seconds
+      maxRequests: 30,
+      keyPrefix: 'saved-outfits-get',
+    };
+    const rateLimitResult = await checkRateLimit(user.id, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/saved-outfits',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: request.headers.get('user-agent') || '',
+      });
+      return jsonNoStore(
+        { success: false, error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+          },
+        }
+      );
+    }
+
+    const searchParams = request.nextUrl.searchParams;
+    const outfitType = searchParams.get('outfitType') || 'saved';
+    const occasion = searchParams.get('occasion');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100); // 最多 100 筆
 
     // === 建立查詢 ===
     let query = supabaseAdmin
       .from('saved_outfits')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id) // 只查詢認證使用者的穿搭
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -224,15 +295,15 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[API /saved-outfits] Supabase error:', error);
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: 'Failed to fetch saved outfits', details: error.message },
         { status: 500 }
       );
     }
 
-    console.log(`[API /saved-outfits] Fetched ${data?.length || 0} outfits for user ${userId}`);
+    console.log(`[API /saved-outfits] Fetched ${data?.length || 0} outfits for user ${user.id}`);
 
-    return NextResponse.json(
+    return jsonNoStore(
       {
         success: true,
         outfits: data || [],
@@ -242,11 +313,11 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('[API /saved-outfits] Unexpected error:', error);
-    return NextResponse.json(
+    return jsonNoStore(
       {
         success: false,
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: process.env.NODE_ENV !== 'production' && error instanceof Error ? error.message : undefined
       },
       { status: 500 }
     );
