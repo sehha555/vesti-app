@@ -3,7 +3,7 @@
 // Security: BFF dual auth required (user session + internal API key) + rate limiting
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireBffAuth } from '../../_middleware/auth';
+import { requireBffAuth } from '../../../_middleware/auth';
 import { checkRateLimit } from '../../../../../lib/rateLimit';
 import { logSecurityEvent } from '../../../../../lib/metrics';
 

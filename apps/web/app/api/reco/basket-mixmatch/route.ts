@@ -3,10 +3,10 @@
 // Security: Authentication required + rate limiting + no-store cache
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAndUser } from '../../../lib/supabase/server';
-import { jsonNoStore } from '../../../lib/http/no-store';
-import { checkRateLimit } from '../../../lib/rateLimit';
-import { logSecurityEvent } from '../../../lib/metrics';
+import { getSupabaseAndUser } from '../../../../lib/supabase/server';
+import { jsonNoStore } from '../../../../lib/http/no-store';
+import { checkRateLimit } from '../../../../lib/rateLimit';
+import { logSecurityEvent } from '../../../../lib/metrics';
 
 export async function GET(req: NextRequest) {
   try {
