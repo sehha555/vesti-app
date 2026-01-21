@@ -17,6 +17,8 @@ import {
 import { geocodeLocation, DEFAULT_LOCATION } from '@/services/weather/geocoding.service';
 import { getWeather } from '@/services/weather';
 import type { WardrobeItem } from '../../../../../../packages/types/src/wardrobe';
+import { checkRateLimit } from '../../../../lib/rateLimit';
+import { logSecurityEvent } from '../../../../lib/metrics';
 
 interface ErrorResponse {
   error: string;
@@ -292,39 +294,74 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
     // 1. BFF dual-layer authentication
     const authResult = await requireBffAuth(req);
     if (!authResult.authorized) {
+      logSecurityEvent({
+        endpoint: '/api/reco/daily',
+        statusCode: 401,
+        reason: 'auth_required',
+        userAgent: req.headers.get('user-agent') || '',
+      });
       return authResult.error! as NextResponse<ErrorResponse>;
     }
 
     const userId = authResult.userId!;
 
-    // 2. Check Content-Length
+    // 2. Rate limiting check (昂貴端點：需防止 weather API 濫用)
+    const RATE_LIMIT_CONFIG = {
+      windowMs: 60 * 60 * 1000, // 1 hour
+      maxRequests: 20, // 20 requests per hour per user
+      keyPrefix: 'reco-daily',
+    };
+    const rateLimitResult = await checkRateLimit(userId, RATE_LIMIT_CONFIG);
+    if (!rateLimitResult.allowed) {
+      logSecurityEvent({
+        endpoint: '/api/reco/daily',
+        statusCode: 429,
+        reason: 'forbidden',
+        userAgent: req.headers.get('user-agent') || '',
+      });
+      return NextResponse.json<ErrorResponse>(
+        { error: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' },
+        {
+          status: 429,
+          headers: {
+            'RateLimit-Limit': String(rateLimitResult.limit),
+            'RateLimit-Remaining': String(rateLimitResult.remaining),
+            'RateLimit-Reset': String(rateLimitResult.resetAfter),
+            'Retry-After': String(rateLimitResult.retryAfter ?? rateLimitResult.resetAfter),
+            'Cache-Control': 'private, no-store',
+          },
+        }
+      );
+    }
+
+    // 3. Check Content-Length
     const contentLength = req.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
       return NextResponse.json<ErrorResponse>(
         { error: 'Request body too large', code: 'PAYLOAD_TOO_LARGE' },
-        { status: 413 }
+        { status: 413, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
-    // 3. Parse and validate request body
+    // 4. Parse and validate request body
     let body: unknown;
     try {
       const text = await req.text();
       if (text.length > MAX_BODY_SIZE) {
         return NextResponse.json<ErrorResponse>(
           { error: 'Request body too large', code: 'PAYLOAD_TOO_LARGE' },
-          { status: 413 }
+          { status: 413, headers: { 'Cache-Control': 'private, no-store' } }
         );
       }
       body = JSON.parse(text);
     } catch {
       return NextResponse.json<ErrorResponse>(
         { error: 'Invalid JSON body', code: 'INVALID_JSON' },
-        { status: 400 }
+        { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
-    // 4. Validate with Zod schema
+    // 5. Validate with Zod schema
     const parseResult = DailyOutfitRequestSchema.safeParse(body);
     if (!parseResult.success) {
       const issues = parseResult.error.issues || [];
@@ -334,16 +371,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
       );
       return NextResponse.json<ErrorResponse>(
         { error: 'Validation failed', code: 'VALIDATION_ERROR', details: errorMessages },
-        { status: 400 }
+        { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
     const { date, location, occasion, bodyType, outfitCount } = parseResult.data;
 
-    // 5. Geocode location to coordinates
+    // 6. Geocode location to coordinates
     const coords = await geocodeLocation(location) || DEFAULT_LOCATION;
 
-    // 6. Get weather for location
+    // 7. Get weather for location
     const weatherSummary = await getWeather(coords);
     const weatherInfo: WeatherInfo = {
       temperature: weatherSummary.temperature,
@@ -353,7 +390,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
       locationName: weatherSummary.locationName,
     };
 
-    // 7. Fetch user wardrobe from Supabase
+    // 8. Fetch user wardrobe from Supabase
     // Note: Using supabaseAdmin for server-side operations
     const { supabaseAdmin } = await import('@/lib/supabaseClient');
     const { data: wardrobeData, error: wardrobeError } = await supabaseAdmin
@@ -365,28 +402,28 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
       console.error('[API] Wardrobe fetch error:', wardrobeError.message);
       return NextResponse.json<ErrorResponse>(
         { error: 'Failed to fetch wardrobe', code: 'WARDROBE_ERROR' },
-        { status: 500 }
+        { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
     const wardrobeItems: WardrobeItem[] = wardrobeData || [];
 
-    // 8. Filter wardrobe by weather and occasion
+    // 9. Filter wardrobe by weather and occasion
     const weatherFiltered = filterByWeather(wardrobeItems, weatherInfo);
     const occasionFiltered = filterByOccasion(weatherFiltered, occasion);
 
-    // 9. Group items by type
+    // 10. Group items by type
     const grouped = groupByType(occasionFiltered.length > 0 ? occasionFiltered : weatherFiltered);
 
-    // 10. Generate outfit combinations
+    // 11. Generate outfit combinations
     const { outfits, missingTypes } = generateOutfits(grouped, outfitCount, weatherInfo, occasion);
 
-    // 11. Generate suggested purchases if needed
+    // 12. Generate suggested purchases if needed
     const suggestedPurchases = missingTypes.length > 0
       ? generateSuggestedPurchases(missingTypes, occasion)
       : undefined;
 
-    // 12. Build response
+    // 13. Build response
     const response: DailyOutfitResponse = {
       ok: true,
       date,
@@ -400,12 +437,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
 
     console.log(`[API] Generated ${outfits.length} outfits for ${location} on ${date}`);
 
-    return NextResponse.json<DailyOutfitResponse>(response, { status: 200 });
+    return NextResponse.json<DailyOutfitResponse>(response, {
+      status: 200,
+      headers: { 'Cache-Control': 'private, no-store' },
+    });
   } catch (error) {
     console.error('[API] POST /api/reco/daily error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json<ErrorResponse>(
       { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
     );
   }
 }
@@ -414,6 +454,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<DailyOutfitRe
 export async function GET(): Promise<NextResponse<ErrorResponse>> {
   return NextResponse.json<ErrorResponse>(
     { error: 'Method not allowed. Use POST.', code: 'METHOD_NOT_ALLOWED' },
-    { status: 405 }
+    { status: 405, headers: { 'Cache-Control': 'private, no-store' } }
   );
 }

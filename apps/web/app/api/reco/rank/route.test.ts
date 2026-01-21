@@ -8,6 +8,17 @@ vi.mock('../../_middleware/auth', () => ({
   requireBffAuth: vi.fn(),
 }));
 
+// Mock rate limiting for tests (allow all requests)
+vi.mock('../../../../lib/rateLimit', () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    remaining: 100,
+    limit: 100,
+    resetAfter: 60,
+    resetAt: Date.now() + 60000,
+  }),
+}));
+
 import { requireBffAuth } from '../../_middleware/auth';
 
 // Test API key (for testing purposes only)

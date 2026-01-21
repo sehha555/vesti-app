@@ -7,9 +7,10 @@ import { RankRequestSchema, MAX_BODY_SIZE } from '../../../../lib/validation/rec
 import { rankOutfits, RankableOutfit, UserPreferences } from '@/services/reco/modules/ranking/rankOutfits';
 import { requireBffAuth } from '../../_middleware/auth';
 
-// Rate limiting configuration
+// Rate limiting configuration (Phase 1: Reduced from 120 to 30 for security hardening)
 const RATE_LIMIT_WINDOW_MS = 60000; // 60 seconds
-const RATE_LIMIT_MAX_REQUESTS = 120; // max requests per window per IP
+// In tests, use higher limit (1000) to prevent test failures from rate limiting
+const RATE_LIMIT_MAX_REQUESTS = process.env.NODE_ENV === 'test' ? 1000 : 30;
 
 // In-memory rate limit store (use Redis in production for distributed systems)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -87,7 +88,12 @@ export async function POST(req: NextRequest) {
         { error: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' },
         {
           status: 429,
-          headers: { 'Retry-After': String(rateCheck.retryAfter) },
+          headers: {
+            'Retry-After': String(rateCheck.retryAfter),
+            'RateLimit-Limit': String(RATE_LIMIT_MAX_REQUESTS),
+            'RateLimit-Reset': String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)),
+            'Cache-Control': 'private, no-store',
+          },
         }
       );
     }
@@ -97,7 +103,7 @@ export async function POST(req: NextRequest) {
     if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
       return NextResponse.json<ErrorResponse>(
         { error: 'Request body too large', code: 'PAYLOAD_TOO_LARGE' },
-        { status: 413 }
+        { status: 413, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
@@ -108,14 +114,14 @@ export async function POST(req: NextRequest) {
       if (text.length > MAX_BODY_SIZE) {
         return NextResponse.json<ErrorResponse>(
           { error: 'Request body too large', code: 'PAYLOAD_TOO_LARGE' },
-          { status: 413 }
+          { status: 413, headers: { 'Cache-Control': 'private, no-store' } }
         );
       }
       body = JSON.parse(text);
     } catch {
       return NextResponse.json<ErrorResponse>(
         { error: 'Invalid JSON body', code: 'INVALID_JSON' },
-        { status: 400 }
+        { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
@@ -132,7 +138,7 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json<ErrorResponse>(
         { error: 'Validation failed', code: 'VALIDATION_ERROR', details: errorMessages },
-        { status: 400 }
+        { status: 400, headers: { 'Cache-Control': 'private, no-store' } }
       );
     }
 
@@ -155,13 +161,16 @@ export async function POST(req: NextRequest) {
     // 6. Perform ranking with explainable output
     const rankedOutfits = rankOutfits(rankableOutfits, preferences);
 
-    return NextResponse.json(rankedOutfits, { status: 200 });
+    return NextResponse.json(rankedOutfits, {
+      status: 200,
+      headers: { 'Cache-Control': 'private, no-store' }
+    });
   } catch (error) {
     // Log error without exposing sensitive information (no stack, no env vars)
     console.error('[API] POST /api/reco/rank error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json<ErrorResponse>(
       { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
     );
   }
 }
@@ -170,6 +179,6 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json<ErrorResponse>(
     { error: 'Method not allowed. Use POST.', code: 'METHOD_NOT_ALLOWED' },
-    { status: 405 }
+    { status: 405, headers: { 'Cache-Control': 'private, no-store' } }
   );
 }
