@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { storagePathFromImageUrl } from '../../../../../lib/closet/storage';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit, cacheResponse, getCachedResponse } from '@/lib/rateLimit';
 
@@ -112,20 +113,7 @@ export async function GET(
 
   // Extract file path from DB-stored image_url
   // Format: https://{project}.supabase.co/storage/v1/object/sign/closet-images/{user_id}/{filename}?token=...
-  let filePath: string;
-  try {
-    const url = new URL(item.image_url);
-    const pathMatch = url.pathname.match(/\/closet-images\/(.+)$/);
-    if (pathMatch) {
-      filePath = pathMatch[1];
-    } else {
-      // Fallback: assume image_url is just the path
-      filePath = item.image_url;
-    }
-  } catch {
-    // If not a valid URL, assume it's a direct path
-    filePath = item.image_url;
-  }
+  const filePath = storagePathFromImageUrl(item.image_url);
 
   // Verify path belongs to user (defense in depth)
   if (!filePath.startsWith(`${user.id}/`)) {

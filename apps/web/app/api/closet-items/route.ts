@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { freshSignedUrls } from '../../../lib/closet/storage';
 
 interface ClosetItem {
   id: string;
@@ -65,7 +66,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 });
   }
 
-  return NextResponse.json({ data: data as ClosetItem[] });
+  // DB 的 image_url 是上傳當下的 signed URL，早就過期；回應前全部重簽
+  const items = (data ?? []) as ClosetItem[];
+  const urls = await freshSignedUrls(supabase, user.id, items);
+  const refreshed = items.map((item) => ({ ...item, image_url: urls.get(item.id) ?? item.image_url }));
+
+  return NextResponse.json({ data: refreshed }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 // Zod schema for POST - whitelist only allowed fields
