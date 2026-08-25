@@ -19,6 +19,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // 不受 shell 的 NODE_ENV 影響（這台機器有全域 NODE_ENV=development）
+    env: { NODE_ENV: 'test' },
     include: ['**/*.test.ts', '**/*.spec.ts', '**/*.test.tsx', '**/*.spec.tsx'],
     exclude: ['**/node_modules/**', '**/e2e/**', '**/dist/**'],
     setupFiles: ['./vitest.setup.ts'],
