@@ -1,120 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { wardrobeServicePromise } from '@/services/wardrobe/items.service';
 import { getWeather } from '@/services/weather';
-import { DailyOutfitsService } from '@/services/reco/pipelines/daily_outfits/daily_outfits.service';
-import { Occasion } from '@/packages/types/src/wardrobe';
-import { Location } from '@/services/weather/weather.types';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { checkRateLimit, cacheResponse, getCachedResponse } from '@/lib/rateLimit';
+import { suggestOutfits } from '../../../lib/ai/suggest-outfits';
+import type { OutfitSuggestion } from '../../../lib/ai/outfit-prompt';
+import type { WeatherSummary } from '../../../../../packages/types/src/weather';
+
+export const runtime = 'nodejs';
+
+const OCCASIONS = ['casual', 'work', 'date', 'sport'] as const;
+const RATE_LIMIT = { keyPrefix: 'daily-outfits', maxRequests: 20, windowMs: 3_600_000 };
+
+interface DailyOutfitsResponse {
+  outfits: OutfitSuggestion[];
+  weather: WeatherSummary;
+}
 
 /**
- * @swagger
- * /api/daily-outfits:
- *   get:
- *     summary: Get daily outfit recommendations
- *     parameters:
- *       - in: query
- *         name: latitude
- *         required: true
- *         schema:
- *           type: number
- *       - in: query
- *         name: longitude
- *         required: true
- *         schema:
- *           type: number
- *       - in: query
- *         name: occasion
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: A list of outfit combinations
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/OutfitCombination'
+ * GET /api/daily-outfits?latitude=&longitude=&occasion=
+ * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一天同場合只算一次（快取）。
  */
 export async function GET(request: NextRequest) {
-  try {
-    // userId 只信任 session，不接受 query 參數
-    const { user } = await getSupabaseAndUser();
-    if (!user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+  const { supabase, user } = await getSupabaseAndUser();
+  if (!user) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
 
-    const searchParams = request.nextUrl.searchParams;
-    const latitude = searchParams.get('latitude');
-    const longitude = searchParams.get('longitude');
-    const occasion = searchParams.get('occasion');
+  const params = request.nextUrl.searchParams;
+  const lat = parseFloat(params.get('latitude') ?? '');
+  const lon = parseFloat(params.get('longitude') ?? '');
+  const occasion = params.get('occasion') ?? 'casual';
 
-    if (!latitude || !longitude || !occasion) {
-      return NextResponse.json(
-        { message: 'Missing required parameters: latitude, longitude, occasion' },
-        { status: 400 }
-      );
-    }
+  if (isNaN(lat) || isNaN(lon)) {
+    return NextResponse.json({ message: 'Invalid latitude or longitude' }, { status: 400 });
+  }
+  if (!OCCASIONS.includes(occasion as (typeof OCCASIONS)[number])) {
+    return NextResponse.json({ message: 'Invalid occasion' }, { status: 400 });
+  }
 
-    const latNum = parseFloat(latitude);
-    const lonNum = parseFloat(longitude);
+  const today = new Date().toISOString().slice(0, 10);
+  const cacheKey = `daily-outfit:${user.id}:${today}:${occasion}`;
 
-    if (isNaN(latNum) || isNaN(lonNum)) {
-      return NextResponse.json({ message: 'Invalid latitude or longitude' }, { status: 400 });
-    }
+  const cached = await getCachedResponse<DailyOutfitsResponse>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
 
-    const wardrobeService = await wardrobeServicePromise;
-
-    // Adapter: getWeather 已期望 Location 型別 { lat, lon }，直接傳遞
-    const weatherAdapter = (location: Location) =>
-      getWeather(location);
-
-    // MOCK DATA FOR VERIFICATION
-    const svg = (color: string, text: string) =>
-      `data:image/svg+xml,${encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-           <rect x="10" y="20" width="80" height="60" rx="8" fill="${color}" />
-           <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="14" font-weight="bold">${text}</text>
-         </svg>`
-      )}`;
-
-    const mockOutfits = [
-      {
-        id: 999,
-        imageUrl: svg('gray', 'FULL'),
-        styleName: 'Mannequin Verification',
-        description: 'Mock outfit to verify mannequin layout',
-        layoutSlots: [
-          { slotKey: 'top_inner', item: { name: 'Inner Top', imageUrl: svg('blue', 'TOP') }, priority: 1 },
-          { slotKey: 'top_outer', item: { name: 'Outer Jacket', imageUrl: svg('red', 'OUTER') }, priority: 2 },
-          { slotKey: 'bottom', item: { name: 'Jeans', imageUrl: svg('green', 'BOTTOM') }, priority: 3 },
-          { slotKey: 'shoes', item: { name: 'Sneakers', imageUrl: svg('purple', 'SHOES') }, priority: 4 },
-          { slotKey: 'accessory', item: { name: 'Hat', imageUrl: svg('#facc15', 'ACC 1') }, priority: 5 }, // Yellow
-          { slotKey: 'accessory', item: { name: 'Scarf', imageUrl: svg('#facc15', 'ACC 2') }, priority: 6 },
-          { slotKey: 'accessory', item: { name: 'Bag', imageUrl: svg('#facc15', 'ACC 3') }, priority: 7 },
-        ]
-      }
-    ];
-
-    /*
-    const service = new DailyOutfitsService(wardrobeService, weatherAdapter);
-
-    const outfits = await service.generateDailyOutfits(
-      user.id,
-      { lat: latNum, lon: lonNum },
-      occasion as Occasion
+  const rl = await checkRateLimit(user.id, RATE_LIMIT);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { message: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? rl.resetAfter) } }
     );
-     */
-    const outfits = mockOutfits;
+  }
 
-    // 獲取天氣資料
-    const weather = await weatherAdapter({ lat: latNum, lon: lonNum });
+  try {
+    const weather = await getWeather({ lat, lon });
+    const outfits = await suggestOutfits({ supabase, userId: user.id, weather, occasion });
+    const body: DailyOutfitsResponse = { outfits, weather };
 
-    // 返回包含 outfits 和 weather 的物件
-    return NextResponse.json({ outfits, weather });
+    // signed URL 最長 900 秒，快取不能活得比圖久
+    if (outfits.length > 0) {
+      await cacheResponse(cacheKey, body, 900);
+    }
+
+    return NextResponse.json(body, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
-    console.error('Error generating daily outfits:', error);
+    console.error('[daily-outfits] failed:', (error as Error).message);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -229,9 +229,10 @@ export default function Page() {
 
             return {
               id: index + 1,
-              imageUrl: outfit.top?.imageUrl || outfit.bottom?.imageUrl || outfit.shoes?.imageUrl || '',
-              styleName: '每日推薦穿搭',
-              description: [
+              // Gemini 版 API 直接給 imageUrl / styleName / description；舊格式才從單品組
+              imageUrl: outfit.imageUrl || outfit.top?.imageUrl || outfit.bottom?.imageUrl || outfit.shoes?.imageUrl || '',
+              styleName: outfit.styleName || '每日推薦穿搭',
+              description: outfit.description || [
                 outfit.top?.name,
                 outfit.bottom?.name,
                 outfit.shoes?.name
