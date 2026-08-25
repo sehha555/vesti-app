@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { RefreshCw, Bell, ShoppingCart } from 'lucide-react';
 import type { WeatherSummary } from '@/packages/types/src/weather';
 
