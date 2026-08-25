@@ -25,8 +25,16 @@ import { requireBffAuth } from '../../_middleware/auth';
 const TEST_API_KEY = 'test-internal-api-key-12345';
 
 // Helper to create NextRequest with JSON body and optional auth headers
+// route 的限流 store 是 module 層級、以 IP 為 key，測試間不會重置；
+// 每個 request 給獨立 IP，避免整個檔案累積超過 30 次後被 429 擋下
+let requestSeq = 0;
+
 const createRequest = (body: unknown, options?: { withAuth?: boolean; apiKey?: string }): NextRequest => {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  requestSeq += 1;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-forwarded-for': `10.0.0.${requestSeq}`,
+  };
 
   if (options?.withAuth) {
     headers['X-API-Key'] = options.apiKey || TEST_API_KEY;
