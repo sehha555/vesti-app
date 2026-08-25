@@ -70,4 +70,4 @@ jobs:
           fi
       - name: Run smoke test
         if: env.SKIP_SMOKE != 'true'
-        run: bash scripts/smoke_api.sh
+        run: bash scripts/tests/smoke_api.sh
