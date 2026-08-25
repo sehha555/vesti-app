@@ -54,7 +54,6 @@ export async function GET(request: NextRequest) {
     const requestedNext = searchParams.get('next') || '/reco';
     const safeNext = ALLOWED_REDIRECTS.includes(requestedNext) ? requestedNext : '/reco';
     const nextKey = PATH_TO_KEY[safeNext] || 'reco';
-    console.log('[Auth Signin] next param:', requestedNext, '-> safeNext:', safeNext, '-> nextKey:', nextKey);
 
     // OAuth callback URL with nk (next key) as fallback when cookie is lost
     // nk is an allowlist key, not an arbitrary path, preventing open redirect
@@ -96,7 +95,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('[Auth Signin] OAuth URL generated:', data.url);
 
     // Store the safe redirect path in a cookie for callback to use
     // Note: PKCE code_verifier is set automatically by Supabase SSR via cookies()
@@ -108,7 +106,6 @@ export async function GET(request: NextRequest) {
       path: '/',
       maxAge: 60 * 10, // 10 minutes
     });
-    console.log('[Auth Signin] Set auth_redirect_to cookie:', safeNext);
 
     // Use 302 redirect - cookies from cookies() will be included automatically
     return NextResponse.redirect(data.url, { status: 302 });
@@ -211,7 +208,7 @@ export async function POST(request: NextRequest) {
     const result = await signInWithEmail(email, password);
 
     if (!result.success) {
-      console.error('[Auth] Email/password sign in failed for:', email);
+      console.error('[Auth] Email/password sign in failed');
       // Return a generic 401 message to prevent account enumeration
       return NextResponse.json(
         { message: 'Invalid credentials' },

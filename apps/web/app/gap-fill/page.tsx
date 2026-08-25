@@ -16,19 +16,11 @@ const GapFillPage = () => {
 
   const fetchRecommendations = async () => {
     setLoading(true);
-    const res = await fetch('/api/reco/closet-gap-fill', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        occasion: 'casual',
-        minPrice,
-        maxPrice,
-        season,
-      }),
-    });
+    const params = new URLSearchParams({ occasion: 'casual' });
+    if (minPrice !== undefined) params.set('minPrice', String(minPrice));
+    if (maxPrice !== undefined) params.set('maxPrice', String(maxPrice));
+    if (season) params.set('season', season);
+    const res = await fetch(`/api/reco/closet-gap-fill?${params}`);
     const data = await res.json();
     setRecommendations(data);
     setLoading(false);

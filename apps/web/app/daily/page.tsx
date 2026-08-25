@@ -27,28 +27,12 @@ const DailyOutfitsPage = () => {
   useEffect(() => {
     const fetchDailyOutfits = async () => {
       try {
-        const userId = 'test-user-' + Date.now();
         const latitude = 25.0;
         const longitude = 121.5;
         const occasion = 'casual';
 
-        // 新增測試衣物
-        const items = [
-          { name: 'White T-shirt', type: 'top', colors: ['white'], style: 'casual', season: 'all-season', imageUrl: 'https://via.placeholder.com/150/FFFFFF/000000?text=Top' },
-          { name: 'Blue Jeans', type: 'bottom', colors: ['blue'], style: 'casual', season: 'all-season', imageUrl: 'https://via.placeholder.com/150/0000FF/FFFFFF?text=Bottom' },
-          { name: 'White Sneakers', type: 'shoes', colors: ['white'], style: 'casual', season: 'all-season', imageUrl: 'https://via.placeholder.com/150/CCCCCC/000000?text=Shoes' }
-        ];
-
-        for (const item of items) {
-          await fetch('/api/wardrobe/items', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, ...item })
-          });
-        }
-
         const response = await fetch(
-          `/api/daily-outfits?userId=${userId}&latitude=${latitude}&longitude=${longitude}&occasion=${occasion}`
+          `/api/daily-outfits?latitude=${latitude}&longitude=${longitude}&occasion=${occasion}`
         );
 
         if (!response.ok) {

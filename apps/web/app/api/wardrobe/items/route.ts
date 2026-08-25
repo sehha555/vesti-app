@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     return jsonNoStore(data, { status: 200 });
   } catch (error: any) {
     console.error('Supabase GET 錯誤:', error);
-    return jsonNoStore({ message: '讀取衣物資料時發生錯誤。', error: error.message }, { status: 500 });
+    return jsonNoStore({ message: '讀取衣物資料時發生錯誤。' }, { status: 500 });
   }
 }
 

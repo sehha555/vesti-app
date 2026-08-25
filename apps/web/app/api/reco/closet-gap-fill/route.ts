@@ -1,18 +1,16 @@
 // apps/web/app/api/reco/closet-gap-fill/route.ts
 // Migrated from pages/api/reco/closet-gap-fill.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getSupabaseAndUser } from '@/lib/supabase/server';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get('userId');
-
-  if (!userId) {
-    return NextResponse.json(
-      { error: '缺少必要參數：userId' },
-      { status: 400 },
-    );
+export async function GET() {
+  // userId 只信任 session，不接受 query 參數
+  const { user } = await getSupabaseAndUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const userId = user.id;
 
   return NextResponse.json({
     userId,

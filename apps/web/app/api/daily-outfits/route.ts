@@ -4,6 +4,7 @@ import { getWeather } from '@/services/weather';
 import { DailyOutfitsService } from '@/services/reco/pipelines/daily_outfits/daily_outfits.service';
 import { Occasion } from '@/packages/types/src/wardrobe';
 import { Location } from '@/services/weather/weather.types';
+import { getSupabaseAndUser } from '@/lib/supabase/server';
 
 /**
  * @swagger
@@ -11,11 +12,6 @@ import { Location } from '@/services/weather/weather.types';
  *   get:
  *     summary: Get daily outfit recommendations
  *     parameters:
- *       - in: query
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
  *       - in: query
  *         name: latitude
  *         required: true
@@ -43,15 +39,20 @@ import { Location } from '@/services/weather/weather.types';
  */
 export async function GET(request: NextRequest) {
   try {
+    // userId 只信任 session，不接受 query 參數
+    const { user } = await getSupabaseAndUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
     const latitude = searchParams.get('latitude');
     const longitude = searchParams.get('longitude');
     const occasion = searchParams.get('occasion');
 
-    if (!userId || !latitude || !longitude || !occasion) {
+    if (!latitude || !longitude || !occasion) {
       return NextResponse.json(
-        { message: 'Missing required parameters: userId, latitude, longitude, occasion' },
+        { message: 'Missing required parameters: latitude, longitude, occasion' },
         { status: 400 }
       );
     }
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
     const service = new DailyOutfitsService(wardrobeService, weatherAdapter);
 
     const outfits = await service.generateDailyOutfits(
-      userId,
+      user.id,
       { lat: latNum, lon: lonNum },
       occasion as Occasion
     );
@@ -114,7 +115,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ outfits, weather });
   } catch (error) {
     console.error('Error generating daily outfits:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ message: 'Internal Server Error', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -92,7 +92,6 @@ export async function GET(request: NextRequest) {
       maxAge: 0, // Delete immediately
     });
 
-    console.log('[Auth Callback] Session established for user:', session.user.id, '-> redirect to:', redirectTo);
 
     return response;
   } catch (error) {

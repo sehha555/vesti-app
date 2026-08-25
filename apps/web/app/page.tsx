@@ -197,7 +197,6 @@ export default function Page() {
     const fetchWithCoords = async (latitude: number, longitude: number) => {
       try {
         const params = new URLSearchParams({
-          userId: 'user-1760785862304',
           latitude: latitude.toString(),
           longitude: longitude.toString(),
           occasion: 'casual'

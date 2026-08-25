@@ -301,7 +301,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[API /saved-outfits] Fetched ${data?.length || 0} outfits for user ${user.id}`);
 
     return jsonNoStore(
       {
