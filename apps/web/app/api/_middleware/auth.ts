@@ -1,5 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseAndUser } from '../../../lib/supabase/server';
 
 interface AuthResult {
   authorized: boolean;
@@ -7,9 +7,22 @@ interface AuthResult {
   error?: NextResponse;
 }
 
+function unauthorized(message: string, code: string): NextResponse {
+  return NextResponse.json({ error: message, code }, { status: 401 });
+}
+
+/**
+ * 從 cookie 的 Supabase session 取得已驗證的 user id。
+ * getSupabaseAndUser 內部用 auth.getUser() 向 Supabase 驗證 JWT，不信任 cookie 內容本身。
+ */
+async function getSessionUserId(): Promise<string | null> {
+  const { user } = await getSupabaseAndUser();
+  return user?.id ?? null;
+}
+
 /**
  * BFF dual-layer authentication middleware
- * Checks both user session (Supabase) and internal API key
+ * Checks both internal API key and user session (Supabase)
  */
 export async function requireBffAuth(req: NextRequest): Promise<AuthResult> {
   try {
@@ -20,44 +33,20 @@ export async function requireBffAuth(req: NextRequest): Promise<AuthResult> {
     if (!apiKey || !expectedApiKey || apiKey !== expectedApiKey) {
       return {
         authorized: false,
-        error: NextResponse.json(
-          { error: 'Unauthorized: Invalid or missing API key', code: 'INVALID_API_KEY' },
-          { status: 401 }
-        ),
+        error: unauthorized('Unauthorized: Invalid or missing API key', 'INVALID_API_KEY'),
       };
     }
 
-    // 2. Check user session (from cookies)
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get('sb-auth-token')?.value;
-
-    if (!sessionToken) {
+    // 2. Check user session (Supabase JWT from cookies)
+    const userId = await getSessionUserId();
+    if (!userId) {
       return {
         authorized: false,
-        error: NextResponse.json(
-          { error: 'Unauthorized: Invalid or missing session', code: 'INVALID_SESSION' },
-          { status: 401 }
-        ),
+        error: unauthorized('Unauthorized: Invalid or missing session', 'INVALID_SESSION'),
       };
     }
 
-    // Validate the session token format (simplified check)
-    const session = { user: { id: sessionToken.split('-')[0] } };
-
-    if (!session || !session.user?.id) {
-      return {
-        authorized: false,
-        error: NextResponse.json(
-          { error: 'Unauthorized: Invalid or missing session', code: 'INVALID_SESSION' },
-          { status: 401 }
-        ),
-      };
-    }
-
-    return {
-      authorized: true,
-      userId: session.user.id,
-    };
+    return { authorized: true, userId };
   } catch (error) {
     console.error('[Auth] requireBffAuth error:', error);
     return {
@@ -78,13 +67,26 @@ interface UserAuthResult {
 }
 
 /**
- * Legacy: for backward compatibility
+ * Session-only authentication (no internal API key required)
  */
 export async function requireUserAuth(_req?: NextRequest): Promise<UserAuthResult> {
-  // Stub implementation - just return authorized
-  return {
-    authorized: true,
-    userId: 'dummy-user-id',
-    id: 'dummy-user-id',
-  };
+  try {
+    const userId = await getSessionUserId();
+    if (!userId) {
+      return {
+        authorized: false,
+        error: unauthorized('Unauthorized: Invalid or missing session', 'INVALID_SESSION'),
+      };
+    }
+    return { authorized: true, userId, id: userId };
+  } catch (error) {
+    console.error('[Auth] requireUserAuth error:', error);
+    return {
+      authorized: false,
+      error: NextResponse.json(
+        { error: 'Internal server error', code: 'AUTH_ERROR' },
+        { status: 500 }
+      ),
+    };
+  }
 }
