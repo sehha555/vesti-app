@@ -51,6 +51,17 @@ describe('toOutfitSuggestions', () => {
     expect(out[0].layoutSlots).toHaveLength(3);
   });
 
+  it('沒有鞋子也保留（衣櫃常常沒鞋），缺上身或下身才丟掉', () => {
+    const out = toOutfitSuggestions(
+      [
+        { title: 'no-shoes', reason: '', slots: [{ slotKey: 'top_inner', itemId: 't1' }, { slotKey: 'bottom', itemId: 'b1' }] },
+        { title: 'no-bottom', reason: '', slots: [{ slotKey: 'top_inner', itemId: 't1' }, { slotKey: 'shoes', itemId: 's1' }] },
+      ],
+      itemsById
+    );
+    expect(out.map((o) => o.styleName)).toEqual(['no-shoes']);
+  });
+
   it('同一件在同一套出現兩次只留一次', () => {
     const out = toOutfitSuggestions(
       [
@@ -68,14 +79,6 @@ describe('toOutfitSuggestions', () => {
       itemsById
     );
     expect(out[0].layoutSlots.map((s) => s.slotKey)).toEqual(['top_inner', 'bottom', 'shoes']);
-  });
-
-  it('缺上身 / 下身 / 鞋子任一的套裝整套丟掉', () => {
-    const out = toOutfitSuggestions(
-      [{ title: 'x', reason: 'y', slots: [{ slotKey: 'top_inner', itemId: 't1' }, { slotKey: 'bottom', itemId: 'b1' }] }],
-      itemsById
-    );
-    expect(out).toEqual([]);
   });
 });
 

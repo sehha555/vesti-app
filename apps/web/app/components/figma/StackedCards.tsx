@@ -52,6 +52,10 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
   // M2 再改成從 session 取得，目前先讀環境變數或 fallback 測試用戶
   const userId = process.env.NEXT_PUBLIC_VESTI_TEST_USER_ID || "8b5b6279-7580-4db0-a1f8-e2937913359e";
   const [cards, setCards] = useState(outfits);
+  // 首頁一開始給的是預設卡片，Gemini 結果幾秒後才到；props 換了卡片要跟著換
+  useEffect(() => {
+    setCards(outfits);
+  }, [outfits]);
   const [isDragging, setIsDragging] = useState(false);
   const [exitX, setExitX] = useState(0);
   const [savedCards, setSavedCards] = useState<Set<number>>(new Set());

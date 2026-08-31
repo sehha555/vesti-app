@@ -62,7 +62,7 @@ export const OUTFIT_SYSTEM_PROMPT = `你是一位懂台灣氣候的穿搭顧問�
 
 搭配原則：
 - 溫度優先：體感 28 度以上以透氣單層為主，不要外套；20 到 27 度可加薄外套；20 度以下需要保暖層；下雨避免淺色下身與麂皮鞋。
-- 每套至少要有上身（top_inner）、下身（bottom）、鞋子（shoes）；外套（top_outer）與配件（accessory）視天氣與場合選配。同一件衣服在同一套裡只能出現一次。
+- 每套至少要有上身（top_inner）與下身（bottom）；衣櫃裡有鞋子就要配鞋子（shoes）；外套（top_outer）與配件（accessory）視天氣與場合選配。同一件衣服在同一套裡只能出現一次。
 - 配色：一套最多三個主色；深淺對比或同色系漸層都可以，避免全身同一個飽和色。
 - 比例：上寬下窄或上窄下寬擇一，避免上下都寬鬆。
 - 場合：casual 可以輕鬆；work 要整齊、避免破損牛仔與拖鞋；date 可以稍微講究；sport 以機能與運動鞋為主。
@@ -136,7 +136,8 @@ export function toOutfitSuggestions(
     }
 
     const keys = new Set(layoutSlots.map((s) => s.slotKey));
-    if (!keys.has('top_inner') || !keys.has('bottom') || !keys.has('shoes')) continue;
+    // 衣櫃常常沒有鞋子（UNIQLO 匯入的都是衣服），鞋子不強制，缺上身或下身才丟掉
+    if (!keys.has('top_inner') || !keys.has('bottom')) continue;
 
     layoutSlots.sort((a, b) => a.priority - b.priority);
     result.push({

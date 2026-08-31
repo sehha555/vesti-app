@@ -64,6 +64,10 @@ export async function suggestOutfits(params: {
   const items = settled
     .filter((s): s is PromiseFulfilledResult<ClosetItemForPrompt> => s.status === 'fulfilled')
     .map((s) => s.value);
+  const firstFailure = settled.find((s) => s.status === 'rejected') as PromiseRejectedResult | undefined;
+  if (firstFailure) {
+    console.error('[suggest-outfits] image download failed:', (firstFailure.reason as Error).message);
+  }
   if (items.length < MIN_ITEMS) return [];
 
   const raw = await generateJson<{ outfits: RawOutfitSuggestion[] }>(
@@ -79,5 +83,7 @@ export async function suggestOutfits(params: {
     if (url) itemsById.set(row.id, { name: row.name, imageUrl: url });
   }
 
-  return toOutfitSuggestions(raw.outfits ?? [], itemsById);
+  const outfits = toOutfitSuggestions(raw.outfits ?? [], itemsById);
+  console.info(`[suggest-outfits] closet=${rows.length} sent=${items.length} raw=${raw.outfits?.length ?? 0} final=${outfits.length}`);
+  return outfits;
 }
