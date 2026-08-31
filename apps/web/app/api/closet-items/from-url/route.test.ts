@@ -122,6 +122,31 @@ describe('POST /api/closet-items/from-url', () => {
     expect(res.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
+  it('貼的是圖片網址：只抓一次，直接存，名稱退回未命名商品', async () => {
+    const sb = makeSupabase({ data: { id: 'i2' } });
+    vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: sb.client as never, user: { id: 'u1' } as never });
+    vi.mocked(safeFetch).mockResolvedValueOnce({ buffer: JPEG, contentType: 'image/jpeg', finalUrl: 'https://cdn.example/x.jpg' });
+
+    const res = await POST(makeReq({ url: 'https://cdn.example/x.jpg' }));
+    expect(res.status).toBe(201);
+    expect(safeFetch).toHaveBeenCalledTimes(1);
+    expect(uploadClosetImage).toHaveBeenCalledWith(sb.client, 'u1', JPEG, 'image/jpeg');
+    expect(sb.insert).toHaveBeenCalledWith(expect.objectContaining({ name: '未命名商品', source_url: 'https://cdn.example/x.jpg' }));
+  });
+
+  it('UNIQLO 台灣商品頁：不抓頁面，直接抓固定規則的圖片網址', async () => {
+    const sb = makeSupabase({ data: { id: 'i3' } });
+    vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: sb.client as never, user: { id: 'u1' } as never });
+    vi.mocked(safeFetch).mockResolvedValueOnce({ buffer: JPEG, contentType: 'image/jpeg', finalUrl: 'x' });
+
+    const page = 'https://www.uniqlo.com/tw/zh_TW/product-detail.html?productCode=u0000000054525';
+    const res = await POST(makeReq({ url: page, name: 'AIRism T' }));
+    expect(res.status).toBe(201);
+    expect(safeFetch).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(safeFetch).mock.calls[0][0]).toBe('https://www.uniqlo.com/tw/hmall/test/u0000000054525/main/first/1000/1.jpg');
+    expect(sb.insert).toHaveBeenCalledWith(expect.objectContaining({ name: 'AIRism T', source_url: page }));
+  });
+
   it('使用者給的 name / category 優先於 og', async () => {
     const sb = makeSupabase({ data: { id: 'i2' } });
     vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: sb.client as never, user: { id: 'u1' } as never });

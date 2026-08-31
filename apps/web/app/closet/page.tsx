@@ -87,7 +87,7 @@ export default function ClosetPage() {
 
       <form onSubmit={submit} className="space-y-3 rounded-lg border p-4">
         <label className="block text-sm">
-          商品連結
+          商品連結或圖片網址（UNIQLO 台灣可直接貼商品頁；其他品牌對圖片右鍵「複製圖片位址」）
           <input
             type="url"
             required

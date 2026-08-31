@@ -94,8 +94,8 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions): Prom
         redirect: 'manual',
         signal: controller.signal,
         headers: {
-          // 部分電商對沒有 UA 的請求回 403
-          'User-Agent': 'Mozilla/5.0 (compatible; VestiBot/1.0; +https://vesti.app)',
+          // 用一般瀏覽器 UA：UNIQLO 圖片 CDN 會直接斷掉自報 bot 的請求
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
           Accept: options.accept.join(', ') + ', */*;q=0.1',
         },
       });

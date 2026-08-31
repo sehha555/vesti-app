@@ -57,3 +57,23 @@ export function parseOg(html: string, pageUrl: string): OgData {
 
   return { image, title: title || null };
 }
+
+/**
+ * 純 JS 網站（伺服器回的 HTML 沒有 og:image）的商品圖規則。
+ * 目前只有 UNIQLO 台灣：product-detail.html?productCode=uXXXX → 圖片 CDN 固定路徑。
+ */
+export function knownProductImage(pageUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(pageUrl);
+  } catch {
+    return null;
+  }
+  if (url.hostname === 'www.uniqlo.com' && url.pathname.startsWith('/tw/')) {
+    const code = url.searchParams.get('productCode');
+    if (code && /^u\d{10,}$/.test(code)) {
+      return `https://www.uniqlo.com/tw/hmall/test/${code}/main/first/1000/1.jpg`;
+    }
+  }
+  return null;
+}

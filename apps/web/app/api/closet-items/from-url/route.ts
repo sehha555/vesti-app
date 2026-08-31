@@ -4,7 +4,7 @@ import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { verifyFileSignature } from '../../../../lib/security/file-signature';
 import { safeFetch, SafeFetchError } from '../../../../lib/http/safe-fetch';
-import { parseOg } from '../../../../lib/closet/og';
+import { parseOg, knownProductImage } from '../../../../lib/closet/og';
 import { uploadClosetImage, isClosetImageMime, CLOSET_BUCKET } from '../../../../lib/closet/storage';
 
 export const runtime = 'nodejs';
@@ -18,14 +18,15 @@ const BodySchema = z.object({
 });
 
 const RATE_LIMIT = { keyPrefix: 'from-url', maxRequests: 10, windowMs: 600_000 };
-const PAGE_LIMIT = { maxBytes: 1_000_000, timeoutMs: 5_000, accept: ['text/html', 'application/xhtml+xml'] };
 const IMAGE_LIMIT = { maxBytes: 10 * 1024 * 1024, timeoutMs: 10_000, accept: ['image/'] };
+// 第一次抓同時接受商品頁與圖片：貼進來的可能是「複製圖片位址」的圖片網址
+const PAGE_OR_IMAGE_LIMIT = { ...IMAGE_LIMIT, accept: ['text/html', 'application/xhtml+xml', 'image/'] };
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' };
 
 /**
  * POST /api/closet-items/from-url
- * 貼商品頁網址 → 抓 og:image 存進衣櫃。不做去背。
+ * 貼商品頁網址（抓 og:image）、圖片網址（直接存）、或已知純 JS 網站的商品頁（固定規則推圖片）→ 存進衣櫃。不做去背。
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const { supabase, user } = await getSupabaseAndUser();
@@ -48,28 +49,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: '請提供有效的商品網址' }, { status: 400, headers: NO_STORE });
   }
 
-  // 1. 抓商品頁
-  let og;
+  // 1. 找出圖片：已知規則 → 直接是圖片 → 商品頁的 og:image
+  let image;
+  let title: string | null = null;
   try {
-    const page = await safeFetch(body.url, PAGE_LIMIT);
-    og = parseOg(page.buffer.toString('utf8'), page.finalUrl);
+    const known = knownProductImage(body.url);
+    if (known) {
+      image = await safeFetch(known, IMAGE_LIMIT);
+    } else {
+      const first = await safeFetch(body.url, PAGE_OR_IMAGE_LIMIT);
+      if (first.contentType.startsWith('image/')) {
+        image = first;
+      } else {
+        const og = parseOg(first.buffer.toString('utf8'), first.finalUrl);
+        title = og.title;
+        if (!og.image) {
+          return NextResponse.json(
+            { error: '這個網站抓不到商品圖片，請改貼圖片網址或拍照上傳' },
+            { status: 422, headers: NO_STORE }
+          );
+        }
+        image = await safeFetch(og.image, IMAGE_LIMIT);
+      }
+    }
   } catch (err) {
     return fetchErrorResponse(err, '無法讀取這個網址');
-  }
-
-  if (!og.image) {
-    return NextResponse.json(
-      { error: '這個網站抓不到商品圖片，請改用拍照上傳' },
-      { status: 422, headers: NO_STORE }
-    );
-  }
-
-  // 2. 抓圖片
-  let image;
-  try {
-    image = await safeFetch(og.image, IMAGE_LIMIT);
-  } catch (err) {
-    return fetchErrorResponse(err, '無法下載商品圖片');
   }
 
   if (!isClosetImageMime(image.contentType)) {
@@ -96,7 +100,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .from('closet_items')
     .insert({
       user_id: user.id,
-      name: body.name ?? og.title ?? '未命名商品',
+      name: body.name ?? title ?? '未命名商品',
       category: body.category ?? 'uncategorized',
       image_url: stored.signedUrl,
       source_url: body.url,
