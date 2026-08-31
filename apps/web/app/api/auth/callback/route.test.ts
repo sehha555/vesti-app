@@ -16,9 +16,9 @@ vi.mock('next/headers', () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }));
 
-// Mock Supabase client (route.ts uses @supabase/supabase-js, not @supabase/ssr)
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
+// Mock Supabase SSR client（route.ts 跟 signin 一樣用 @supabase/ssr 讀 PKCE cookie）
+vi.mock('@supabase/ssr', () => ({
+  createServerClient: vi.fn(() => ({
     auth: {
       exchangeCodeForSession: mockExchangeCodeForSession,
     },

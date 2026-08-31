@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { setAuthCookies } from '../../../../lib/auth/cookies';
 
 /**
@@ -48,11 +49,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl, { status: 302 });
     }
 
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+    // 要用跟 /api/auth/signin 同一種 SSR client，才讀得到 signin 存在 cookie 的 PKCE code_verifier
+    const cookieStore = await cookies();
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
       },
     });
 
