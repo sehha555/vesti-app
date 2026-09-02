@@ -99,9 +99,9 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 80;
 
-    // 向左滑動 = 下一張
-    if (info.offset.x < -threshold) {
-      setExitX(-400);
+    // 左右滑都換下一張（原本只認向左，往右滑等於沒反應）
+    if (Math.abs(info.offset.x) > threshold) {
+      setExitX(info.offset.x < 0 ? -400 : 400);
 
       setTimeout(() => {
         setCards((prev) => {
@@ -331,12 +331,6 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                     }
                     : undefined
                 }
-                drag={isTop ? 'x' : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.7}
-                onDragStart={isTop ? handleDragStart : undefined}
-                onDragEnd={isTop ? handleDragEnd : undefined}
-                whileTap={isTop ? { cursor: 'grabbing' } : undefined}
                 onClick={() => {
                   if (isTop && !isDragging) {
                     haptic('light');
@@ -346,6 +340,12 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
               >
                 <motion.div
                   className="overflow-hidden rounded-[24px] bg-card shadow-[0_8px_32px_rgba(41,108,125,0.18)] border-2 border-white cursor-pointer select-none h-full"
+                  drag={isTop ? 'x' : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.7}
+                  onDragStart={isTop ? handleDragStart : undefined}
+                  onDragEnd={isTop ? handleDragEnd : undefined}
+                  whileTap={isTop ? { cursor: 'grabbing' } : undefined}
                   whileHover={isTop && !isDragging ? { scale: 1.02 } : undefined}
                   transition={{
                     type: 'spring',
@@ -361,7 +361,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                       否則 fallback 到原本的單張圖片顯示
                     */}
                     {card.layoutSlots && card.layoutSlots.length > 0 ? (
-                      <div className="flex h-full w-full flex-col bg-white px-2 py-4">
+                      <div className="flex h-full w-full flex-col bg-white px-2 pt-3 pb-[86px]">
                         {(() => {
                           const slots = card.layoutSlots || [];
                           // Helper: strict match for key
@@ -377,7 +377,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                           return (
                             <>
                               {/* 1. Head / Accessories (Flex: 1.0) - Sligthly reduced to push body up */}
-                              <div className="relative flex flex-[1.0] items-end justify-center gap-1 overflow-visible z-20 pb-1">
+                              <div className={`relative flex items-end justify-center gap-1 overflow-visible z-20 pb-1 ${accessories.length > 0 ? 'flex-[1.0]' : ''}`}>
                                 {accessories.slice(0, 3).map((acc, idx) => (
                                   <div key={idx} className="relative h-[90%] aspect-square flex items-center justify-center">
                                     {acc.item?.imageUrl && (
@@ -401,7 +401,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                                   - Outer: slightly scaled up (1.05), stronger shadow to pop.
                                   - Inner: scaled down (0.9), lower opacity (0.85) to recede.
                               */}
-                              <div className="grid flex-[2.8] w-full items-center justify-items-center py-0 z-10">
+                              <div className={`grid w-full items-center justify-items-center py-0 z-10 ${topInner || topOuter ? 'flex-[2.8]' : ''}`}>
                                 {/* Base Layer: Top Inner */}
                                 {topInner?.item?.imageUrl && (
                                   <div className={`col-start-1 row-start-1 flex h-full w-full items-center justify-center transition-all ${topOuter ? 'scale-90 opacity-80 translate-y-[-5%]' : 'scale-100'}`}>
@@ -428,7 +428,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                                   - Increased ratio.
                                   - items-end to push pants down towards shoes (Legs connecting to feet).
                               */}
-                              <div className="flex flex-[3.5] items-end justify-center w-full z-0 px-4">
+                              <div className={`flex items-end justify-center w-full z-0 px-4 ${bottom ? 'flex-[3.5]' : ''}`}>
                                 {bottom?.item?.imageUrl && (
                                   <ImageWithFallback
                                     src={bottom.item.imageUrl}
@@ -442,7 +442,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                                   - Grounded at bottom.
                                   - Good height to allow boots/sneakers to look substantial.
                               */}
-                              <div className="flex flex-[1.5] items-end justify-center w-full pb-0.5">
+                              <div className={`flex items-end justify-center w-full pb-0.5 ${shoes ? 'flex-[1.5]' : ''}`}>
                                 {shoes?.item?.imageUrl && (
                                   <ImageWithFallback
                                     src={shoes.item.imageUrl}
@@ -465,7 +465,20 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                     )}
 
                     {/* 漸層遮罩 */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
+
+                    {/* 底部：這套叫什麼、要穿哪幾件、Gemini 為什麼這樣搭 */}
+                    <div className="absolute inset-x-0 bottom-0 z-20 bg-black/55 px-4 pb-3 pt-2 text-white backdrop-blur-sm pointer-events-none">
+                      <p className="truncate text-[13px] font-semibold leading-tight">{card.styleName}</p>
+                      {card.layoutSlots && card.layoutSlots.length > 0 && (
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/95">
+                          {card.layoutSlots.map((s) => s.item?.name).filter(Boolean).join('・')}
+                        </p>
+                      )}
+                      {card.description && (
+                        <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/75">{card.description}</p>
+                      )}
+                    </div>
 
                     {/* 右上角按鈕組 - z-30 確保在白板佈局元素之上 */}
                     {isTop && (
