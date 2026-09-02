@@ -4,7 +4,9 @@ import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { verifyFileSignature } from '../../../../lib/security/file-signature';
 import { safeFetch, SafeFetchError } from '../../../../lib/http/safe-fetch';
-import { parseOg, knownProductImage } from '../../../../lib/closet/og';
+import { parseOg, knownProductImages } from '../../../../lib/closet/og';
+import { pickFlatImage } from '../../../../lib/closet/pick-flat-image';
+import { removeBackground } from '../../../../lib/closet/remove-bg';
 import { uploadClosetImage, isClosetImageMime, CLOSET_BUCKET } from '../../../../lib/closet/storage';
 
 export const runtime = 'nodejs';
@@ -53,9 +55,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let image;
   let title: string | null = null;
   try {
-    const known = knownProductImage(body.url);
-    if (known) {
-      image = await safeFetch(known, IMAGE_LIMIT);
+    const known = knownProductImages(body.url);
+    if (known.length > 0) {
+      // 同一件商品的多張圖裡混著模特兒照與平拍照，抓回來讓模型挑最像商品圖的那張
+      const settled = await Promise.allSettled(known.map((u) => safeFetch(u, IMAGE_LIMIT)));
+      const candidates = settled
+        .flatMap((r, i) => (r.status === 'fulfilled' ? [{ url: known[i], ...r.value }] : []))
+        .filter((c) => c.contentType.startsWith('image/'));
+      if (candidates.length === 0) {
+        return NextResponse.json(
+          { error: '這個網站抓不到商品圖片，請改貼圖片網址或拍照上傳' },
+          { status: 422, headers: NO_STORE }
+        );
+      }
+      image = await pickFlatImage(candidates);
     } else {
       const first = await safeFetch(body.url, PAGE_OR_IMAGE_LIMIT);
       if (first.contentType.startsWith('image/')) {
@@ -86,6 +99,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!signature.valid) {
     return NextResponse.json({ error: '商品圖片內容不是有效的圖檔' }, { status: 422, headers: NO_STORE });
   }
+
+  // 2. 去背：UNIQLO 的商品圖多半是模特兒實穿照，去掉人和背景才看得出是哪一件
+  //    先驗完簽章再送出去，去背失敗就沿用原圖
+  const removed = await removeBackground(image.buffer, image.contentType);
+  if (removed) image = { ...image, ...removed };
 
   // 3. 存進 Storage + DB
   let stored;

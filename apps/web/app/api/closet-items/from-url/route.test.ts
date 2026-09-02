@@ -7,6 +7,10 @@ vi.mock('../../../../lib/http/safe-fetch', async () => {
   const actual = await vi.importActual<typeof import('../../../../lib/http/safe-fetch')>('../../../../lib/http/safe-fetch');
   return { ...actual, safeFetch: vi.fn() };
 });
+vi.mock('../../../../lib/closet/remove-bg', () => ({ removeBackground: vi.fn(async () => null) }));
+vi.mock('../../../../lib/closet/pick-flat-image', () => ({
+  pickFlatImage: vi.fn(async (candidates: { url: string }[]) => candidates[0]),
+}));
 vi.mock('../../../../lib/closet/storage', async () => {
   const actual = await vi.importActual<typeof import('../../../../lib/closet/storage')>('../../../../lib/closet/storage');
   return { ...actual, uploadClosetImage: vi.fn() };
@@ -17,6 +21,7 @@ import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { safeFetch, SafeFetchError } from '../../../../lib/http/safe-fetch';
 import { uploadClosetImage } from '../../../../lib/closet/storage';
+import { pickFlatImage } from '../../../../lib/closet/pick-flat-image';
 
 // 最小合法 JPEG 檔頭（FF D8 FF）+ 一點內容
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
@@ -134,17 +139,28 @@ describe('POST /api/closet-items/from-url', () => {
     expect(sb.insert).toHaveBeenCalledWith(expect.objectContaining({ name: '未命名商品', source_url: 'https://cdn.example/x.jpg' }));
   });
 
-  it('UNIQLO 台灣商品頁：不抓頁面，直接抓固定規則的圖片網址', async () => {
+  it('UNIQLO 台灣商品頁：不抓頁面，抓 4 張候選圖交給模型挑', async () => {
     const sb = makeSupabase({ data: { id: 'i3' } });
     vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: sb.client as never, user: { id: 'u1' } as never });
-    vi.mocked(safeFetch).mockResolvedValueOnce({ buffer: JPEG, contentType: 'image/jpeg', finalUrl: 'x' });
+    vi.mocked(safeFetch).mockResolvedValue({ buffer: JPEG, contentType: 'image/jpeg', finalUrl: 'x' });
 
     const page = 'https://www.uniqlo.com/tw/zh_TW/product-detail.html?productCode=u0000000054525';
     const res = await POST(makeReq({ url: page, name: 'AIRism T' }));
     expect(res.status).toBe(201);
-    expect(safeFetch).toHaveBeenCalledTimes(1);
+    expect(safeFetch).toHaveBeenCalledTimes(4);
     expect(vi.mocked(safeFetch).mock.calls[0][0]).toBe('https://www.uniqlo.com/tw/hmall/test/u0000000054525/main/first/1000/1.jpg');
+    expect(vi.mocked(pickFlatImage).mock.calls[0][0]).toHaveLength(4);
     expect(sb.insert).toHaveBeenCalledWith(expect.objectContaining({ name: 'AIRism T', source_url: page }));
+  });
+
+  it('UNIQLO 候選圖全部抓不到時回 422', async () => {
+    const sb = makeSupabase({ data: { id: 'i4' } });
+    vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: sb.client as never, user: { id: 'u1' } as never });
+    vi.mocked(safeFetch).mockRejectedValue(new SafeFetchError('not found', 'HTTP'));
+
+    const res = await POST(makeReq({ url: 'https://www.uniqlo.com/tw/zh_TW/product-detail.html?productCode=u0000000054525' }));
+    expect(res.status).toBe(422);
+    expect(sb.insert).not.toHaveBeenCalled();
   });
 
   it('使用者給的 name / category 優先於 og', async () => {

@@ -61,19 +61,28 @@ export function parseOg(html: string, pageUrl: string): OgData {
 /**
  * 純 JS 網站（伺服器回的 HTML 沒有 og:image）的商品圖規則。
  * 目前只有 UNIQLO 台灣：product-detail.html?productCode=uXXXX → 圖片 CDN 固定路徑。
+ *
+ * 同一件商品有 4 張圖（main/first 與 main/other1~3），內容混著模特兒實穿照與
+ * 純商品平拍照、而且分屬不同顏色，沒有「平拍圖固定是第幾張」的規則，
+ * 所以全部取回、交給模型挑（見 pickFlatImage）。
  */
-export function knownProductImage(pageUrl: string): string | null {
+export function knownProductImages(pageUrl: string): string[] {
   let url: URL;
   try {
     url = new URL(pageUrl);
   } catch {
-    return null;
+    return [];
   }
-  if (url.hostname === 'www.uniqlo.com' && url.pathname.startsWith('/tw/')) {
-    const code = url.searchParams.get('productCode');
-    if (code && /^u\d{10,}$/.test(code)) {
-      return `https://www.uniqlo.com/tw/hmall/test/${code}/main/first/1000/1.jpg`;
-    }
-  }
-  return null;
+  if (url.hostname !== 'www.uniqlo.com' || !url.pathname.startsWith('/tw/')) return [];
+
+  const code = url.searchParams.get('productCode');
+  if (!code || !/^u\d{10,}$/.test(code)) return [];
+
+  const base = `https://www.uniqlo.com/tw/hmall/test/${code}/main`;
+  return [
+    `${base}/first/1000/1.jpg`,
+    `${base}/other1/1000/2.jpg`,
+    `${base}/other2/1000/3.jpg`,
+    `${base}/other3/1000/4.jpg`,
+  ];
 }
