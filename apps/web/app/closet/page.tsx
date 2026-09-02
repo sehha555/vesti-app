@@ -83,7 +83,11 @@ export default function ClosetPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-4 space-y-6">
-      <h1 className="text-xl font-semibold">我的衣櫃</h1>
+      <div className="flex items-center gap-3">
+        {/* 這頁沒有底部導覽列，沒有這個連結就回不去首頁 */}
+        <a href="/" className="text-sm text-blue-600 hover:underline">← 回首頁</a>
+        <h1 className="text-xl font-semibold">我的衣櫃</h1>
+      </div>
 
       <form onSubmit={submit} className="space-y-3 rounded-lg border p-4">
         <label className="block text-sm">
