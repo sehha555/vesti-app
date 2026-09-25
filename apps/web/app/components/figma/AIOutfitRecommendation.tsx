@@ -80,7 +80,7 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
       id: 'single' as SourceMode, 
       label: '單一店家', 
       icon: Store, 
-      description: '同店購買，物流最快',
+      description: '同一家店，一次買齊',
       color: 'var(--vesti-primary)'
     },
     { 

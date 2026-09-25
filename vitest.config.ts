@@ -12,6 +12,8 @@ export default defineConfig({
       ],
     }),
   ],
+  // 跟 Next.js 一樣用 automatic JSX runtime，元件不必 import React
+  esbuild: { jsx: 'automatic' },
   test: {
     globals: true,
     environment: 'node',
