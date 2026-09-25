@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { setAuthCookies } from '../../../../lib/auth/cookies';
+import { createSupabaseServerClient } from '../../../../lib/supabase/server';
+import { setAuthStatusCookie } from '../../../../lib/auth/cookies';
 
 /**
  * GET /api/auth/callback
@@ -50,19 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 要用跟 /api/auth/signin 同一種 SSR client，才讀得到 signin 存在 cookie 的 PKCE code_verifier
-    const cookieStore = await cookies();
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
     // Exchange code for session
     const { data, error: exchangeError } =
@@ -75,8 +62,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(errorUrl, { status: 302 });
     }
 
-    const { session } = data;
-
     // Get the redirect path from cookie (set by /api/auth/signin)
     const redirectTo = request.cookies.get('auth_redirect_to')?.value ||'/reco';
 
@@ -84,12 +69,8 @@ export async function GET(request: NextRequest) {
     const successUrl = new URL(redirectTo, request.nextUrl.origin);
     const response = NextResponse.redirect(successUrl, { status: 302 });
 
-    // Set session cookies using the shared helper
-    setAuthCookies(response.cookies, {
-      accessToken: session.access_token,
-      refreshToken: session.refresh_token,
-      userId: session.user.id,
-    });
+    // Session cookies were set by the SSR client; add the client-readable marker
+    setAuthStatusCookie(response.cookies);
 
     // Clear the redirect cookie (one-time use)
     response.cookies.set('auth_redirect_to', '', {

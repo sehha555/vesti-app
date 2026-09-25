@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { signInWithEmail } from '@/lib/auth/emailAuth';
-import { setAuthCookies } from '@/lib/auth/cookies';
+import { createSupabaseServerClient } from '../../../../lib/supabase/server';
+import { setAuthStatusCookie } from '@/lib/auth/cookies';
 import {
   checkIPRateLimit,
   checkEmailRateLimit,
@@ -62,18 +61,7 @@ export async function GET(request: NextRequest) {
 
     // Create Supabase SSR client for OAuth (handles PKCE code_verifier automatically)
     const cookieStore = await cookies();
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
     // Generate OAuth URL for Google (PKCE code_verifier is set automatically)
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -204,10 +192,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Attempt to sign in with email and password
-    const result = await signInWithEmail(email, password);
+    // SSR client 會把 session 寫進 sb-<ref>-auth-token cookie，跟資料 API 讀的是同一組
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    if (!result.success) {
+    if (error || !data?.session) {
       console.error('[Auth] Email/password sign in failed');
       // Return a generic 401 message to prevent account enumeration
       return NextResponse.json(
@@ -223,13 +215,13 @@ export async function POST(request: NextRequest) {
     }
     await Promise.all(resetPromises);
 
-    // Success: create response and set auth cookies
+    // Success: session cookies were set by the SSR client; add the client-readable marker
     const response = NextResponse.json({
       success: true,
       redirectTo: '/',
     });
 
-    setAuthCookies(response.cookies, result.session!);
+    setAuthStatusCookie(response.cookies);
 
     return response;
   } catch (error) {

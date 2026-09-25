@@ -4,8 +4,8 @@ import { NextRequest } from 'next/server';
 // Use vi.hoisted() to ensure mocks are available before vi.mock hoisting
 const {
   mockSignInWithOAuth,
-  mockSignInWithEmail,
-  mockSetAuthCookies,
+  mockSignInWithPassword,
+  mockSetAuthStatusCookie,
   mockCheckIPRateLimit,
   mockCheckEmailRateLimit,
   mockResetIPRateLimit,
@@ -13,8 +13,8 @@ const {
   mockCookieStore,
 } = vi.hoisted(() => ({
   mockSignInWithOAuth: vi.fn(),
-  mockSignInWithEmail: vi.fn(),
-  mockSetAuthCookies: vi.fn(),
+  mockSignInWithPassword: vi.fn(),
+  mockSetAuthStatusCookie: vi.fn(),
   mockCheckIPRateLimit: vi.fn(),
   mockCheckEmailRateLimit: vi.fn(),
   mockResetIPRateLimit: vi.fn(),
@@ -35,18 +35,14 @@ vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({
     auth: {
       signInWithOAuth: mockSignInWithOAuth,
+      signInWithPassword: mockSignInWithPassword,
     },
   })),
 }));
 
-// Mock signInWithEmail
-vi.mock('@/lib/auth/emailAuth', () => ({
-  signInWithEmail: mockSignInWithEmail,
-}));
-
-// Mock setAuthCookies
+// Mock auth status cookie helper
 vi.mock('@/lib/auth/cookies', () => ({
-  setAuthCookies: mockSetAuthCookies,
+  setAuthStatusCookie: mockSetAuthStatusCookie,
 }));
 
 // Mock rate limit functions
@@ -268,7 +264,10 @@ describe('POST /api/auth/signin', () => {
   });
 
   it('should return 401 when credentials are invalid', async () => {
-    mockSignInWithEmail.mockResolvedValue({ success: false });
+    mockSignInWithPassword.mockResolvedValue({
+      data: { session: null, user: null },
+      error: { message: 'Invalid login credentials' },
+    });
 
     const req = createPostRequest({
       email: 'user@example.com',
@@ -279,17 +278,24 @@ describe('POST /api/auth/signin', () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.message).toBe('Invalid credentials');
-    expect(mockSignInWithEmail).toHaveBeenCalledWith('user@example.com', 'wrongpassword');
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'wrongpassword',
+    });
+    expect(mockSetAuthStatusCookie).not.toHaveBeenCalled();
   });
 
   it('should return 200 and set cookies on successful sign in', async () => {
-    mockSignInWithEmail.mockResolvedValue({
-      success: true,
-      session: {
-        accessToken: 'test-access-token',
-        refreshToken: 'test-refresh-token',
-        userId: 'test-user-id',
+    mockSignInWithPassword.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+          user: { id: 'test-user-id' },
+        },
+        user: { id: 'test-user-id' },
       },
+      error: null,
     });
 
     const req = createPostRequest({
@@ -305,14 +311,12 @@ describe('POST /api/auth/signin', () => {
     expect(data.accessToken).toBeUndefined();
     expect(data.refreshToken).toBeUndefined();
     expect(data.userId).toBeUndefined();
-    expect(mockSetAuthCookies).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        accessToken: 'test-access-token',
-        refreshToken: 'test-refresh-token',
-        userId: 'test-user-id',
-      })
-    );
+    // Session cookies are written by the SSR client (same one getSupabaseAndUser reads)
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'correctpassword',
+    });
+    expect(mockSetAuthStatusCookie).toHaveBeenCalledTimes(1);
   });
 
   it('should return 429 when rate limited by email', async () => {
