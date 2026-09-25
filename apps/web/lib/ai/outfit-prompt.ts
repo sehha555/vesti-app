@@ -67,12 +67,14 @@ export const OUTFIT_SYSTEM_PROMPT = `你是一位懂台灣氣候的穿搭顧問�
 - 比例：上寬下窄或上窄下寬擇一，避免上下都寬鬆。
 - 場合：casual 可以輕鬆；work 要整齊、避免破損牛仔與拖鞋；date 可以稍微講究；sport 以機能與運動鞋為主。
 - 2 到 3 套之間要有明顯差異（例如色調或風格不同），不要只換一件。
-- reason 用繁體中文，一句話講清楚為什麼這樣搭（提到天氣或配色），不要客套。`;
+- reason 用繁體中文，一句話講清楚為什麼這樣搭（提到天氣或配色），不要客套。
+- 如果有提供「使用者回饋」，要照著調整：避開不喜歡的組合與原因、參考喜歡的風格、不要重複最近穿過的整套。`;
 
 export function buildOutfitParts(
   items: ClosetItemForPrompt[],
   weather: WeatherSummary,
-  occasion: string
+  occasion: string,
+  feedbackSummary?: string | null
 ): Part[] {
   const parts: Part[] = [
     {
@@ -89,6 +91,10 @@ export function buildOutfitParts(
       text: `itemId: ${item.id}｜名稱: ${item.name}｜類別: ${item.category}${item.color ? `｜顏色: ${item.color}` : ''}`,
     });
     parts.push({ inlineData: { data: item.imageBase64, mimeType: item.mimeType } });
+  }
+
+  if (feedbackSummary) {
+    parts.push({ text: `使用者回饋（最近 30 天）：\n${feedbackSummary}` });
   }
 
   parts.push({ text: '請依照原則挑出 2 到 3 套搭配。' });

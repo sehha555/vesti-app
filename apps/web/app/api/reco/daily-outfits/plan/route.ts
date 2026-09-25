@@ -8,6 +8,7 @@ import { getSupabaseAndUser } from '@/lib/supabase/server';
  *
  * GET    /api/reco/daily-outfits/plan?date=YYYY-MM-DD → { ok, plan | null }
  * PUT    /api/reco/daily-outfits/plan  { date, outfitId, layoutSlots, occasion?, weather? } → { ok, plan }
+ * PATCH  /api/reco/daily-outfits/plan  { date, wore } → { ok, plan }（隔天回答「有沒有穿」）
  * DELETE /api/reco/daily-outfits/plan?date=YYYY-MM-DD → { ok }
  */
 
@@ -36,12 +37,18 @@ const PutBodySchema = z.object({
   weather: z.record(z.string(), z.unknown()).optional(),
 });
 
+const PatchBodySchema = z.object({
+  date: DateSchema,
+  wore: z.boolean(),
+});
+
 interface PlanRow {
   date: string;
   outfit_id: number;
   layout_slots: z.infer<typeof LayoutSlotSchema>[];
   occasion: string | null;
   weather: Record<string, unknown> | null;
+  wore: boolean | null;
   updated_at: string | null;
 }
 
@@ -52,11 +59,12 @@ function toPlan(row: PlanRow) {
     layoutSlots: row.layout_slots,
     occasion: row.occasion,
     weather: row.weather,
+    wore: row.wore,
     updatedAt: row.updated_at,
   };
 }
 
-const PLAN_COLUMNS = 'date, outfit_id, layout_slots, occasion, weather, updated_at';
+const PLAN_COLUMNS = 'date, outfit_id, layout_slots, occasion, weather, wore, updated_at';
 
 function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: NO_STORE });
@@ -105,6 +113,8 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
         layout_slots: body.layoutSlots,
         occasion: body.occasion ?? null,
         weather: body.weather ?? null,
+        // 換了一套就要重新問有沒有穿
+        wore: null,
       },
       { onConflict: 'user_id,date' }
     )
@@ -115,6 +125,34 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
     console.error('[daily-outfits/plan] upsert failed:', error.message);
     return json({ ok: false, error: 'Failed to save plan' }, 500);
   }
+
+  return json({ ok: true, plan: toPlan(data as PlanRow) });
+}
+
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  const { supabase, user } = await getSupabaseAndUser();
+  if (!user) return json({ ok: false, error: 'Unauthorized' }, 401);
+
+  let body: z.infer<typeof PatchBodySchema>;
+  try {
+    body = PatchBodySchema.parse(await req.json());
+  } catch {
+    return json({ ok: false, error: 'Invalid request body' }, 400);
+  }
+
+  const { data, error } = await supabase
+    .from('daily_outfit_plans')
+    .update({ wore: body.wore })
+    .eq('user_id', user.id)
+    .eq('date', body.date)
+    .select(PLAN_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[daily-outfits/plan] update failed:', error.message);
+    return json({ ok: false, error: 'Failed to update plan' }, 500);
+  }
+  if (!data) return json({ ok: false, error: 'Plan not found' }, 404);
 
   return json({ ok: true, plan: toPlan(data as PlanRow) });
 }

@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/supabase/server', () => ({ getSupabaseAndUser: vi.fn() }));
 
-import { GET, PUT, DELETE } from './route';
+import { GET, PUT, PATCH, DELETE } from './route';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 
 const URL_BASE = 'http://localhost/api/reco/daily-outfits/plan';
@@ -33,6 +33,7 @@ function makeSupabase(result: { data?: unknown; error?: { message: string } | nu
   const chain: Record<string, unknown> = {
     select: record('select'),
     upsert: record('upsert'),
+    update: record('update'),
     delete: record('delete'),
     eq: vi.fn(() => chain),
     maybeSingle: done,
@@ -133,6 +134,7 @@ describe('PUT /api/reco/daily-outfits/plan', () => {
         layout_slots: slots,
         occasion: 'casual',
         weather: { temp: 20 },
+        wore: null,
       },
       { onConflict: 'user_id,date' },
     ]);
@@ -161,6 +163,34 @@ describe('DELETE /api/reco/daily-outfits/plan', () => {
   it('日期格式錯誤回 400', async () => {
     loggedIn(makeSupabase({}).client);
     const res = await DELETE(new NextRequest(`${URL_BASE}`, { method: 'DELETE' }));
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('PATCH /api/reco/daily-outfits/plan', () => {
+  const patch = (body: unknown) =>
+    new NextRequest(URL_BASE, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  it('記錄有沒有穿（只改自己當天的計畫）', async () => {
+    const sb = makeSupabase({ data: { ...row, wore: true } });
+    loggedIn(sb.client);
+    const res = await PATCH(patch({ date: '2026-09-25', wore: true }));
+    expect(res.status).toBe(200);
+    expect(sb.calls.update).toEqual([{ wore: true }]);
+    expect(sb.chain.eq).toHaveBeenCalledWith('user_id', 'u1');
+    expect(sb.chain.eq).toHaveBeenCalledWith('date', '2026-09-25');
+    expect((await res.json()).plan.wore).toBe(true);
+  });
+
+  it('那天沒有計畫回 404', async () => {
+    loggedIn(makeSupabase({ data: null }).client);
+    const res = await PATCH(patch({ date: '2026-09-25', wore: false }));
+    expect(res.status).toBe(404);
+  });
+
+  it('wore 不是 boolean 回 400', async () => {
+    loggedIn(makeSupabase({}).client);
+    const res = await PATCH(patch({ date: '2026-09-25', wore: 'yes' }));
     expect(res.status).toBe(400);
   });
 });

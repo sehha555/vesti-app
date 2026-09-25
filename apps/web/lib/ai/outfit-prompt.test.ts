@@ -99,4 +99,17 @@ describe('buildOutfitParts', () => {
     expect(parts[2].inlineData).toEqual({ data: 'AAA', mimeType: 'image/jpeg' });
     expect(parts[3].text).not.toContain('顏色');
   });
+
+  it('有回饋時放在最後指令之前，沒有就不出現', () => {
+    const items = [{ id: 't1', name: '白 T', category: 'top', color: null, imageBase64: 'AAA', mimeType: 'image/jpeg' }];
+    const weather = { temperature: 25, feelsLike: 25, humidity: 60, condition: 'cloudy' as const, windSpeed: 3 };
+
+    const without = buildOutfitParts(items, weather, 'casual', null);
+    expect(without.some((p) => p.text?.includes('使用者回饋'))).toBe(false);
+
+    const withFeedback = buildOutfitParts(items, weather, 'casual', '使用者不喜歡的組合：\n- 白 T + 牛仔褲（太正式）');
+    expect(withFeedback).toHaveLength(without.length + 1);
+    expect(withFeedback.at(-2)?.text).toContain('白 T + 牛仔褲（太正式）');
+    expect(withFeedback.at(-1)?.text).toContain('請依照原則');
+  });
 });

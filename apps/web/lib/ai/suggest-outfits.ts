@@ -11,6 +11,7 @@ import {
   type RawOutfitSuggestion,
 } from './outfit-prompt';
 import { downloadClosetImage, freshSignedUrls, storagePathFromImageUrl } from '../closet/storage';
+import { loadRecentFeedback, summarizeFeedback } from '../feedback/summary';
 
 const MIN_ITEMS = 3;
 const MAX_ITEMS = 30;
@@ -70,9 +71,15 @@ export async function suggestOutfits(params: {
   }
   if (items.length < MIN_ITEMS) return [];
 
+  // 核心迴圈：把使用者最近的回饋（要這套 / 不要 / 有沒有穿）一起給模型
+  const feedbackSummary = summarizeFeedback(
+    await loadRecentFeedback(supabase, userId),
+    new Map(items.map((item) => [item.id, item.name]))
+  );
+
   const raw = await generateJson<{ outfits: RawOutfitSuggestion[] }>(
     OUTFIT_SYSTEM_PROMPT,
-    buildOutfitParts(items, weather, occasion),
+    buildOutfitParts(items, weather, occasion, feedbackSummary),
     OUTFIT_RESPONSE_SCHEMA
   );
 
@@ -84,6 +91,8 @@ export async function suggestOutfits(params: {
   }
 
   const outfits = toOutfitSuggestions(raw.outfits ?? [], itemsById);
-  console.info(`[suggest-outfits] closet=${rows.length} sent=${items.length} raw=${raw.outfits?.length ?? 0} final=${outfits.length}`);
+  console.info(
+    `[suggest-outfits] closet=${rows.length} sent=${items.length} feedback=${feedbackSummary ? 'yes' : 'no'} raw=${raw.outfits?.length ?? 0} final=${outfits.length}`
+  );
   return outfits;
 }
