@@ -20,7 +20,8 @@ function getClient(): GoogleGenAI {
 export async function generateJson<T>(
   systemInstruction: string,
   parts: Part[],
-  responseJsonSchema: Record<string, unknown>
+  responseJsonSchema: Record<string, unknown>,
+  { temperature = 0.7 }: { temperature?: number } = {}
 ): Promise<T> {
   const response = await getClient().models.generateContent({
     model: GEMINI_MODEL,
@@ -29,7 +30,7 @@ export async function generateJson<T>(
       systemInstruction,
       responseMimeType: 'application/json',
       responseJsonSchema,
-      temperature: 0.7,
+      temperature,
     },
   });
 

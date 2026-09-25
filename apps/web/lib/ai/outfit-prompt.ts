@@ -1,5 +1,6 @@
 import type { Part } from '@google/genai';
 import type { WeatherSummary } from '../../../../packages/types/src/weather';
+import { describeAttributes, type ItemAttributes } from '../closet/attributes';
 
 export const SLOT_KEYS = ['top_inner', 'top_outer', 'bottom', 'shoes', 'accessory'] as const;
 export type SlotKey = (typeof SLOT_KEYS)[number];
@@ -17,6 +18,8 @@ export interface ClosetItemForPrompt {
   name: string;
   category: string;
   color: string | null;
+  /** AI 辨識的屬性；舊資料沒辨識過是 null */
+  attributes?: ItemAttributes | null;
   imageBase64: string;
   mimeType: string;
 }
@@ -57,7 +60,7 @@ export const OUTFIT_RESPONSE_SCHEMA = {
   required: ['outfits'],
 };
 
-export const OUTFIT_SYSTEM_PROMPT = `你是一位懂台灣氣候的穿搭顧問。使用者會給你衣櫃裡每一件衣服的照片、名稱、類別，以及今天的天氣與場合。
+export const OUTFIT_SYSTEM_PROMPT = `你是一位懂台灣氣候的穿搭顧問。使用者會給你衣櫃裡每一件衣服的照片、名稱、類別（多數附有保暖度、正式度等 1–5 分的屬性），以及今天的天氣與場合。
 請從「衣櫃裡現有的衣服」挑出 2 到 3 套完整搭配，只能使用給你的 itemId，不可以虛構。
 
 搭配原則：
@@ -65,6 +68,7 @@ export const OUTFIT_SYSTEM_PROMPT = `你是一位懂台灣氣候的穿搭顧問�
 - 每套至少要有上身（top_inner）與下身（bottom）；衣櫃裡有鞋子就要配鞋子（shoes）；外套（top_outer）與配件（accessory）視天氣與場合選配。同一件衣服在同一套裡只能出現一次。
 - 配色：一套最多三個主色；深淺對比或同色系漸層都可以，避免全身同一個飽和色。
 - 比例：上寬下窄或上窄下寬擇一，避免上下都寬鬆。
+- 同一套的正式度要接近（相差不超過 2 分）；保暖度依溫度原則挑選。
 - 場合：casual 可以輕鬆；work 要整齊、避免破損牛仔與拖鞋；date 可以稍微講究；sport 以機能與運動鞋為主。
 - 2 到 3 套之間要有明顯差異（例如色調或風格不同），不要只換一件。
 - reason 用繁體中文，一句話講清楚為什麼這樣搭（提到天氣或配色），不要客套。
@@ -88,7 +92,9 @@ export function buildOutfitParts(
 
   for (const item of items) {
     parts.push({
-      text: `itemId: ${item.id}｜名稱: ${item.name}｜類別: ${item.category}${item.color ? `｜顏色: ${item.color}` : ''}`,
+      text: `itemId: ${item.id}｜名稱: ${item.name}｜類別: ${item.category}${
+        item.attributes ? `｜${describeAttributes(item.attributes)}` : item.color ? `｜顏色: ${item.color}` : ''
+      }`,
     });
     parts.push({ inlineData: { data: item.imageBase64, mimeType: item.mimeType } });
   }

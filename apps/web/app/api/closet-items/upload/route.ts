@@ -30,7 +30,7 @@ const CREATE_ERRORS = {
  * FormData:
  * - file: 圖片（必填，JPEG / PNG / WebP，最大 10MB）
  * - name: 名稱（選填）
- * - category: 類別（選填，預設 uncategorized）
+ * - category: 類別（選填；沒填或未分類時用 AI 辨識的類別）
  *
  * Returns: 201 { data: ClosetItem, imageUrl, expiresAt }
  */
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     supabase,
     user.id,
     { buffer: Buffer.from(await file.arrayBuffer()), contentType: file.type },
-    { name: meta.data.name ?? '未命名衣物', category: meta.data.category ?? 'uncategorized' }
+    { name: meta.data.name, category: meta.data.category ?? 'uncategorized' }
   );
   if (result.error) {
     const { status, error } = CREATE_ERRORS[result.error];

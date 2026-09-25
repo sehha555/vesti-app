@@ -84,7 +84,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // 2. 驗圖、去背（UNIQLO 的商品圖多半是模特兒實穿照，去掉人和背景才看得出是哪一件）、存進衣櫃
   const result = await createClosetItemFromImage(supabase, user.id, image, {
-    name: body.name ?? title ?? '未命名商品',
+    name: body.name,
+    fallbackName: title ?? '未命名商品',
     category: body.category ?? 'uncategorized',
     sourceUrl: body.url,
   });

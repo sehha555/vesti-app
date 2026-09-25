@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CLOSET_CATEGORIES, CLOSET_CATEGORY_LABELS } from '@/lib/closet/categories';
 import { siteNameFromUrl } from '@/lib/links/outbound';
+import { parseAttributes } from '@/lib/closet/attributes';
 import { PRIMARY_BUTTON_STYLE } from '../components/figma/ShopLinks';
 
 // 極簡衣櫃頁：貼連結 / 拍照上傳加入衣櫃，看目前衣櫃，編輯名稱類別、刪除。
@@ -13,6 +14,21 @@ interface ClosetItem {
   category: string;
   image_url: string | null;
   source_url?: string | null;
+  attributes?: unknown;
+}
+
+const needsAnalysis = (item: ClosetItem) => Boolean(item.image_url) && item.attributes == null;
+
+// AI 辨識出的屬性，一行小字：顏色・保暖・正式・風格
+function AttributeLine({ value }: { value: unknown }) {
+  const a = parseAttributes(value);
+  if (!a) return null;
+  const text = [a.colors.join('/'), `保暖${a.warmth}`, `正式${a.formality}`, ...a.styles.slice(0, 2)].join('・');
+  return (
+    <p className="truncate text-xs text-gray-400" title={text}>
+      {text}
+    </p>
+  );
 }
 
 const categoryLabel = (value: string) => CLOSET_CATEGORY_LABELS[value as keyof typeof CLOSET_CATEGORY_LABELS] ?? value;
@@ -81,6 +97,7 @@ export default function ClosetPage() {
   const [editName, setEditName] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,6 +181,35 @@ export default function ClosetPage() {
     }
   };
 
+  // 舊衣物補辨識：一次辨識幾件，重複呼叫到辨識完或這輪沒有進展（例如 AI 一直失敗）
+  const analyzeAll = async () => {
+    setAnalyzing(true);
+    setMessage(null);
+    let total = 0;
+    try {
+      for (;;) {
+        const res = await fetch('/api/closet-items/analyze', { method: 'POST' });
+        if (!res.ok) {
+          setMessage(await errorMessage(res, 'AI 辨識失敗'));
+          break;
+        }
+        const body = await res.json();
+        total += body.analyzed;
+        if (body.remaining === 0 || body.analyzed === 0) {
+          setMessage(body.remaining === 0 ? `已辨識 ${total} 件` : `已辨識 ${total} 件，還有 ${body.remaining} 件辨識失敗，稍後可再試`);
+          break;
+        }
+      }
+    } catch {
+      setMessage('AI 辨識失敗，請稍後再試');
+    } finally {
+      setAnalyzing(false);
+      if (total > 0) await load();
+    }
+  };
+
+  const unanalyzed = items.filter(needsAnalysis).length;
+
   const startEdit = (item: ClosetItem) => {
     setEditingId(item.id);
     setEditName(item.name);
@@ -231,7 +277,7 @@ export default function ClosetPage() {
           拍照或從相簿選一張（JPEG / PNG / WebP，最大 10MB，會自動去背）
           <span className="mt-1 block text-xs text-gray-500">
             只要拍衣服本身，請避免拍到臉或其他人。照片會送到去背服務與 AI 分析（可能傳到國外處理），詳見
-            <a href="/legal/privacy" className="underline">隱私權政策</a>。
+            <a href="/legal/privacy" style={{ textDecoration: 'underline' }}>隱私權政策</a>。
           </span>
           <input
             key={fileInputKey}
@@ -253,7 +299,7 @@ export default function ClosetPage() {
             />
           </label>
           <label className="block flex-1 text-sm">
-            類別
+            類別（留「未分類」會由 AI 判斷）
             <CategorySelect value={uploadCategory} onChange={setUploadCategory} />
           </label>
         </div>
@@ -294,7 +340,7 @@ export default function ClosetPage() {
             />
           </label>
           <label className="block flex-1 text-sm">
-            類別
+            類別（留「未分類」會由 AI 判斷）
             <CategorySelect value={category} onChange={setCategory} />
           </label>
         </div>
@@ -314,6 +360,20 @@ export default function ClosetPage() {
         <h2 className="mb-2 text-sm text-gray-500">
           {loading ? '載入中…' : `共 ${items.length} 件`}
         </h2>
+        {!loading && unanalyzed > 0 && (
+          <div className="mb-3 flex items-center gap-3 rounded-lg border p-3 text-sm">
+            <span className="flex-1">有 {unanalyzed} 件衣物還沒讓 AI 辨識顏色、保暖度和風格，辨識後推薦會更準。</span>
+            <button
+              type="button"
+              onClick={analyzeAll}
+              disabled={analyzing}
+              className="rounded px-3 py-2 text-white disabled:opacity-50"
+              style={PRIMARY_BUTTON_STYLE}
+            >
+              {analyzing ? '辨識中…' : 'AI 辨識'}
+            </button>
+          </div>
+        )}
         <ul className="grid grid-cols-3 gap-3">
           {items.map((item) => (
             <li key={item.id} className="space-y-1">
@@ -351,6 +411,7 @@ export default function ClosetPage() {
                 <>
                   <p className="truncate text-xs">{item.name}</p>
                   <p className="text-xs text-gray-400">{categoryLabel(item.category)}</p>
+                  <AttributeLine value={item.attributes} />
                   <SourceLink url={item.source_url} />
                   <div className="flex gap-2 text-xs">
                     <button type="button" onClick={() => startEdit(item)} className="text-blue-600">

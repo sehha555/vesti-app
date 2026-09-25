@@ -100,6 +100,38 @@ describe('buildOutfitParts', () => {
     expect(parts[3].text).not.toContain('顏色');
   });
 
+  it('有辨識屬性時寫出保暖度、正式度與風格', () => {
+    const parts = buildOutfitParts(
+      [
+        {
+          id: 't1',
+          name: '白色襯衫',
+          category: 'top',
+          color: '白',
+          attributes: {
+            version: 1,
+            category: 'top',
+            subcategory: '牛津襯衫',
+            name: '白色襯衫',
+            colors: ['白', '淺藍'],
+            pattern: 'stripe',
+            warmth: 3,
+            formality: 4,
+            styles: ['商務', '簡約'],
+            seasons: ['spring'],
+          },
+          imageBase64: 'AAA',
+          mimeType: 'image/jpeg',
+        },
+      ],
+      { temperature: 22, feelsLike: 22, humidity: 60, condition: 'cloudy', windSpeed: 3 },
+      'work'
+    );
+    expect(parts[1].text).toBe(
+      'itemId: t1｜名稱: 白色襯衫｜類別: top｜細類: 牛津襯衫｜顏色: 白/淺藍｜花紋: 條紋｜保暖 3/5｜正式 4/5｜風格: 商務、簡約'
+    );
+  });
+
   it('有回饋時放在最後指令之前，沒有就不出現', () => {
     const items = [{ id: 't1', name: '白 T', category: 'top', color: null, imageBase64: 'AAA', mimeType: 'image/jpeg' }];
     const weather = { temperature: 25, feelsLike: 25, humidity: 60, condition: 'cloudy' as const, windSpeed: 3 };
