@@ -288,6 +288,15 @@ export default function Page() {
     setCurrentPage(newPage);
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+    } catch (error) {
+      console.error('[Page] Sign out request failed:', error);
+    }
+    navigateTo('login');
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     setTimeout(() => setIsRefreshing(false), 1500);
@@ -360,7 +369,7 @@ export default function Page() {
       case 'store':
         return <StorePage onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToCheckout={() => navigateTo('checkout')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToTrending={() => navigateTo('trending')} />;
       case 'profile':
-        return <ProfilePage onNavigateToCheckout={() => navigateTo('checkout')} onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} onNavigateToPaymentMethods={() => navigateTo('payment-methods')} onLogout={() => navigateTo('login')} />;
+        return <ProfilePage onNavigateToCheckout={() => navigateTo('checkout')} onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} onNavigateToPaymentMethods={() => navigateTo('payment-methods')} onLogout={handleLogout} />;
       case 'tryon':
         return <TryOnPage onBack={() => navigateTo(previousPage)} onNavigateToCheckout={() => navigateTo('checkout')} />;
       case 'checkout':
