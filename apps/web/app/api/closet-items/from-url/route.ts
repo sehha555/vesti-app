@@ -8,15 +8,14 @@ import { parseOg, knownProductImages } from '../../../../lib/closet/og';
 import { pickFlatImage } from '../../../../lib/closet/pick-flat-image';
 import { removeBackground } from '../../../../lib/closet/remove-bg';
 import { uploadClosetImage, isClosetImageMime, CLOSET_BUCKET } from '../../../../lib/closet/storage';
+import { CLOSET_CATEGORIES } from '../../../../lib/closet/categories';
 
 export const runtime = 'nodejs';
-
-const CATEGORIES = ['top', 'outerwear', 'bottom', 'shoes', 'accessory', 'uncategorized'] as const;
 
 const BodySchema = z.object({
   url: z.string().url(),
   name: z.string().trim().min(1).max(100).optional(),
-  category: z.enum(CATEGORIES).optional(),
+  category: z.enum(CLOSET_CATEGORIES).optional(),
 });
 
 const RATE_LIMIT = { keyPrefix: 'from-url', maxRequests: 10, windowMs: 600_000 };

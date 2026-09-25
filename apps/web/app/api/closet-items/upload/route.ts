@@ -1,244 +1,124 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { verifyFileSignature } from '../../../../lib/security/file-signature';
+import { removeBackground } from '../../../../lib/closet/remove-bg';
+import { uploadClosetImage, isClosetImageMime, CLOSET_BUCKET } from '../../../../lib/closet/storage';
+import { CLOSET_CATEGORIES } from '../../../../lib/closet/categories';
 
-// Force Node.js runtime for stream compatibility
 export const runtime = 'nodejs';
 
-// File constraints
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const BUCKET_NAME = 'closet-images';
+const RATE_LIMIT = { keyPrefix: 'closet-upload', maxRequests: 10, windowMs: 600_000 };
+const NO_STORE = { 'Cache-Control': 'private, no-store' };
 
-// Signed URL expiration (server-controlled, not client-configurable)
-const SIGNED_URL_EXPIRES_IN = process.env.SIGNED_URL_EXPIRES_SECONDS
-  ? Math.min(parseInt(process.env.SIGNED_URL_EXPIRES_SECONDS, 10), 900)
-  : 300; // Default 5 minutes, max 15 minutes
-
-// Zod schema for metadata (whitelist only allowed fields)
-const UploadMetadataSchema = z.object({
-  name: z.string().min(1),
-  category: z.string().min(1),
-  subcategory: z.string().nullable().optional(),
-  brand: z.string().nullable().optional(),
-  color: z.string().nullable().optional(),
-  size: z.string().nullable().optional(),
-  season: z.string().nullable().optional(),
-  tags: z.string().optional(), // JSON string, will be parsed
-  custom_group: z.string().nullable().optional(),
-  is_archived: z.string().optional(), // "true" or "false"
-  status: z.enum(['ACTIVE', 'ARCHIVED', 'DELETED']).optional(),
-  acquired_at: z.string().nullable().optional(),
+const MetadataSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  category: z.enum(CLOSET_CATEGORIES).optional(),
 });
-
-interface ClosetItem {
-  id: string;
-  user_id: string;
-  name: string;
-  category: string;
-  image_url: string | null;
-  [key: string]: unknown;
-}
 
 /**
  * POST /api/closet-items/upload
+ * 拍照 / 選相簿上傳衣物：跟 from-url 同一條流程（驗簽章 → 去背 → Storage → closet_items）。
  *
- * Uploads an image to Supabase Storage and creates a closet_item record.
- * Optionally removes background using remove.bg API.
+ * FormData:
+ * - file: 圖片（必填，JPEG / PNG / WebP，最大 10MB）
+ * - name: 名稱（選填）
+ * - category: 類別（選填，預設 uncategorized）
  *
- * FormData fields:
- * - file: Image file (required, max 10MB, JPG/PNG/WebP)
- * - name: Item name (required)
- * - category: Item category (required)
- * - ...other closet_item fields (optional)
- *
- * Returns: 201 { data: ClosetItem, imageUrl, removedBgUrl? }
+ * Returns: 201 { data: ClosetItem, imageUrl, expiresAt }
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const { supabase, user } = await getSupabaseAndUser();
-
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
   }
 
-  // Parse FormData
+  const rl = await checkRateLimit(user.id, RATE_LIMIT);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: '上傳太頻繁，請稍後再試' },
+      { status: 429, headers: { ...NO_STORE, 'Retry-After': String(rl.retryAfter ?? rl.resetAfter) } }
+    );
+  }
+
   let formData: FormData;
   try {
     formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: 'Invalid request format' }, { status: 400 });
+    return NextResponse.json({ error: '請用表單上傳圖片' }, { status: 400, headers: NO_STORE });
   }
 
-  const file = formData.get('file') as File | null;
-
-  if (!file) {
-    return NextResponse.json({ error: 'File is required' }, { status: 400 });
+  const file = formData.get('file');
+  if (!(file instanceof File) || file.size === 0) {
+    return NextResponse.json({ error: '請選擇一張圖片' }, { status: 400, headers: NO_STORE });
   }
-
-  // Validate file type
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (!isClosetImageMime(file.type)) {
     return NextResponse.json(
-      { error: 'Invalid file type. Allowed: JPG, PNG, WebP' },
-      { status: 400 }
+      { error: '圖片格式不支援（只接受 JPEG / PNG / WebP）' },
+      { status: 400, headers: NO_STORE }
     );
   }
-
-  // Validate file size
   if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json(
-      { error: 'File too large. Maximum size: 10MB' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: '圖片太大，最大 10MB' }, { status: 400, headers: NO_STORE });
   }
 
-  // Extract and validate metadata
-  const metadata: Record<string, string | null> = {};
-  for (const key of ['name', 'category', 'subcategory', 'brand', 'color', 'size', 'season', 'tags', 'custom_group', 'is_archived', 'status', 'acquired_at']) {
-    const value = formData.get(key);
-    metadata[key] = value ? String(value) : null;
+  const meta = MetadataSchema.safeParse({
+    name: formData.get('name') || undefined,
+    category: formData.get('category') || undefined,
+  });
+  if (!meta.success) {
+    return NextResponse.json({ error: '名稱或類別不正確' }, { status: 400, headers: NO_STORE });
   }
 
-  const parsed = UploadMetadataSchema.safeParse(metadata);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Validation failed', errors: parsed.error.flatten().fieldErrors },
-      { status: 400 }
-    );
-  }
-
-  // Generate unique filename
-  const fileId = randomUUID();
-  const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
-  const filePath = `${user.id}/${fileId}.${ext}`;
-
-  // Read file buffer
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-  // Upload to Supabase Storage
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(filePath, fileBuffer, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (uploadError) {
-    console.error('[closet-items/upload] Storage upload error:', uploadError.message);
-    return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
-  }
-
-  // Get signed URL for private bucket (1 hour expiration)
-  const { data: urlData, error: signedUrlError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .createSignedUrl(filePath, SIGNED_URL_EXPIRES_IN);
-
-  if (signedUrlError || !urlData?.signedUrl) {
-    console.error('[closet-items/upload] Signed URL error:', signedUrlError?.message);
-    // Cleanup uploaded file
-    await supabase.storage.from(BUCKET_NAME).remove([filePath]);
-    return NextResponse.json({ error: 'Failed to generate image URL' }, { status: 500 });
-  }
-
-  let imageUrl = urlData.signedUrl;
-  let removedBgUrl: string | undefined;
-
-  // Optional: Remove background using remove.bg API
-  if (process.env.REMOVE_BG_API_KEY) {
-    try {
-      const { removeBackgroundFromImageUrl } = await import('remove.bg');
-      const removeBgResult = await removeBackgroundFromImageUrl({
-        url: imageUrl,
-        apiKey: process.env.REMOVE_BG_API_KEY,
-        size: 'auto',
-        type: 'auto',
-        format: 'png',
-      });
-
-      const noBgBuffer = Buffer.from(removeBgResult.base64img, 'base64');
-      const noBgPath = `${user.id}/${fileId}_nobg.png`;
-
-      const { error: noBgUploadError } = await supabase.storage
-        .from(BUCKET_NAME)
-        .upload(noBgPath, noBgBuffer, {
-          contentType: 'image/png',
-          upsert: false,
-        });
-
-      if (!noBgUploadError) {
-        const { data: noBgUrlData } = await supabase.storage
-          .from(BUCKET_NAME)
-          .createSignedUrl(noBgPath, SIGNED_URL_EXPIRES_IN);
-        if (noBgUrlData?.signedUrl) {
-          removedBgUrl = noBgUrlData.signedUrl;
-          // Use background-removed image as main image
-          imageUrl = removedBgUrl;
-        }
-      }
-    } catch {
-      console.error('[closet-items/upload] Background removal failed');
-      // Continue without background removal
-    }
-  }
-
-  // Parse tags from JSON string
-  let tags: string[] = [];
-  if (parsed.data.tags) {
-    try {
-      tags = JSON.parse(parsed.data.tags);
-    } catch {
-      tags = [];
-    }
-  }
-
-  // Build closet_item payload (whitelist fields only)
-  const itemPayload = {
-    user_id: user.id,
-    name: parsed.data.name,
-    category: parsed.data.category,
-    subcategory: parsed.data.subcategory ?? null,
-    brand: parsed.data.brand ?? null,
-    color: parsed.data.color ?? null,
-    size: parsed.data.size ?? null,
-    season: parsed.data.season ?? null,
-    tags,
-    image_url: imageUrl,
-    custom_group: parsed.data.custom_group ?? null,
-    is_archived: parsed.data.is_archived === 'true',
-    status: parsed.data.status ?? 'ACTIVE',
-    acquired_at: parsed.data.acquired_at ?? null,
-    // Server-enforced fields
-    source_type: 'OWNED' as const,
-    source_ref_id: null,
+  let image: { buffer: Buffer; contentType: string } = {
+    buffer: Buffer.from(await file.arrayBuffer()),
+    contentType: file.type,
   };
 
-  // Insert closet_item record
-  const { data: closetItem, error: dbError } = await supabase
+  // 防止改副檔名 / 偽造 MIME
+  if (!verifyFileSignature(image.buffer, image.contentType).valid) {
+    return NextResponse.json({ error: '檔案內容不是有效的圖檔' }, { status: 400, headers: NO_STORE });
+  }
+
+  // 去背失敗就沿用原圖，不讓整個上傳失敗
+  const removed = await removeBackground(image.buffer, image.contentType);
+  if (removed) image = removed;
+
+  if (!isClosetImageMime(image.contentType)) {
+    return NextResponse.json({ error: '圖片處理失敗' }, { status: 500, headers: NO_STORE });
+  }
+
+  let stored;
+  try {
+    stored = await uploadClosetImage(supabase, user.id, image.buffer, image.contentType);
+  } catch (err) {
+    console.error('[closet-items/upload] upload failed:', (err as Error).message);
+    return NextResponse.json({ error: '圖片儲存失敗' }, { status: 500, headers: NO_STORE });
+  }
+
+  const { data, error } = await supabase
     .from('closet_items')
-    .insert(itemPayload)
+    .insert({
+      user_id: user.id,
+      name: meta.data.name ?? '未命名衣物',
+      category: meta.data.category ?? 'uncategorized',
+      image_url: stored.signedUrl,
+      source_type: 'OWNED',
+      source_ref_id: null,
+    })
     .select()
     .single();
 
-  if (dbError) {
-    console.error('[closet-items/upload] Database insert error:', dbError.message);
-    // Attempt to clean up uploaded files
-    await supabase.storage.from(BUCKET_NAME).remove([filePath]);
-    if (removedBgUrl) {
-      await supabase.storage.from(BUCKET_NAME).remove([`${user.id}/${fileId}_nobg.png`]);
-    }
-    return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
+  if (error) {
+    await supabase.storage.from(CLOSET_BUCKET).remove([stored.filePath]);
+    console.error('[closet-items/upload] insert failed:', error.message);
+    return NextResponse.json({ error: '衣物建立失敗' }, { status: 500, headers: NO_STORE });
   }
 
-  // Calculate expiration timestamp for frontend cache management
-  const expiresAt = new Date(Date.now() + SIGNED_URL_EXPIRES_IN * 1000).toISOString();
-
   return NextResponse.json(
-    {
-      data: closetItem as ClosetItem,
-      imageUrl,
-      removedBgUrl,
-      expiresAt,
-    },
-    { status: 201 }
+    { data, imageUrl: stored.signedUrl, expiresAt: stored.expiresAt },
+    { status: 201, headers: NO_STORE }
   );
 }
