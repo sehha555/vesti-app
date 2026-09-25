@@ -24,6 +24,17 @@ const CATEGORIES = [
 // 這個專案的 Tailwind 是 Figma 匯出時預先編譯好的，沒有 bg-black，按鈕顏色用品牌色變數
 const PRIMARY_BUTTON_STYLE = { background: 'var(--vesti-primary)' };
 
+// 匯入的衣物標示圖片來源網站（著作權：保留出處、權利人可據此要求下架）
+function sourceHost(sourceUrl: string | null | undefined): string | null {
+  if (!sourceUrl) return null;
+  try {
+    const url = new URL(sourceUrl);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.hostname.replace(/^www\./, '') : null;
+  } catch {
+    return null;
+  }
+}
+
 const categoryLabel = (value: string) => CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
 async function errorMessage(res: Response, fallback: string): Promise<string> {
@@ -263,6 +274,9 @@ export default function ClosetPage() {
       <form onSubmit={submitUrl} className="space-y-3 rounded-lg border p-4">
         <label className="block text-sm">
           商品連結或圖片網址（UNIQLO 台灣可直接貼商品頁；其他品牌對圖片右鍵「複製圖片位址」）
+          <span className="mt-1 block text-xs text-gray-500">
+            匯入的商品圖只會存在你自己的衣櫃、只有你看得到，並標示來源網站。部分網站不允許自動擷取，會請你改用拍照上傳。
+          </span>
           <input
             type="url"
             required
@@ -341,6 +355,20 @@ export default function ClosetPage() {
                 <>
                   <p className="truncate text-xs">{item.name}</p>
                   <p className="text-xs text-gray-400">{categoryLabel(item.category)}</p>
+                  {sourceHost(item.source_url) && (
+                    <p className="truncate text-xs text-gray-400">
+                      圖片來源：
+                      <a
+                        href={item.source_url!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                        aria-label={`前往 ${sourceHost(item.source_url)} 查看原商品頁`}
+                      >
+                        {sourceHost(item.source_url)} ↗
+                      </a>
+                    </p>
+                  )}
                   <div className="flex gap-2 text-xs">
                     <button type="button" onClick={() => startEdit(item)} className="text-blue-600">
                       編輯

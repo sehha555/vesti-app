@@ -1,5 +1,6 @@
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
+import { parseRobots, isAllowedByRobots } from './robots';
 
 /**
  * 給「抓使用者提供的網址」用的 fetch，擋 SSRF：
@@ -8,12 +9,19 @@ import { isIP } from 'net';
  * - redirect 最多 3 次，每一跳重新檢查
  * - 回應超過 maxBytes 就中斷
  * - Content-Type 不在白名單就拒絕
+ *
+ * 另外依法遵要求（docs/legal/link-out-compliance.md）：
+ * - User-Agent 如實標示 VestiBot，不偽裝成瀏覽器、不繞過網站的封鎖
+ * - 每一跳都先看 robots.txt，不允許就不抓
+ * - 封鎖名單上的網域一律不抓（條款明文禁止自動擷取的網站、權利人要求停止的網站）
  */
 export interface SafeFetchOptions {
   maxBytes: number;
   timeoutMs: number;
   /** Content-Type 前綴白名單，例如 ['text/html'] 或 ['image/'] */
   accept: string[];
+  /** 預設 true；只有抓 robots.txt 本身時關掉 */
+  respectRobots?: boolean;
 }
 
 export interface SafeFetchResult {
@@ -23,12 +31,81 @@ export interface SafeFetchResult {
 }
 
 export class SafeFetchError extends Error {
-  constructor(message: string, public readonly code: 'BLOCKED' | 'TOO_LARGE' | 'BAD_TYPE' | 'HTTP' | 'TIMEOUT') {
+  constructor(
+    message: string,
+    public readonly code: 'BLOCKED' | 'DISALLOWED' | 'TOO_LARGE' | 'BAD_TYPE' | 'HTTP' | 'TIMEOUT',
+    public readonly status?: number
+  ) {
     super(message);
   }
 }
 
 const MAX_REDIRECTS = 3;
+
+// 如實標示身分；設了 VESTI_BOT_INFO_URL 就附上說明 / 聯絡頁，方便網站管理者找到我們
+export const USER_AGENT = `Mozilla/5.0 (compatible; VestiBot/1.0${
+  process.env.VESTI_BOT_INFO_URL ? `; +${process.env.VESTI_BOT_INFO_URL}` : ''
+})`;
+
+// 蝦皮聯盟計畫條款禁止自動擷取其網站內容與素材（請改用聯盟 API / feed）
+const BUILTIN_BLOCKED_DOMAINS = ['shopee.tw', 'shopee.com'];
+
+function blockedDomains(): string[] {
+  const extra = (process.env.FETCH_BLOCKED_DOMAINS ?? '')
+    .split(',')
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean);
+  return [...BUILTIN_BLOCKED_DOMAINS, ...extra];
+}
+
+export function isBlockedDomain(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  return blockedDomains().some((d) => host === d || host.endsWith(`.${d}`));
+}
+
+// robots.txt 快取：同一個網站一小時內只抓一次
+const ROBOTS_TTL_MS = 60 * 60 * 1000;
+const ROBOTS_CACHE_MAX = 500;
+const robotsCache = new Map<string, { rules: ReturnType<typeof parseRobots> | 'deny-all'; expires: number }>();
+
+/** 測試用 */
+export function clearRobotsCache(): void {
+  robotsCache.clear();
+}
+
+async function loadRobots(origin: string) {
+  const cached = robotsCache.get(origin);
+  if (cached && cached.expires > Date.now()) return cached.rules;
+
+  let rules: ReturnType<typeof parseRobots> | 'deny-all';
+  try {
+    const res = await safeFetch(`${origin}/robots.txt`, {
+      maxBytes: 512 * 1024,
+      timeoutMs: 5_000,
+      accept: [''],
+      respectRobots: false,
+    });
+    rules = parseRobots(res.buffer.toString('utf8'));
+  } catch (err) {
+    // RFC 9309：4xx 視為沒有限制；5xx 或連不上視為全部不允許
+    const status = err instanceof SafeFetchError ? err.status : undefined;
+    rules = status !== undefined && status >= 400 && status < 500 ? [] : 'deny-all';
+  }
+
+  if (robotsCache.size >= ROBOTS_CACHE_MAX) {
+    const oldest = robotsCache.keys().next().value;
+    if (oldest) robotsCache.delete(oldest);
+  }
+  robotsCache.set(origin, { rules, expires: Date.now() + ROBOTS_TTL_MS });
+  return rules;
+}
+
+async function assertAllowedByRobots(url: URL): Promise<void> {
+  const rules = await loadRobots(url.origin);
+  if (rules === 'deny-all' || !isAllowedByRobots(rules, url.pathname + url.search)) {
+    throw new SafeFetchError('Disallowed by robots.txt', 'DISALLOWED');
+  }
+}
 
 export function isPrivateAddress(ip: string): boolean {
   if (isIP(ip) === 4) {
@@ -72,6 +149,9 @@ export async function assertPublicHttpsUrl(rawUrl: string): Promise<URL> {
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) {
     throw new SafeFetchError('Host not allowed', 'BLOCKED');
   }
+  if (isBlockedDomain(host)) {
+    throw new SafeFetchError('Domain is on the blocklist', 'DISALLOWED');
+  }
 
   const addresses = isIP(host) ? [host] : (await lookup(host, { all: true })).map((a) => a.address);
   if (addresses.length === 0 || addresses.some(isPrivateAddress)) {
@@ -85,6 +165,7 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions): Prom
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const url = await assertPublicHttpsUrl(current);
+    if (options.respectRobots !== false) await assertAllowedByRobots(url);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs);
 
@@ -94,8 +175,7 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions): Prom
         redirect: 'manual',
         signal: controller.signal,
         headers: {
-          // 用一般瀏覽器 UA：UNIQLO 圖片 CDN 會直接斷掉自報 bot 的請求
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+          'User-Agent': USER_AGENT,
           Accept: options.accept.join(', ') + ', */*;q=0.1',
         },
       });
@@ -115,7 +195,7 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions): Prom
 
     if (!res.ok) {
       clearTimeout(timer);
-      throw new SafeFetchError(`Upstream responded ${res.status}`, 'HTTP');
+      throw new SafeFetchError(`Upstream responded ${res.status}`, 'HTTP', res.status);
     }
 
     const contentType = (res.headers.get('content-type') ?? '').toLowerCase();

@@ -62,6 +62,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         .flatMap((r, i) => (r.status === 'fulfilled' ? [{ url: known[i], ...r.value }] : []))
         .filter((c) => c.contentType.startsWith('image/'));
       if (candidates.length === 0) {
+        // 全部被網站的 robots.txt / 封鎖名單擋下時，講清楚原因
+        const disallowed = settled.find(
+          (r) => r.status === 'rejected' && r.reason instanceof SafeFetchError && r.reason.code === 'DISALLOWED'
+        ) as PromiseRejectedResult | undefined;
+        if (disallowed) return fetchErrorResponse(disallowed.reason, '無法讀取這個網址');
         return NextResponse.json(
           { error: '這個網站抓不到商品圖片，請改貼圖片網址或拍照上傳' },
           { status: 422, headers: NO_STORE }
@@ -145,7 +150,9 @@ function fetchErrorResponse(err: unknown, fallback: string): NextResponse {
     const message =
       err.code === 'BLOCKED'
         ? '這個網址不允許匯入'
-        : err.code === 'TOO_LARGE'
+        : err.code === 'DISALLOWED'
+          ? '這個網站不允許自動擷取，請改用拍照上傳'
+          : err.code === 'TOO_LARGE'
           ? '內容太大，無法匯入'
           : fallback;
     return NextResponse.json({ error: message }, { status, headers: NO_STORE });
