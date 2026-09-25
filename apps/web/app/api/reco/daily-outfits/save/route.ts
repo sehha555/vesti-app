@@ -16,7 +16,7 @@ const SaveDailyOutfitRequestSchema = z.object({
   items: z.array(OutfitItemSchema).min(1),
   season: z.string().nullable().optional(),
   occasion: z.string().nullable().optional(),
-  weather_info: z.record(z.any()).nullable().optional(),
+  weather_info: z.record(z.string(), z.any()).nullable().optional(),
   notes: z.string().nullable().optional(),
 });
 

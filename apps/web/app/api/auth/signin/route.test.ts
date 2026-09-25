@@ -365,8 +365,7 @@ describe('POST /api/auth/signin', () => {
 
   it('should return 429 when email hash fails in production', async () => {
     // Set production mode
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
+    vi.stubEnv('NODE_ENV', 'production');
 
     // Mock checkEmailRateLimit to return fail-closed (429)
     mockCheckIPRateLimit.mockResolvedValue({ allowed: true });
@@ -388,7 +387,7 @@ describe('POST /api/auth/signin', () => {
     expect(data.retryAfter).toBe(60);
 
     // Restore environment
-    process.env.NODE_ENV = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   it('should return 429 with retryAfter from failed email rate limit check', async () => {

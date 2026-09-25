@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST, GET } from './route';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireBffAuthMock } from '../../vitest.setup';
 
-import { requireBffAuth } from '../../../../_middleware/auth';
+import { requireBffAuth } from '@/middleware/auth';
 
 // Helper to create NextRequest with JSON body
 const createRequest = (body: unknown): NextRequest => {

@@ -21,7 +21,7 @@ const UpdateOutfitSchema = z.object({
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 認證使用者
@@ -39,7 +39,7 @@ export async function GET(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // 驗證 ID 格式
     if (!id || typeof id !== 'string') {
@@ -136,7 +136,7 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 認證使用者
@@ -154,7 +154,7 @@ export async function PUT(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // 驗證 ID 格式
     if (!id || typeof id !== 'string') {
@@ -202,7 +202,7 @@ export async function PUT(
         error: 'Invalid request payload',
       };
       if (process.env.NODE_ENV !== 'production') {
-        response.details = parseResult.error.errors;
+        response.details = parseResult.error.issues;
       }
       return jsonNoStore(response, { status: 400 });
     }
@@ -304,7 +304,7 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 認證使用者
@@ -322,7 +322,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // 驗證 ID 格式
     if (!id || typeof id !== 'string') {

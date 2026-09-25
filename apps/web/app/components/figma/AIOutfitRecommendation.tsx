@@ -24,7 +24,7 @@ interface OutfitSet {
   weatherSuitable?: {
     tempMin: number;
     tempMax: number;
-    weatherTypes: ('sunny' | 'cloudy' | 'rainy' | 'windy' | 'snowy')[];
+    weatherTypes: readonly ('sunny' | 'cloudy' | 'rainy' | 'windy' | 'snowy')[];
   };
   wardrobeMatch?: {
     matchScore: number;
@@ -166,7 +166,7 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
     setIsDragging(true);
   };
 
-  const getWeatherIcon = (types: string[] = []) => {
+  const getWeatherIcon = (types: readonly string[] = []) => {
     if (types.includes('sunny')) return <Sun className="h-3.5 w-3.5" />;
     if (types.includes('rainy')) return <CloudRain className="h-3.5 w-3.5" />;
     return <Cloud className="h-3.5 w-3.5" />;

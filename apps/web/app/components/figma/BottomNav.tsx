@@ -38,7 +38,7 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
 }
 
 interface BottomNavProps {
-  currentPage: PageType;
+  currentPage: string; // 任何頁面都可能傳進來，只有五個主頁會亮起
   onPageChange: (page: PageType) => void;
 }
 

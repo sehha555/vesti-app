@@ -33,27 +33,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let { name, email, password, confirmPassword } = body;
+    const { name: rawName, email: rawEmail, password, confirmPassword } = body;
 
     // === Input Validation ===
 
     // Name validation
-    if (typeof name !== 'string' || !name.trim()) {
+    if (typeof rawName !== 'string' || !rawName.trim()) {
       return NextResponse.json(
         { ok: false, message: 'Name is required' },
         { status: 422 }
       );
     }
-    name = name.trim();
+    const name = rawName.trim();
 
     // Email validation
-    if (typeof email !== 'string' || !email.trim()) {
+    if (typeof rawEmail !== 'string' || !rawEmail.trim()) {
       return NextResponse.json(
         { ok: false, message: 'Email is required' },
         { status: 422 }
       );
     }
-    email = email.trim().toLowerCase();
+    const email = rawEmail.trim().toLowerCase();
 
     // Basic email format check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

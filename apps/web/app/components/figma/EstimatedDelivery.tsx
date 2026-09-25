@@ -37,7 +37,7 @@ export function EstimatedDelivery({ onNavigateToDelivery }: EstimatedDeliveryPro
           <span>預計配送</span>
         </h3>
         <button 
-          onClick={onNavigateToDelivery}
+          onClick={() => onNavigateToDelivery?.()}
           className="flex items-center text-[var(--vesti-gray-mid)] hover:text-[var(--vesti-dark)] transition-colors"
           style={{ fontSize: 'var(--text-label)', fontWeight: 500 }}
         >

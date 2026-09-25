@@ -169,12 +169,13 @@ export async function POST(req: NextRequest) {
         error: 'Invalid request payload',
       };
       if (process.env.NODE_ENV !== 'production') {
-        response.details = parseResult.error.errors;
+        response.details = parseResult.error.issues;
       }
       return jsonNoStore(response, { status: 400 });
     }
 
-    let { userId, name, itemIds, season, rating } = parseResult.data;
+    const { name, itemIds, season, rating } = parseResult.data;
+    let { userId } = parseResult.data;
 
     // 檢查是否遺漏 userId（legacy payload）
     const isMissingUserId = userId === undefined;

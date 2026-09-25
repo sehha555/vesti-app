@@ -35,6 +35,7 @@ import { CPWRankingFullPage } from './components/figma/CPWRankingFullPage';
 import { DeliveryTrackingPage } from './components/figma/DeliveryTrackingPage';
 import { NotificationPage } from './components/figma/NotificationPage';
 import { PaymentMethodsPage } from './components/figma/PaymentMethodsPage';
+import type { PaymentCard } from './components/figma/AddPaymentCardModal';
 
 // --- Types and Mock Data ---
 interface OutfitItem {
@@ -66,13 +67,6 @@ interface Outfit {
     accessories?: OutfitItem;   // 配件 (預留)
   };
   layoutSlots?: LayoutSlot[];   // 白板結構：人體結構分槽
-}
-
-interface PaymentCard {
-  id: string;
-  last4: string;
-  brand: string;
-  isDefault?: boolean;
 }
 
 const outfits: Outfit[] = [
@@ -168,7 +162,7 @@ export default function Page() {
   // 輔助函數：將單品資料映射到白板槽位
   const createLayoutSlots = (items: any): LayoutSlot[] => {
     const slots: LayoutSlot[] = [];
-    let priority = 1;
+    const priority = 1;
 
     // 槽位定義：slotKey → items字段 的映射
     const slotMappings = [

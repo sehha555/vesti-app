@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST, GET } from './route';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireBffAuthMock, geocodeLocationMock, getWeatherMock } from '../../vitest.setup';
 
 // Mock Supabase
 vi.mock('@supabase/auth-helpers-nextjs', () => ({
@@ -45,8 +44,8 @@ vi.mock('next/headers', () => ({
 }));
 
 import { requireBffAuth } from '../../_middleware/auth';
-import { geocodeLocation } from '../../../../../services/weather/geocoding.service';
-import { getWeather } from '../../../../../services/weather';
+import { geocodeLocation } from '@/services/weather/geocoding.service';
+import { getWeather } from '@/services/weather';
 
 const createRequest = (body: unknown): NextRequest => {
   return new NextRequest('http://localhost:3000/api/reco/daily', {
@@ -71,7 +70,10 @@ beforeEach(() => {
   });
   vi.mocked(getWeather).mockResolvedValue({
     temperature: 15,
+    feelsLike: 14,
+    humidity: 70,
     condition: 'cloudy',
+    windSpeed: 5,
     locationName: 'Taipei',
   });
 });

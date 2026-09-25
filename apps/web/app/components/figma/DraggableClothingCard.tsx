@@ -122,7 +122,7 @@ export function DraggableClothingCard({ item, layerId, scrollVelocity, onLike, o
 
   return (
     <div
-      ref={drag}
+      ref={(node) => { drag(node); }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

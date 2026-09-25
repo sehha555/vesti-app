@@ -8,8 +8,8 @@ vi.mock('../../_middleware/auth', () => ({
 }));
 
 // Mock Cloudinary with proper stream
-vi.mock('cloudinary', () => {
-  const { PassThrough } = require('stream');
+vi.mock('cloudinary', async () => {
+  const { PassThrough } = await import('stream');
   return {
     v2: {
       config: vi.fn(),

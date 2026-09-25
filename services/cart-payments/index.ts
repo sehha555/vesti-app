@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ message: 'Missing userId' });
   }
 
-  let userCart = carts[userId] || { userId, items: [], total: 0 };
+  const userCart = carts[userId] || { userId, items: [], total: 0 };
 
   switch (req.method) {
     case 'POST':

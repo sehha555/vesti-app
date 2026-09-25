@@ -49,7 +49,7 @@ describe('GET /api/auth/callback', () => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
   });
 
   it('should exchange code and set the auth status marker', async () => {
@@ -84,7 +84,7 @@ describe('GET /api/auth/callback', () => {
   });
 
   it('should set Secure flag on auth_redirect_to clear cookie in production', async () => {
-    process.env.NODE_ENV = 'production';
+    vi.stubEnv('NODE_ENV', 'production');
     const mockSession = {
       access_token: 'test-access-token',
       refresh_token: 'test-refresh-token',

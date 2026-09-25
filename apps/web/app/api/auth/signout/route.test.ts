@@ -36,7 +36,7 @@ const CLEARED_COOKIES = ['sb-auth-status', 'sb-auth-token', 'sb-refresh-token', 
 describe('POST /api/auth/signout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
     mockSignOut.mockResolvedValue({ error: null });
@@ -99,7 +99,7 @@ describe('POST /api/auth/signout', () => {
 describe('GET /api/auth/signout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
     mockSignOut.mockResolvedValue({ error: null });

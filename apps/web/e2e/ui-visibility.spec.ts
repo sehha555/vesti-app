@@ -41,7 +41,7 @@ test.describe('UI Visibility - End to End', () => {
     expect(boundingBox).not.toBeNull();
     if (boundingBox) {
       expect(boundingBox.y + boundingBox.height).toBeGreaterThan(
-        await page.viewportSize().then((size) => size?.height || 0) - 100
+        (page.viewportSize()?.height || 0) - 100
       );
     }
   });
@@ -179,7 +179,7 @@ test.describe('UI Visibility - End to End', () => {
 
     // 開始監聽 BottomNav 的可見性變化
     const bottomNav = page.getByTestId('bottom-nav');
-    let visibilityChanges: boolean[] = [];
+    const visibilityChanges: boolean[] = [];
 
     // 監控 BottomNav 的存在
     const checkInterval = setInterval(async () => {

@@ -646,7 +646,7 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
               </h3>
             </div>
             <button 
-              onClick={onNavigateToDelivery}
+              onClick={() => onNavigateToDelivery?.()}
               className="flex items-center gap-1 text-[var(--vesti-primary)]" 
               style={{ fontSize: 'var(--text-label)' }}
             >

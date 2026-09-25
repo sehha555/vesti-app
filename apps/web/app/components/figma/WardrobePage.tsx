@@ -15,6 +15,20 @@ import { Plus, Sparkles, Bell, Radio, Calendar, Search, Heart, X, ShoppingBag, U
 import { useDebounce } from './hooks/useDebounce';
 import { EmptyState } from './EmptyState';
 
+// 衣櫃頁「我的搭配」卡片：本地建立 / 首頁收藏 / 試穿頁儲存 三種來源
+interface WardrobeOutfit {
+  id: number;
+  name: string;
+  date: string;
+  imageUrl: string;
+  occasion: string;
+  itemCount: number;
+  isFavorite: boolean;
+  tags: string[];
+  source: 'local' | 'saved' | 'tryon';
+  layers?: unknown;
+}
+
 interface ClothingItem {
   id: number;
   imageUrl: string;
@@ -299,7 +313,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
   const [searchQuery, setSearchQuery] = useState('');
   
   // 合併本地搭配和從首頁收藏的穿搭
-  const [outfits, setOutfits] = useState(() => {
+  const [outfits, setOutfits] = useState<WardrobeOutfit[]>(() => {
     // 本地創建的搭配
     const localOutfits = mockSavedOutfits.map(outfit => ({
       ...outfit,
@@ -1211,7 +1225,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
                 <div className="flex items-center gap-2 p-[5px] m-[3px]">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={onNavigateToTryOn}
+                    onClick={() => onNavigateToTryOn?.()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--vesti-primary)] text-white transition-all hover:brightness-110"
                   >
                     <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -1318,7 +1332,6 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
             onEdit={handleEditItem}
             onCreateOutfit={handleCreateOutfit}
             onShare={handleShareItem}
-            onAddToBasket={handleAddToBasket}
           />
         )}
 

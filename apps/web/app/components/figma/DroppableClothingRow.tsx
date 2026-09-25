@@ -87,7 +87,7 @@ export function DroppableClothingRow({
 
   return (
     <div 
-      ref={drop}
+      ref={(node) => { drop(node); }}
       className={`relative mb-6 rounded-[20px] border-2 transition-all overflow-visible ${
         isOver 
           ? 'border-[var(--vesti-primary)] bg-[var(--vesti-primary)]/5' 

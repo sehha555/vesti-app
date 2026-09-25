@@ -140,7 +140,7 @@ async function checkRateLimit(
     const redisKey = `${prefix}:vesti:signin:${scope}:${key}`;
 
     // Increment counter (atomic operation)
-    const count = await client.incr(redisKey);
+    const count = Number(await client.incr(redisKey));
 
     // Set expiration on first increment
     if (count === 1) {
@@ -150,7 +150,7 @@ async function checkRateLimit(
     // Check if limit exceeded
     if (count > limit) {
       // Get remaining time (TTL in seconds)
-      const ttl = await client.ttl(redisKey);
+      const ttl = Number(await client.ttl(redisKey));
       const retryAfter = ttl > 0 ? ttl : WINDOW_SEC;
       return { allowed: false, retryAfter };
     }

@@ -134,10 +134,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let { email, password } = body;
+    const { email: rawEmail, password } = body;
 
     // Validate email and password are provided and are strings
-    if (typeof email !== 'string' || !email.trim()) {
+    if (typeof rawEmail !== 'string' || !rawEmail.trim()) {
       return NextResponse.json(
         { message: 'Email is required' },
         { status: 422 }
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Normalize email (trim + lowercase) for consistent rate limiting
-    email = email.trim().toLowerCase();
+    const email = rawEmail.trim().toLowerCase();
 
     // Check IP rate limit first (skip if IP is unknown to avoid false positives)
     if (ip !== 'unknown') {
