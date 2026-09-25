@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { GapFillResponse, GapSuggestion } from '@/packages/types/src/gap';
-import { logInteractionEvent } from '../../lib/api';
+import { ShopLinkButton, ShopDisclosure } from '../components/figma/ShopLinks';
 
 const GapFillPage = () => {
   const [recommendations, setRecommendations] = useState<GapFillResponse | null>(null);
@@ -12,7 +12,6 @@ const GapFillPage = () => {
   const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
   const [season, setSeason] = useState<'summer' | 'winter' | 'spring' | 'autumn' | 'all-season' | undefined>(undefined);
 
-  const userId = '1'; // 佔位符使用者 ID
 
   const fetchRecommendations = async () => {
     setLoading(true);
@@ -45,15 +44,6 @@ const GapFillPage = () => {
     alert(`分享連結已生成 (佔位符): ${shareToken}`);
   };
 
-  const handleAddToCart = (item: GapSuggestion['item']) => {
-    console.log('TODO: Add item to cart:', item.id);
-    logInteractionEvent({
-      userId,
-      eventType: 'ADD_TO_CART',
-      payload: { itemId: item.id, page: 'gap-fill' },
-    });
-    alert(`${item.name} 已加入購物車！`);
-  };
 
   if (loading) {
     return <div>正在您的衣櫥中尋找空缺...</div>;
@@ -102,7 +92,8 @@ const GapFillPage = () => {
           <p>{rec.reason}</p>
           <p>解鎖 {rec.unlockCount} 套新搭配！</p>
           <img src={rec.item.imageUrl} alt={rec.item.name} />
-          <button onClick={() => handleAddToCart(rec.item)}>加入購物車</button>
+          {/* 導購外連：前往官網購買，沒有商品頁就不能買 */}
+          <ShopLinkButton item={rec.item} campaign="gap-fill" compact />
           <button onClick={() => handleShowExamples(rec.item.id)}>查看範例</button>
           {showExamples === rec.item.id && (
             <div>

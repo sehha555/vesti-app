@@ -62,19 +62,16 @@ describe('useLayoutVisibility - Layout Visibility Rules', () => {
     });
   });
 
-  describe('Sub Pages (tryon, checkout, discount, etc.)', () => {
+  describe('Sub Pages (tryon, discount, etc.)', () => {
     const subPages: PageType[] = [
       'tryon',
-      'checkout',
       'discount',
       'trending',
       'upload',
       'broadcast',
       'calendar',
       'cpwranking',
-      'delivery',
       'notification',
-      'payment-methods',
     ];
 
     subPages.forEach((page) => {

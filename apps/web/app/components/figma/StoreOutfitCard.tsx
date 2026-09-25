@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Check, ShoppingCart, Eye, X } from 'lucide-react';
+import { Check, ExternalLink, Eye, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShopLinksSheet } from './ShopLinks';
 
 interface ClothingItem {
   id: number;
@@ -11,6 +12,7 @@ interface ClothingItem {
   imageUrl: string;
   brand: string;
   category: string;
+  productUrl?: string;
 }
 
 interface StoreOutfitCardProps {
@@ -31,6 +33,7 @@ export function StoreOutfitCard({
 }: StoreOutfitCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [showShopLinks, setShowShopLinks] = useState(false);
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped);
@@ -57,7 +60,8 @@ export function StoreOutfitCard({
       toast.error('請至少選擇一件商品');
       return;
     }
-    toast.success(`準備購買 ${selectedItems.length} 件商品 ️`);
+    // 導購外連：不在 App 內結帳，列出每件商品的官網連結
+    setShowShopLinks(true);
   };
 
   const selectedTotal = items
@@ -222,14 +226,21 @@ export function StoreOutfitCard({
                   onClick={handleBuy}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--vesti-primary)] py-3 text-white transition-all hover:opacity-90"
                 >
-                  <ShoppingCart className="h-4 w-4" strokeWidth={2} />
-                  購買
+                  <ExternalLink className="h-4 w-4" strokeWidth={2} />
+                  前往購買
                 </button>
               </div>
             </div>
           </div>
         </div>
       </motion.div>
+      {showShopLinks && (
+        <ShopLinksSheet
+          items={items.filter((item) => selectedItems.includes(item.id))}
+          campaign="store-outfit"
+          onClose={() => setShowShopLinks(false)}
+        />
+      )}
     </div>
   );
 }

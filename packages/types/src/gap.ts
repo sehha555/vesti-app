@@ -11,6 +11,8 @@ export interface CatalogItem {
   season?: Season;
   category?: string;
   seasonality?: string;
+  /** 品牌 / 零售商商品頁（導購外連） */
+  productUrl?: string;
 }
 
 export interface GapFillRequest {

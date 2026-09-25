@@ -47,7 +47,7 @@ export const uiRegistry: UIElement[] = [
     priority: 1,
     description: '底部標籤導航欄 (首頁、衣櫃、探索、商店、個人)',
     conditions: {
-      page: ['home', 'wardrobe', 'explore', 'store', 'profile', 'tryon', 'checkout', 'discount', 'trending', 'upload', 'broadcast', 'calendar', 'cpwranking', 'delivery', 'notification', 'payment-methods'],
+      page: ['home', 'wardrobe', 'explore', 'store', 'profile', 'tryon', 'discount', 'trending', 'upload', 'broadcast', 'calendar', 'cpwranking', 'notification'],
       requireAuth: true,
     },
   },
@@ -81,7 +81,7 @@ export const uiRegistry: UIElement[] = [
     testId: 'page-header',
     uiType: 'sticky',
     priority: 2,
-    description: '頁面頂部標題欄 (VESTI logo + 購物車/通知)',
+    description: '頁面頂部標題欄 (VESTI logo + 通知)',
     conditions: {
       page: ['home'],
       requireAuth: true,
@@ -119,19 +119,6 @@ export const uiRegistry: UIElement[] = [
   },
 
   {
-    key: 'checkout-action-bar',
-    filePath: 'apps/web/app/components/figma/CheckoutPage.tsx',
-    testId: 'checkout-action-bar',
-    uiType: 'fixed',
-    priority: 2,
-    description: '結帳頁面固定操作欄（結帳按鈕、訂單摘要）',
-    conditions: {
-      page: ['checkout'],
-      requireAuth: true,
-    },
-  },
-
-  {
     key: 'tryon-action-bar',
     filePath: 'apps/web/app/components/figma/TryOnPage.tsx',
     testId: 'tryon-action-bar',
@@ -165,24 +152,6 @@ export const uiRegistry: UIElement[] = [
   },
 
   {
-    key: 'address-modal',
-    filePath: 'apps/web/app/components/figma/AddressModal.tsx',
-    testId: 'address-modal',
-    uiType: 'overlay',
-    priority: 3,
-    description: '配送地址編輯模態框',
-  },
-
-  {
-    key: 'payment-card-modal',
-    filePath: 'apps/web/app/components/figma/AddPaymentCardModal.tsx',
-    testId: 'payment-card-modal',
-    uiType: 'overlay',
-    priority: 3,
-    description: '新增信用卡模態框',
-  },
-
-  {
     key: 'upload-options-dialog',
     filePath: 'apps/web/app/components/figma/UploadOptionsDialog.tsx',
     testId: 'upload-options-dialog',
@@ -212,18 +181,6 @@ export const uiRegistry: UIElement[] = [
   // ===== Priority 4: 低優先 =====
 
   {
-    key: 'checkout-header',
-    filePath: 'apps/web/app/components/figma/CheckoutPage.tsx',
-    testId: 'checkout-header',
-    uiType: 'sticky',
-    priority: 4,
-    description: '結帳頁面粘性標題',
-    conditions: {
-      page: ['checkout'],
-    },
-  },
-
-  {
     key: 'cpw-ranking-header',
     filePath: 'apps/web/app/components/figma/CPWRankingFullPage.tsx',
     testId: 'cpw-ranking-header',
@@ -232,18 +189,6 @@ export const uiRegistry: UIElement[] = [
     description: 'CPW 排名頁面粘性標題',
     conditions: {
       page: ['cpwranking'],
-    },
-  },
-
-  {
-    key: 'delivery-tracking-header',
-    filePath: 'apps/web/app/components/figma/DeliveryTrackingPage.tsx',
-    testId: 'delivery-tracking-header',
-    uiType: 'sticky',
-    priority: 4,
-    description: '配送追蹤頁面粘性標題',
-    conditions: {
-      page: ['delivery'],
     },
   },
 

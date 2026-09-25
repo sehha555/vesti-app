@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, Trash2, Save, ChevronLeft, Camera, Sparkles, ShoppingCart, ChevronRight, Search, Filter, Maximize2, Minimize2, User } from 'lucide-react';
+import { X, Plus, Minus, Trash2, Save, ChevronLeft, Camera, Sparkles, ExternalLink, ChevronRight, Search, Filter, Maximize2, Minimize2, User } from 'lucide-react';
+import { ShopLinksSheet } from './ShopLinks';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
 import {
@@ -19,6 +20,7 @@ interface TryOnItem {
   brand: string;
   category: string;
   source: 'store' | 'wardrobe';
+  productUrl?: string;
 }
 
 interface OutfitLayer {
@@ -123,14 +125,16 @@ const mockWardrobeItems: TryOnItem[] = [
 
 interface TryOnPageProps {
   onBack: () => void;
-  onNavigateToCheckout?: () => void;
   onSaveToWardrobe?: (outfitSet: SavedOutfitSet) => void;
   basketItems?: TryOnItem[];
   userPhoto?: string;
 }
 
-export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, basketItems = [], userPhoto }: TryOnPageProps) {
+export function TryOnPage({ onBack, onSaveToWardrobe, basketItems = [], userPhoto }: TryOnPageProps) {
   const [tryOnItems, setTryOnItems] = useState<TryOnItem[]>(mockTryOnItems);
+  const [showShopLinks, setShowShopLinks] = useState(false);
+  // 只有商店來的單品需要購買；自己衣櫃的已經有了
+  const storeItems = tryOnItems.filter((item) => item.source === 'store');
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isTryingOn, setIsTryingOn] = useState(false);
@@ -406,21 +410,21 @@ export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, bask
            )}
         </div>
 
-        {/* Checkout Footer (Only in Basket Tab) */}
-        {selectorTab === 'basket' && tryOnItems.length > 0 && (
+        {/* 前往購買（Only in Basket Tab）：導購外連，不在 App 內結帳 */}
+        {selectorTab === 'basket' && storeItems.length > 0 && (
            <div className="p-5 border-t border-gray-100 bg-white/95 backdrop-blur-sm sticky bottom-0 z-20 pb-8 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-gray-500 font-medium">共 {tryOnItems.length} 件商品</span>
+                <span className="text-sm text-gray-500 font-medium">商店商品 {storeItems.length} 件</span>
                 <span className="text-lg font-bold text-[var(--vesti-primary)]">
-                   NT$ {tryOnItems.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
+                   NT$ {storeItems.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
                 </span>
              </div>
              <button
-                onClick={onNavigateToCheckout}
+                onClick={() => setShowShopLinks(true)}
                 className="w-full py-3.5 rounded-xl bg-[var(--vesti-dark)] text-white font-bold shadow-lg shadow-gray-200 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
              >
-                <ShoppingCart size={18} />
-                前往結帳
+                <ExternalLink size={18} />
+                前往官網購買
              </button>
            </div>
         )}
@@ -632,17 +636,17 @@ export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, bask
 
         {/* Actions */}
         <div data-testid="tryon-action-bar" className="fixed bottom-16 left-0 right-0 bg-[var(--vesti-background)]/95 backdrop-blur-md border-t border-border px-4 py-3 flex gap-3 z-30">
-           {/* Secondary Action: Checkout */}
-          {tryOnItems.length > 0 && onNavigateToCheckout && (
+           {/* Secondary Action: 前往購買（導購外連） */}
+          {storeItems.length > 0 && (
             <motion.button
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              onClick={onNavigateToCheckout}
+              onClick={() => setShowShopLinks(true)}
               className="flex-1 flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white border-2 border-[var(--vesti-dark)] text-[var(--vesti-dark)] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-all active:scale-[0.98]"
             >
-               <ShoppingCart className="h-5 w-5" strokeWidth={2.5} />
-               <span>結帳</span>
-               <span className="bg-[var(--vesti-dark)] text-white text-[11px] font-bold px-2 py-0.5 rounded-full ml-0.5 min-w-[20px] flex items-center justify-center">{tryOnItems.length}</span>
+               <ExternalLink className="h-5 w-5" strokeWidth={2.5} />
+               <span>購買</span>
+               <span className="bg-[var(--vesti-dark)] text-white text-[11px] font-bold px-2 py-0.5 rounded-full ml-0.5 min-w-[20px] flex items-center justify-center">{storeItems.length}</span>
             </motion.button>
           )}
 
@@ -670,6 +674,9 @@ export function TryOnPage({ onBack, onNavigateToCheckout, onSaveToWardrobe, bask
           </motion.button>
         </div>
       </div>
+      {showShopLinks && (
+        <ShopLinksSheet items={storeItems} campaign="try-on" onClose={() => setShowShopLinks(false)} />
+      )}
     </div>
   );
 }

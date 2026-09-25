@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { BasketMixmatchResponse, BasketMixmatchRecommendation } from '@/packages/types/src/basket';
 import { SaveBasketMixmatchRequest } from '@/packages/types/src/persistence';
+import { ShopLinkButton } from '../components/figma/ShopLinks';
 
 const BasketPage = () => {
   const [recommendations, setRecommendations] = useState<BasketMixmatchRecommendation[]>([]);
@@ -67,7 +68,7 @@ const BasketPage = () => {
   };
 
   if (loading && recommendations.length === 0) {
-    return <div>正在為您的購物車尋找搭配...</div>;
+    return <div>正在為您的籃子尋找搭配...</div>;
   }
 
   if (recommendations.length === 0 && !loading) {
@@ -101,33 +102,25 @@ const BasketPage = () => {
             <h3>上衣</h3>
             <p>{rec.outfit.top.name}</p>
             <img src={rec.outfit.top.imageUrl} alt={rec.outfit.top.name} />
-            <button onClick={() => console.log('Add to cart:', rec.outfit.top.id)} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded text-sm mt-2">
-              加入購物車
-            </button>
+            <ShopLinkButton item={rec.outfit.top} campaign="basket" compact />
           </div>
           <div>
             <h3>下裝</h3>
             <p>{rec.outfit.bottom.name}</p>
             <img src={rec.outfit.bottom.imageUrl} alt={rec.outfit.bottom.name} />
-            <button onClick={() => console.log('Add to cart:', rec.outfit.bottom.id)} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded text-sm mt-2">
-              加入購物車
-            </button>
+            <ShopLinkButton item={rec.outfit.bottom} campaign="basket" compact />
           </div>
           {rec.outfit.outerwear && <div>
             <h3>外套</h3>
             <p>{rec.outfit.outerwear.name}</p>
             <img src={rec.outfit.outerwear.imageUrl} alt={rec.outfit.outerwear.name} />
-            <button onClick={() => console.log('Add to cart:', rec.outfit.outerwear?.id)} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded text-sm mt-2">
-              加入購物車
-            </button>
+            <ShopLinkButton item={rec.outfit.outerwear} campaign="basket" compact />
           </div>}
           <div>
             <h3>鞋子</h3>
             <p>{rec.outfit.shoes.name}</p>
             <img src={rec.outfit.shoes.imageUrl} alt={rec.outfit.shoes.name} />
-            <button onClick={() => console.log('Add to cart:', rec.outfit.shoes.id)} className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded text-sm mt-2">
-              加入購物車
-            </button>
+            <ShopLinkButton item={rec.outfit.shoes} campaign="basket" compact />
           </div>
         </div>
       ))}

@@ -92,13 +92,6 @@ export const appStates: AppState[] = [
   },
 
   {
-    name: 'checkout_authenticated',
-    currentPage: 'checkout',
-    loadingState: 'ready',
-    isAuthenticated: true,
-  },
-
-  {
     name: 'discount_authenticated',
     currentPage: 'discount',
     loadingState: 'ready',
@@ -200,11 +193,6 @@ export const visibilityExpectations: VisibilityExpectation[] = [
   { state: 'tryon_authenticated', ui: 'tryon-header', visible: true },
   { state: 'tryon_authenticated', ui: 'error-boundary', visible: true },
 
-  { state: 'checkout_authenticated', ui: 'bottom-nav', visible: true, reason: '結帳頁顯示導航欄' },
-  { state: 'checkout_authenticated', ui: 'checkout-action-bar', visible: true, reason: '結帳頁固定操作欄' },
-  { state: 'checkout_authenticated', ui: 'checkout-header', visible: true },
-  { state: 'checkout_authenticated', ui: 'error-boundary', visible: true },
-
   { state: 'discount_authenticated', ui: 'bottom-nav', visible: true, reason: '折扣頁顯示導航欄' },
   { state: 'discount_authenticated', ui: 'discount-header', visible: true },
   { state: 'discount_authenticated', ui: 'error-boundary', visible: true },
@@ -235,10 +223,8 @@ export const visibilityExpectations: VisibilityExpectation[] = [
   { state: 'wardrobe_authenticated', ui: 'quiz-modal', visible: false },
 
   // Address Modal - 在結帳時出現
-  { state: 'checkout_authenticated', ui: 'address-modal', visible: false, reason: '預設隱藏，用戶點擊編輯地址時出現' },
 
   // Payment Card Modal - 在結帳時出現
-  { state: 'checkout_authenticated', ui: 'payment-card-modal', visible: false, reason: '預設隱藏，用戶添加新信用卡時出現' },
 
   // Upload Options Dialog - 在上傳頁面時出現
   { state: 'upload_authenticated', ui: 'upload-options-dialog', visible: false, reason: '預設隱藏，用戶點擊上傳時出現' },
@@ -253,9 +239,7 @@ export const visibilityExpectations: VisibilityExpectation[] = [
 
   // ===== Priority 4-5: 頁面粘性標題 =====
   // Priority 4: 頁面粘性標題 (在各對應頁面顯示)
-  { state: 'checkout_authenticated', ui: 'checkout-header', visible: true, reason: '結帳頁粘性標題' },
   { state: 'home_authenticated', ui: 'cpw-ranking-header', visible: false, reason: '预设隐藏，从主页导航时出现' },
-  { state: 'home_authenticated', ui: 'delivery-tracking-header', visible: false, reason: '预设隐藏，从主页导航时出现' },
   { state: 'profile_authenticated', ui: 'profile-header', visible: true, reason: '個人檔案頁粘性標題' },
   { state: 'store_authenticated', ui: 'store-header', visible: true, reason: '商店頁粘性標題' },
   { state: 'explore_authenticated', ui: 'explore-header', visible: true, reason: '探索頁粘性標題' },

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Camera, User, Ruler, Settings, Upload, Edit2, Check, X, Package, ChevronRight, Sparkles, Search, Plus, ShoppingBag, Blend, Star, ShoppingCart, LogOut, CreditCard } from 'lucide-react';
+import { Camera, User, Ruler, Settings, Upload, Edit2, Check, X, Sparkles, Search, Plus, ShoppingBag, Blend, Star, LogOut } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { UploadOptionsDialog } from './UploadOptionsDialog';
@@ -23,14 +23,6 @@ interface AISettings {
   favoriteStores: string[];
 }
 
-interface Order {
-  id: string;
-  date: string;
-  total: number;
-  status: 'completed' | 'processing' | 'cancelled';
-  items: number;
-}
-
 const categoryDistribution = [
   { name: '上衣', count: 26 },
   { name: '下身', count: 18 },
@@ -39,39 +31,12 @@ const categoryDistribution = [
   { name: '配件', count: 20 },
 ];
 
-const recentOrders: Order[] = [
-  {
-    id: 'ORD-2024-1108-001',
-    date: '2024-11-08',
-    total: 4980,
-    status: 'completed',
-    items: 3,
-  },
-  {
-    id: 'ORD-2024-11-05-002',
-    date: '2024-11-05',
-    total: 2890,
-    status: 'processing',
-    items: 2,
-  },
-  {
-    id: 'ORD-2024-11-01-003',
-    date: '2024-11-01',
-    total: 1590,
-    status: 'completed',
-    items: 1,
-  },
-];
-
 interface ProfilePageProps {
-  onNavigateToCheckout?: () => void;
-  onNavigateToDelivery?: (merchant?: string) => void;
   onLogout?: () => void;
-  onNavigateToPaymentMethods?: () => void;
   onTryOnPhotoUpdate?: (photoUrl: string) => void;
 }
 
-export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogout, onNavigateToPaymentMethods, onTryOnPhotoUpdate }: ProfilePageProps = {}) {
+export function ProfilePage({ onLogout, onTryOnPhotoUpdate }: ProfilePageProps = {}) {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [tryOnPhoto, setTryOnPhoto] = useState<string | null>(null);
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
@@ -219,28 +184,6 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
       ...prev,
       favoriteStores: prev.favoriteStores.filter((s) => s !== store),
     }));
-  };
-
-  const getOrderStatusText = (status: Order['status']) => {
-    switch (status) {
-      case 'completed':
-        return '已完成';
-      case 'processing':
-        return '處理中';
-      case 'cancelled':
-        return '已取消';
-    }
-  };
-
-  const getOrderStatusColor = (status: Order['status']) => {
-    switch (status) {
-      case 'completed':
-        return 'text-[var(--vesti-success)]';
-      case 'processing':
-        return 'text-[var(--vesti-primary)]';
-      case 'cancelled':
-        return 'text-[var(--vesti-gray-mid)]';
-    }
   };
 
   return (
@@ -562,128 +505,6 @@ export function ProfilePage({ onNavigateToCheckout, onNavigateToDelivery, onLogo
                 </div>
               ))}
             </div>
-          </div>
-        </motion.section>
-
-        {/* Shopping Cart Quick Access */}
-        {onNavigateToCheckout && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-          >
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onNavigateToCheckout}
-              className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--vesti-primary)] to-[var(--vesti-secondary)] p-5 shadow-lg transition-all hover:shadow-xl"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                    <ShoppingCart className="h-7 w-7 text-white" strokeWidth={2.5} />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="mb-1 text-white" style={{ fontWeight: 600 }}>
-                      購物車
-                    </h3>
-                    <p className="text-white/90" style={{ fontSize: 'var(--text-label)' }}>
-                      3 件商品待結帳
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-6 w-6 text-white" strokeWidth={2.5} />
-              </div>
-            </motion.button>
-          </motion.section>
-        )}
-
-        {/* Payment Methods Management Section */}
-        {onNavigateToPaymentMethods && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.38 }}
-          >
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onNavigateToPaymentMethods}
-              className="w-full overflow-hidden rounded-2xl bg-white border-2 border-[var(--vesti-gray-mid)]/30 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-all hover:shadow-lg"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--vesti-primary)]/10">
-                    <CreditCard className="h-7 w-7 text-[var(--vesti-primary)]" strokeWidth={2.5} />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="mb-1 text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
-                      支付方式
-                    </h3>
-                    <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
-                      管理您的信用卡和付款資訊
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-6 w-6 text-[var(--vesti-gray-mid)]" strokeWidth={2.5} />
-              </div>
-            </motion.button>
-          </motion.section>
-        )}
-
-        {/* Order History Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="rounded-2xl bg-[var(--vesti-gray-light)] border-2 border-[var(--vesti-gray-mid)]/20 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-[var(--vesti-primary)]" strokeWidth={2} />
-              <h3 className="text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
-                訂單紀錄
-              </h3>
-            </div>
-            <button 
-              onClick={() => onNavigateToDelivery?.()}
-              className="flex items-center gap-1 text-[var(--vesti-primary)]" 
-              style={{ fontSize: 'var(--text-label)' }}
-            >
-              <span>查看全部</span>
-              <ChevronRight className="h-4 w-4" strokeWidth={2} />
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {recentOrders.map((order) => (
-              <div
-                key={order.id}
-                className="rounded-xl bg-[var(--vesti-background)] p-3 transition-all hover:shadow-sm"
-              >
-                <div className="mb-2 flex items-start justify-between">
-                  <div>
-                    <p className="text-[var(--vesti-dark)]" style={{ fontWeight: 600, fontSize: 'var(--text-label)' }}>
-                      {order.id}
-                    </p>
-                    <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: '11px' }}>
-                      {order.date}
-                    </p>
-                  </div>
-                  <span className={`${getOrderStatusColor(order.status)}`} style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>
-                    {getOrderStatusText(order.status)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
-                    共 {order.items} 件商品
-                  </span>
-                  <span className="text-[var(--vesti-primary)]" style={{ fontWeight: 700 }}>
-                    NT$ {order.total.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            ))}
           </div>
         </motion.section>
 

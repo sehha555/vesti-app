@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RefreshCw, Bell, ShoppingCart } from 'lucide-react';
+import { RefreshCw, Bell } from 'lucide-react';
 import type { WeatherSummary } from '@/packages/types/src/weather';
 
 // --- Import all required components from './components/figma/*' ---
@@ -12,7 +12,6 @@ import { QuickActions } from './components/figma/QuickActions';
 import { StackedCards } from './components/figma/StackedCards';
 import { WardrobeUtilization } from './components/figma/WardrobeUtilization';
 import { CPWRanking } from './components/figma/CPWRanking';
-import { EstimatedDelivery } from './components/figma/EstimatedDelivery';
 import { OutfitDetailModal } from './components/figma/OutfitDetailModal';
 import { BottomNav } from './components/figma/BottomNav';
 import { Toaster } from './components/figma/ui/sonner';
@@ -25,17 +24,13 @@ import { ExplorePage } from './components/figma/ExplorePage';
 import { StorePage } from './components/figma/StorePage';
 import { ProfilePage } from './components/figma/ProfilePage';
 import { TryOnPage } from './components/figma/TryOnPage';
-import { CheckoutPage } from './components/figma/CheckoutPage';
 import { DiscountPage } from './components/figma/DiscountPage';
 import { TrendingPage } from './components/figma/TrendingPage';
 import { UploadClothingPage } from './components/figma/UploadClothingPage';
 import { BroadcastPage } from './components/figma/BroadcastPage';
 import { CalendarPage } from './components/figma/CalendarPage';
 import { CPWRankingFullPage } from './components/figma/CPWRankingFullPage';
-import { DeliveryTrackingPage } from './components/figma/DeliveryTrackingPage';
 import { NotificationPage } from './components/figma/NotificationPage';
-import { PaymentMethodsPage } from './components/figma/PaymentMethodsPage';
-import type { PaymentCard } from './components/figma/AddPaymentCardModal';
 import { outfitKeyFromSlots } from '../lib/outfits/key';
 
 // --- Types and Mock Data ---
@@ -124,7 +119,7 @@ const outfits: Outfit[] = [
   },
 ];
 
-type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile' | 'tryon' | 'checkout' | 'discount' | 'trending' | 'upload' | 'login' | 'broadcast' | 'calendar' | 'cpwranking' | 'delivery' | 'notification' | 'payment-methods';
+type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile' | 'tryon' | 'discount' | 'trending' | 'upload' | 'login' | 'broadcast' | 'calendar' | 'cpwranking' | 'notification';
 
 const pageHierarchy: Record<PageType, number> = {
   'login': 0,
@@ -134,16 +129,13 @@ const pageHierarchy: Record<PageType, number> = {
   'store': 1,
   'profile': 1,
   'tryon': 2,
-  'checkout': 2,
   'discount': 2,
   'trending': 2,
   'upload': 2,
   'broadcast': 2,
   'calendar': 2,
   'cpwranking': 2,
-  'delivery': 2,
   'notification': 2,
-  'payment-methods': 2,
 };
 
 
@@ -156,14 +148,12 @@ export default function Page() {
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
-  const [selectedDeliveryMerchant, setSelectedDeliveryMerchant] = useState<string>('');
   const [weatherData, setWeatherData] = useState<WeatherSummary | undefined>();
   const [dailyOutfits, setDailyOutfits] = useState<Outfit[]>([]);
 
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
   const savedKeys = useMemo(() => new Set(savedOutfits.map((o) => o.key)), [savedOutfits]);
-  const [savedCards, setSavedCards] = useState<PaymentCard[]>([]);
   const [savedOutfitSets, setSavedOutfitSets] = useState<any[]>([]); // Mock state
   const [tryOnBasketItems, setTryOnBasketItems] = useState<any[]>([]); // Mock state
 
@@ -417,10 +407,6 @@ export default function Page() {
               <div className="flex h-16 items-center justify-between px-5">
                 <h1 className="text-2xl font-black italic tracking-tighter text-primary">VESTI</h1>
                 <div className="flex items-center gap-2">
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigateTo('checkout')} className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors">
-                    <ShoppingCart className="h-6 w-6 text-foreground" strokeWidth={2} />
-                    <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">3</div>
-                  </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigateTo('notification')} className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors">
                     <Bell className="h-6 w-6 text-foreground" strokeWidth={2} />
                     <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
@@ -441,7 +427,6 @@ export default function Page() {
             <div className="mb-16"><StackedCards outfits={dailyOutfits.length > 0 ? dailyOutfits : outfits} onCardClick={handleCardClick} savedKeys={savedKeys} onToggleSave={handleToggleSave} /></div>
             <WardrobeUtilization />
             <CPWRanking onNavigateToFullRanking={() => navigateTo('cpwranking')} />
-            <EstimatedDelivery onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} />
           </>
         );
       case 'wardrobe':
@@ -449,13 +434,11 @@ export default function Page() {
       case 'explore':
         return <ExplorePage />;
       case 'store':
-        return <StorePage onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToCheckout={() => navigateTo('checkout')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToTrending={() => navigateTo('trending')} />;
+        return <StorePage onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToTrending={() => navigateTo('trending')} />;
       case 'profile':
-        return <ProfilePage onNavigateToCheckout={() => navigateTo('checkout')} onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} onNavigateToPaymentMethods={() => navigateTo('payment-methods')} onLogout={handleLogout} />;
+        return <ProfilePage onLogout={handleLogout} />;
       case 'tryon':
-        return <TryOnPage onBack={() => navigateTo(previousPage)} onNavigateToCheckout={() => navigateTo('checkout')} />;
-      case 'checkout':
-        return <CheckoutPage onBack={() => navigateTo(previousPage)} />;
+        return <TryOnPage onBack={() => navigateTo(previousPage)} />;
       case 'discount':
         return <DiscountPage onBack={() => navigateTo(previousPage)} onNavigateToTryOn={() => navigateTo('tryon')} />;
       case 'trending':
@@ -470,12 +453,8 @@ export default function Page() {
         return <CalendarPage onBack={() => navigateTo(previousPage)} />;
       case 'cpwranking':
         return <CPWRankingFullPage onBack={() => navigateTo(previousPage)} />;
-      case 'delivery':
-        return <DeliveryTrackingPage onBack={() => navigateTo(previousPage)} initialMerchant={selectedDeliveryMerchant} />;
       case 'notification':
         return <NotificationPage onBack={() => navigateTo(previousPage)} />;
-      case 'payment-methods':
-        return <PaymentMethodsPage onBack={() => navigateTo(previousPage)} savedCards={savedCards} onCardsUpdate={setSavedCards} />;
       default:
         return null;
     }

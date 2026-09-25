@@ -1,8 +1,9 @@
 import { useState, useEffect, forwardRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
-import { Check, ShoppingCart, RotateCw, Sparkles, X, Sun, Cloud, CloudRain, Snowflake, Wind } from 'lucide-react';
+import { Check, ExternalLink, RotateCw, Sparkles, X, Sun, Cloud, CloudRain, Snowflake, Wind } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
+import { ShopLinksSheet, type ShoppableItem } from './ShopLinks';
 
 // -------------------
 // Types
@@ -14,6 +15,7 @@ interface OutfitItem {
   imageUrl: string;
   brand: string;
   category: string;
+  productUrl?: string;
 }
 
 interface OutfitSet {
@@ -346,7 +348,7 @@ const StyleCard = forwardRef<HTMLDivElement, StyleCardProps>(({
                </div>
                <div className="flex gap-3">
                  <button onClick={(e) => { e.stopPropagation(); onAddToBag(); }} className="flex-1 py-3 px-4 text-sm font-bold rounded-xl border-2 border-[var(--vesti-primary)] text-[var(--vesti-primary)] hover:bg-[var(--vesti-primary)]/5 transition-colors">加入試穿</button>
-                 <button onClick={(e) => { e.stopPropagation(); onBuy(); }} className="flex-1 py-3 px-4 text-sm font-bold rounded-xl bg-[var(--vesti-primary)] text-white hover:opacity-90 shadow-lg hover:shadow-[var(--vesti-primary)]/30 transition-all flex items-center justify-center gap-2"><ShoppingCart size={16} />立即購買</button>
+                 <button onClick={(e) => { e.stopPropagation(); onBuy(); }} className="flex-1 py-3 px-4 text-sm font-bold rounded-xl bg-[var(--vesti-primary)] text-white hover:opacity-90 shadow-lg hover:shadow-[var(--vesti-primary)]/30 transition-all flex items-center justify-center gap-2"><ExternalLink size={16} />前往購買</button>
                </div>
              </div>
           </div>
@@ -365,6 +367,7 @@ export function OutfitPackCard({ outfits, onSwitchToShopping }: OutfitPackCardPr
   const [cards, setCards] = useState<DeckCard[]>([]);
   const [flippedCardId, setFlippedCardId] = useState<string | null>(null);
   const [selectedItemsMap, setSelectedItemsMap] = useState<Record<number, number[]>>({});
+  const [shopLinkItems, setShopLinkItems] = useState<ShoppableItem[] | null>(null);
   const [isDispensing, setIsDispensing] = useState(false);
   const [exitX, setExitX] = useState(0);
 
@@ -458,7 +461,13 @@ export function OutfitPackCard({ outfits, onSwitchToShopping }: OutfitPackCardPr
                    selectedItems={selectedItemsMap[card.data.id] || []}
                    onToggleItem={(itemId) => handleToggleItem(card.data.id, itemId)}
                    onAddToBag={() => toast.success('已加入試穿籃 ')}
-                   onBuy={() => toast.success('前往結帳... ')}
+                   onBuy={() => {
+                     // 導購外連：有勾選就只列勾選的，沒勾就列整套
+                     const selected = selectedItemsMap[card.data.id] || [];
+                     setShopLinkItems(
+                       selected.length > 0 ? card.data.items.filter((item) => selected.includes(item.id)) : card.data.items
+                     );
+                   }}
                    isNew={card.isNew}
                    onSwipe={handleSwipe}
                    exitX={exitX}
@@ -488,6 +497,9 @@ export function OutfitPackCard({ outfits, onSwitchToShopping }: OutfitPackCardPr
         >
            左右滑動切換 • 點擊查看
         </motion.div>
+      )}
+      {shopLinkItems && (
+        <ShopLinksSheet items={shopLinkItems} campaign="outfit-pack" onClose={() => setShopLinkItems(null)} />
       )}
     </div>
   );

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
-import { Sparkles, Store, Shuffle, Grid3x3, Shirt, Cloud, Sun, CloudRain, Heart, ShoppingCart, ChevronDown, Check, RotateCw, ShoppingBag, Search } from 'lucide-react';
+import { Sparkles, Store, Shuffle, Grid3x3, Shirt, Cloud, Sun, CloudRain, Heart, ShoppingCart, ChevronDown, Check, RotateCw, ExternalLink, Search } from 'lucide-react';
 import { StoreOutfitCard } from './StoreOutfitCard';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
+import { ShopLinksSheet, type ShoppableItem } from './ShopLinks';
 
 interface OutfitItem {
   id: number;
@@ -12,6 +13,7 @@ interface OutfitItem {
   imageUrl: string;
   brand: string;
   category: string;
+  productUrl?: string;
 }
 
 interface OutfitSet {
@@ -61,6 +63,7 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
 
   // 卡片背面選中的商品 - Map<outfitId, Set<itemId>>
   const [selectedItems, setSelectedItems] = useState<Map<number, Set<number>>>(new Map());
+  const [shopLinkItems, setShopLinkItems] = useState<ShoppableItem[] | null>(null);
 
   // 模擬店家資料
   const availableStores = [
@@ -744,17 +747,15 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
 
                                 {/* 按鈕組 */}
                                 <div className="flex gap-2">
-                                  {/* 加入購物車按鈕 */}
+                                  {/* 前往購買：導購外連，列出每件商品的官網連結 */}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (selectedCount === 0) {
                                         toast('請先選擇商品');
                                       } else {
-                                        toast.success(`已將 ${selectedCount} 件商品加入購物車`);
-                                        const newSelectedItems = new Map(selectedItems);
-                                        newSelectedItems.set(card.id, new Set());
-                                        setSelectedItems(newSelectedItems);
+                                        const chosen = selectedItems.get(card.id) ?? new Set();
+                                        setShopLinkItems(card.items.filter((item) => chosen.has(item.id)));
                                       }
                                     }}
                                     disabled={selectedCount === 0}
@@ -764,8 +765,8 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
                                         : 'bg-[var(--vesti-gray-light)] text-[var(--vesti-gray-mid)] border-2 border-transparent cursor-not-allowed'
                                     }`}
                                   >
-                                    <ShoppingBag className="h-5 w-5" strokeWidth={2.5} />
-                                    <span style={{ fontWeight: 600 }}>購物車</span>
+                                    <ExternalLink className="h-5 w-5" strokeWidth={2.5} />
+                                    <span style={{ fontWeight: 600 }}>前往購買</span>
                                   </button>
 
                                   {/* 加入試衣籃按鈕 */}
@@ -826,6 +827,9 @@ export function AIOutfitRecommendation({ outfits }: AIOutfitRecommendationProps)
           <p className="mt-1">點擊右上角按鈕查看商品詳情</p>
         </div>
       </section>
+      {shopLinkItems && (
+        <ShopLinksSheet items={shopLinkItems} campaign="ai-outfit" onClose={() => setShopLinkItems(null)} />
+      )}
     </div>
   );
 }
