@@ -81,14 +81,14 @@ interface SavedOutfitRow {
   };
 }
 
-// 收藏的 id 給衣櫃頁當 key 用，跟推薦卡片的 1、2、3 分開
-const SAVED_ID_BASE = 100000;
+// 衣櫃頁以數字 id 當 key：每筆收藏轉換時配一個不會重複、之後也不變的 id（跟推薦卡片的 1、2、3 分開）
+let nextSavedCardId = 100000;
 
-function toSavedOutfit(row: SavedOutfitRow, index: number): SavedOutfit | null {
+function toSavedOutfit(row: SavedOutfitRow): SavedOutfit | null {
   const key = outfitKeyFromSlots(row.outfit_data?.layoutSlots);
   if (!key) return null;
   return {
-    id: SAVED_ID_BASE + index,
+    id: nextSavedCardId++,
     imageUrl: row.outfit_data.imageUrl,
     styleName: row.outfit_data.styleName,
     description: row.outfit_data.description ?? '',
@@ -154,8 +154,6 @@ export default function Page() {
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
   const savedKeys = useMemo(() => new Set(savedOutfits.map((o) => o.key)), [savedOutfits]);
-  const [savedOutfitSets, setSavedOutfitSets] = useState<any[]>([]); // Mock state
-  const [tryOnBasketItems, setTryOnBasketItems] = useState<any[]>([]); // Mock state
 
   // --- Hooks ---
   useScrollMemory(currentPage || 'home');
@@ -187,7 +185,6 @@ export default function Page() {
   // 輔助函數：將單品資料映射到白板槽位
   const createLayoutSlots = (items: any): LayoutSlot[] => {
     const slots: LayoutSlot[] = [];
-    const priority = 1;
 
     // 槽位定義：slotKey → items字段 的映射
     const slotMappings = [
@@ -383,10 +380,10 @@ export default function Page() {
     if (!res.ok || !body.savedOutfit?.id) throw new Error(body.error || `收藏失敗 (${res.status})`);
 
     setSavedOutfits((prev) => {
-      const saved = toSavedOutfit(body.savedOutfit, 0);
+      const saved = toSavedOutfit(body.savedOutfit);
       if (!saved || prev.some((o) => o.key === key)) return prev;
-      // 新收藏放最前面，重新編 id 讓衣櫃頁的 key 不重複
-      return [saved, ...prev].map((o, i) => ({ ...o, id: SAVED_ID_BASE + i }));
+      // 新收藏放最前面
+      return [saved, ...prev];
     });
     return 'saved';
   };

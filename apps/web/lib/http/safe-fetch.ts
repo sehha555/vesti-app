@@ -1,6 +1,6 @@
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
-import { parseRobots, isAllowedByRobots } from './robots';
+import { parseRobots, isAllowedByRobots, type RobotsRule } from './robots';
 
 /**
  * 給「抓使用者提供的網址」用的 fetch，擋 SSRF：
@@ -63,21 +63,18 @@ export function isBlockedDomain(hostname: string): boolean {
   return blockedDomains().some((d) => host === d || host.endsWith(`.${d}`));
 }
 
-// robots.txt 快取：同一個網站一小時內只抓一次
+// robots.txt 快取：同一個網站一小時內只抓一次；存 promise，同時進來的請求共用同一次抓取
 const ROBOTS_TTL_MS = 60 * 60 * 1000;
 const ROBOTS_CACHE_MAX = 500;
-const robotsCache = new Map<string, { rules: ReturnType<typeof parseRobots> | 'deny-all'; expires: number }>();
+type RobotsVerdict = RobotsRule[] | 'deny-all';
+const robotsCache = new Map<string, { verdict: Promise<RobotsVerdict>; expires: number }>();
 
 /** 測試用 */
 export function clearRobotsCache(): void {
   robotsCache.clear();
 }
 
-async function loadRobots(origin: string) {
-  const cached = robotsCache.get(origin);
-  if (cached && cached.expires > Date.now()) return cached.rules;
-
-  let rules: ReturnType<typeof parseRobots> | 'deny-all';
+async function fetchRobots(origin: string): Promise<RobotsVerdict> {
   try {
     const res = await safeFetch(`${origin}/robots.txt`, {
       maxBytes: 512 * 1024,
@@ -85,19 +82,25 @@ async function loadRobots(origin: string) {
       accept: [''],
       respectRobots: false,
     });
-    rules = parseRobots(res.buffer.toString('utf8'));
+    return parseRobots(res.buffer.toString('utf8'));
   } catch (err) {
     // RFC 9309：4xx 視為沒有限制；5xx 或連不上視為全部不允許
     const status = err instanceof SafeFetchError ? err.status : undefined;
-    rules = status !== undefined && status >= 400 && status < 500 ? [] : 'deny-all';
+    return status !== undefined && status >= 400 && status < 500 ? [] : 'deny-all';
   }
+}
+
+function loadRobots(origin: string): Promise<RobotsVerdict> {
+  const cached = robotsCache.get(origin);
+  if (cached && cached.expires > Date.now()) return cached.verdict;
 
   if (robotsCache.size >= ROBOTS_CACHE_MAX) {
     const oldest = robotsCache.keys().next().value;
     if (oldest) robotsCache.delete(oldest);
   }
-  robotsCache.set(origin, { rules, expires: Date.now() + ROBOTS_TTL_MS });
-  return rules;
+  const verdict = fetchRobots(origin);
+  robotsCache.set(origin, { verdict, expires: Date.now() + ROBOTS_TTL_MS });
+  return verdict;
 }
 
 async function assertAllowedByRobots(url: URL): Promise<void> {

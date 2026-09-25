@@ -9,14 +9,26 @@
 
 export const BOT_TOKEN = 'vestibot';
 
-interface Rule {
+export interface RobotsRule {
   allow: boolean;
-  pattern: string;
+  /** 規則本身的長度（不含結尾 $），衝突時比長短用 */
+  length: number;
+  regex: RegExp;
 }
 
-export function parseRobots(text: string, botToken = BOT_TOKEN): Rule[] {
-  const groups: Array<{ agents: string[]; rules: Rule[] }> = [];
-  let current: { agents: string[]; rules: Rule[] } | null = null;
+function compileRule(allow: boolean, pattern: string): RobotsRule {
+  const anchored = pattern.endsWith('$');
+  const body = anchored ? pattern.slice(0, -1) : pattern;
+  const source = body
+    .split('*')
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*');
+  return { allow, length: body.length, regex: new RegExp(`^${source}${anchored ? '$' : ''}`) };
+}
+
+export function parseRobots(text: string, botToken = BOT_TOKEN): RobotsRule[] {
+  const groups: Array<{ agents: string[]; rules: RobotsRule[] }> = [];
+  let current: { agents: string[]; rules: RobotsRule[] } | null = null;
   let lastWasAgent = false;
 
   for (const rawLine of text.split(/\r?\n/)) {
@@ -37,7 +49,7 @@ export function parseRobots(text: string, botToken = BOT_TOKEN): Rule[] {
     } else if ((key === 'allow' || key === 'disallow') && current) {
       lastWasAgent = false;
       // 空的 Disallow 代表全部允許，不需要規則
-      if (value) current.rules.push({ allow: key === 'allow', pattern: value });
+      if (value) current.rules.push(compileRule(key === 'allow', value));
     } else {
       lastWasAgent = false;
     }
@@ -49,24 +61,12 @@ export function parseRobots(text: string, botToken = BOT_TOKEN): Rule[] {
   return chosen.flatMap((g) => g.rules);
 }
 
-function matchLength(pattern: string, path: string): number {
-  const anchored = pattern.endsWith('$');
-  const body = anchored ? pattern.slice(0, -1) : pattern;
-  const regex = new RegExp(
-    '^' + body.split('*').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + (anchored ? '$' : '')
-  );
-  return regex.test(path) ? body.length : -1;
-}
-
 /** path 含 query，例如 `/tw/zh_TW/products/E123?color=01` */
-export function isAllowedByRobots(rules: Rule[], path: string): boolean {
-  let best: { length: number; allow: boolean } | null = null;
+export function isAllowedByRobots(rules: RobotsRule[], path: string): boolean {
+  let best: RobotsRule | null = null;
   for (const rule of rules) {
-    const length = matchLength(rule.pattern, path);
-    if (length < 0) continue;
-    if (!best || length > best.length || (length === best.length && rule.allow)) {
-      best = { length, allow: rule.allow };
-    }
+    if (!rule.regex.test(path)) continue;
+    if (!best || rule.length > best.length || (rule.length === best.length && rule.allow)) best = rule;
   }
   return best ? best.allow : true;
 }

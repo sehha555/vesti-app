@@ -1,29 +1,19 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { supabaseAdmin } from '@/lib/supabaseClient';
-import { getSupabaseAndUser } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { jsonNoStore } from '@/lib/http/no-store';
-import { checkRateLimit, type RateLimitConfig } from '@/lib/rateLimit';
-import { logSecurityEvent } from '@/lib/metrics';
-import { freshSignedUrls } from '../../../lib/closet/storage';
-import { outfitKeyFromSlots } from '../../../lib/outfits/key';
+import { requireUser } from '@/lib/http/require-user';
+import type { RateLimitConfig } from '@/lib/rateLimit';
+import { freshSignedUrls } from '@/lib/closet/storage';
+import { outfitKeyFromSlots } from '@/lib/outfits/key';
+import { LayoutSlotSchema, WeatherSchema } from '@/lib/outfits/schemas';
 
 /**
- * 首頁收藏的穿搭。
+ * 首頁收藏的穿搭。一律用使用者自己的 client（RLS 只允許碰自己的資料），不用 service role。
  *
  * outfit_data 存的是卡片當下的樣子（styleName、description、layoutSlots），
  * 另外存 key（組成單品 id 排序串起來）用來去重、讓前端辨認哪張卡已收藏。
  */
-
-const LayoutSlotSchema = z.object({
-  slotKey: z.string().min(1).max(50),
-  item: z.object({
-    id: z.string().max(100).optional(),
-    name: z.string().max(200).optional(),
-    imageUrl: z.string().max(2000).optional(),
-  }),
-  priority: z.number().int(),
-});
 
 const SaveOutfitSchema = z.object({
   outfitData: z.object({
@@ -32,7 +22,7 @@ const SaveOutfitSchema = z.object({
     description: z.string().max(2000).optional(),
     layoutSlots: z.array(LayoutSlotSchema).max(10).optional(),
   }),
-  weather: z.record(z.string(), z.unknown()).optional(),
+  weather: WeatherSchema.optional(),
   occasion: z.string().max(50).optional(),
   outfitType: z.enum(['saved', 'confirmed']).optional(),
 });
@@ -49,37 +39,6 @@ const POST_LIMIT: RateLimitConfig = { windowMs: 60_000, maxRequests: 20, keyPref
 const GET_LIMIT: RateLimitConfig = { windowMs: 60_000, maxRequests: 30, keyPrefix: 'saved-outfits-get' };
 const DELETE_LIMIT: RateLimitConfig = { windowMs: 60_000, maxRequests: 30, keyPrefix: 'saved-outfits-delete' };
 
-/** 驗證登入並限流；通過回 userId 與使用者自己的 supabase client，否則回錯誤 response */
-async function authorize(request: NextRequest, limit: RateLimitConfig) {
-  const { supabase, user } = await getSupabaseAndUser();
-  const userAgent = request.headers.get('user-agent') || '';
-  if (!user) {
-    logSecurityEvent({ endpoint: '/api/saved-outfits', statusCode: 401, reason: 'auth_required', userAgent });
-    return { error: jsonNoStore({ success: false, error: 'Unauthorized' }, { status: 401 }) };
-  }
-
-  const rl = await checkRateLimit(user.id, limit);
-  if (!rl.allowed) {
-    logSecurityEvent({ endpoint: '/api/saved-outfits', statusCode: 429, reason: 'forbidden', userAgent });
-    return {
-      error: jsonNoStore(
-        { success: false, error: 'Too many requests' },
-        {
-          status: 429,
-          headers: {
-            'RateLimit-Limit': String(rl.limit),
-            'RateLimit-Remaining': String(rl.remaining),
-            'RateLimit-Reset': String(rl.resetAfter),
-            'Retry-After': String(rl.retryAfter ?? rl.resetAfter),
-          },
-        }
-      ),
-    };
-  }
-
-  return { supabase, userId: user.id };
-}
-
 /**
  * POST /api/saved-outfits
  * Body: { outfitData: { imageUrl, styleName, description?, layoutSlots? }, weather?, occasion?, outfitType? }
@@ -89,9 +48,10 @@ async function authorize(request: NextRequest, limit: RateLimitConfig) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authorize(request, POST_LIMIT);
-    if (auth.error) return auth.error;
-    const { userId } = auth;
+    const auth = await requireUser(request, POST_LIMIT);
+    if (auth.response) return auth.response;
+    const { supabase, user } = auth;
+    const userId = user.id;
 
     let body: z.infer<typeof SaveOutfitSchema>;
     try {
@@ -105,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // 同樣幾件衣服組成的就是同一套，不重複存
     if (key) {
-      const { data: existing, error: checkError } = await supabaseAdmin
+      const { data: existing, error: checkError } = await supabase
         .from('saved_outfits')
         .select('*')
         .eq('user_id', userId)
@@ -124,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const outfitData: OutfitData = { ...body.outfitData, key };
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('saved_outfits')
       .insert([
         {
@@ -158,16 +118,17 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authorize(request, GET_LIMIT);
-    if (auth.error) return auth.error;
-    const { supabase, userId } = auth;
+    const auth = await requireUser(request, GET_LIMIT);
+    if (auth.response) return auth.response;
+    const { supabase, user } = auth;
+    const userId = user.id;
 
     const searchParams = request.nextUrl.searchParams;
     const outfitType = searchParams.get('outfitType') || 'saved';
     const occasion = searchParams.get('occasion');
     const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 100);
 
-    let query = supabaseAdmin
+    let query = supabase
       .from('saved_outfits')
       .select('*')
       .eq('user_id', userId)
@@ -199,16 +160,17 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = await authorize(request, DELETE_LIMIT);
-    if (auth.error) return auth.error;
-    const { userId } = auth;
+    const auth = await requireUser(request, DELETE_LIMIT);
+    if (auth.response) return auth.response;
+    const { supabase, user } = auth;
+    const userId = user.id;
 
     const id = z.string().uuid().safeParse(request.nextUrl.searchParams.get('id'));
     if (!id.success) {
       return jsonNoStore({ success: false, error: 'Invalid id' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('saved_outfits')
       .delete()
       .eq('id', id.data)
@@ -235,7 +197,7 @@ export async function DELETE(request: NextRequest) {
  * 衣物已被刪掉或簽不出來就沿用原本的網址。
  */
 async function withFreshImages(
-  supabase: Parameters<typeof freshSignedUrls>[0],
+  supabase: SupabaseClient,
   userId: string,
   rows: SavedOutfitRow[]
 ): Promise<SavedOutfitRow[]> {

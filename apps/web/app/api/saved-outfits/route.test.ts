@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { adminFrom } = vi.hoisted(() => ({ adminFrom: vi.fn() }));
+// 路由用使用者自己的 client（RLS），所有查詢都經過這個 from
+const { dbFrom } = vi.hoisted(() => ({ dbFrom: vi.fn() }));
 
-vi.mock('@/lib/supabaseClient', () => ({ supabaseAdmin: { from: adminFrom } }));
 vi.mock('@/lib/supabase/server', () => ({ getSupabaseAndUser: vi.fn() }));
 vi.mock('@/lib/rateLimit', () => ({ checkRateLimit: vi.fn() }));
 vi.mock('@/lib/metrics', () => ({ logSecurityEvent: vi.fn() }));
-vi.mock('../../../lib/closet/storage', () => ({ freshSignedUrls: vi.fn() }));
+vi.mock('@/lib/closet/storage', () => ({ freshSignedUrls: vi.fn() }));
 
 import { GET, POST, DELETE } from './route';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { freshSignedUrls } from '../../../lib/closet/storage';
+import { freshSignedUrls } from '@/lib/closet/storage';
 
 const BASE = 'http://localhost/api/saved-outfits';
 const SAVED_ID = '11111111-1111-4111-8111-111111111111';
@@ -38,8 +38,8 @@ function chain(result: { data?: unknown; error?: { message: string } | null }) {
   return { q, calls };
 }
 
-function loggedIn(userClient: unknown = { from: vi.fn() }) {
-  vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: userClient as never, user: { id: 'u1' } as never });
+function loggedIn() {
+  vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: { from: dbFrom } as never, user: { id: 'u1' } as never });
 }
 
 function post(body: unknown) {
@@ -70,14 +70,14 @@ describe('POST /api/saved-outfits', () => {
     loggedIn();
     const res = await POST(post({ outfitData: { imageUrl: 'x' } }));
     expect(res.status).toBe(400);
-    expect(adminFrom).not.toHaveBeenCalled();
+    expect(dbFrom).not.toHaveBeenCalled();
   });
 
   it('同一套（同樣幾件衣服）已收藏過就回既有那筆，不重複寫入', async () => {
     loggedIn();
     const existing = { id: SAVED_ID, outfit_data: { key: 'c1|c2' } };
     const dup = chain({ data: [existing] });
-    adminFrom.mockReturnValueOnce(dup.q);
+    dbFrom.mockReturnValueOnce(dup.q);
 
     const res = await POST(post({ outfitData: { imageUrl: 'x', styleName: '休閒', layoutSlots: slots } }));
 
@@ -85,14 +85,14 @@ describe('POST /api/saved-outfits', () => {
     expect((await res.json()).savedOutfit).toEqual(existing);
     expect(dup.calls).toContainEqual(['contains', ['outfit_data', { key: 'c1|c2' }]]);
     expect(dup.calls).toContainEqual(['eq', ['user_id', 'u1']]);
-    expect(adminFrom).toHaveBeenCalledTimes(1);
+    expect(dbFrom).toHaveBeenCalledTimes(1);
   });
 
   it('新的穿搭：以 session userId 寫入，outfit_data 帶 key', async () => {
     loggedIn();
     const dup = chain({ data: [] });
     const ins = chain({ data: { id: SAVED_ID } });
-    adminFrom.mockReturnValueOnce(dup.q).mockReturnValueOnce(ins.q);
+    dbFrom.mockReturnValueOnce(dup.q).mockReturnValueOnce(ins.q);
 
     const res = await POST(
       post({ outfitData: { imageUrl: 'x', styleName: '休閒', description: 'd', layoutSlots: slots }, occasion: 'work' })
@@ -113,7 +113,7 @@ describe('POST /api/saved-outfits', () => {
 
   it('寫入失敗回 500 且不外洩 DB 錯誤訊息', async () => {
     loggedIn();
-    adminFrom.mockReturnValueOnce(chain({ data: [] }).q).mockReturnValueOnce(chain({ error: { message: 'secret db detail' } }).q);
+    dbFrom.mockReturnValueOnce(chain({ data: [] }).q).mockReturnValueOnce(chain({ error: { message: 'secret db detail' } }).q);
     const res = await POST(post({ outfitData: { imageUrl: 'x', styleName: '休閒', layoutSlots: slots } }));
     expect(res.status).toBe(500);
     expect(JSON.stringify(await res.json())).not.toContain('secret db detail');
@@ -123,20 +123,22 @@ describe('POST /api/saved-outfits', () => {
 describe('GET /api/saved-outfits', () => {
   it('回傳前把單品圖片換成新的簽章網址，封面用第一件', async () => {
     const closet = chain({ data: [{ id: 'c1', image_url: 'p1' }, { id: 'c2', image_url: 'p2' }] });
-    const userClient = { from: vi.fn(() => closet.q) };
-    loggedIn(userClient);
-    adminFrom.mockReturnValueOnce(
-      chain({
-        data: [{ id: SAVED_ID, outfit_data: { imageUrl: 'https://old/c2', styleName: '休閒', layoutSlots: slots, key: 'c1|c2' } }],
-      }).q
-    );
+    loggedIn();
+    dbFrom
+      .mockReturnValueOnce(
+        chain({
+          data: [{ id: SAVED_ID, outfit_data: { imageUrl: 'https://old/c2', styleName: '休閒', layoutSlots: slots, key: 'c1|c2' } }],
+        }).q
+      )
+      .mockReturnValueOnce(closet.q);
     vi.mocked(freshSignedUrls).mockResolvedValue(new Map([['c1', 'https://new/c1'], ['c2', 'https://new/c2']]));
 
     const res = await GET(new NextRequest(BASE));
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(userClient.from).toHaveBeenCalledWith('closet_items');
+    expect(dbFrom).toHaveBeenNthCalledWith(1, 'saved_outfits');
+    expect(dbFrom).toHaveBeenNthCalledWith(2, 'closet_items');
     expect(closet.calls).toContainEqual(['eq', ['user_id', 'u1']]);
     const outfit = body.outfits[0].outfit_data;
     expect(outfit.layoutSlots.map((s: { item: { imageUrl: string } }) => s.item.imageUrl)).toEqual([
@@ -149,7 +151,7 @@ describe('GET /api/saved-outfits', () => {
   it('沒有單品資料的舊收藏原樣回傳', async () => {
     loggedIn();
     const legacy = { id: SAVED_ID, outfit_data: { imageUrl: 'https://img', styleName: 'old' } };
-    adminFrom.mockReturnValueOnce(chain({ data: [legacy] }).q);
+    dbFrom.mockReturnValueOnce(chain({ data: [legacy] }).q);
 
     const res = await GET(new NextRequest(BASE));
     expect((await res.json()).outfits).toEqual([legacy]);
@@ -167,7 +169,7 @@ describe('DELETE /api/saved-outfits', () => {
   it('刪除自己的收藏', async () => {
     loggedIn();
     const del = chain({ data: [{ id: SAVED_ID }] });
-    adminFrom.mockReturnValueOnce(del.q);
+    dbFrom.mockReturnValueOnce(del.q);
 
     const res = await DELETE(new NextRequest(`${BASE}?id=${SAVED_ID}`, { method: 'DELETE' }));
 
@@ -178,7 +180,7 @@ describe('DELETE /api/saved-outfits', () => {
 
   it('不存在或不是自己的回 404', async () => {
     loggedIn();
-    adminFrom.mockReturnValueOnce(chain({ data: [] }).q);
+    dbFrom.mockReturnValueOnce(chain({ data: [] }).q);
     const res = await DELETE(new NextRequest(`${BASE}?id=${SAVED_ID}`, { method: 'DELETE' }));
     expect(res.status).toBe(404);
   });

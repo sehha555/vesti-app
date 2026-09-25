@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { CLOSET_CATEGORIES, CLOSET_CATEGORY_LABELS } from '@/lib/closet/categories';
+import { siteNameFromUrl } from '@/lib/links/outbound';
+import { PRIMARY_BUTTON_STYLE } from '../components/figma/ShopLinks';
 
 // 極簡衣櫃頁：貼連結 / 拍照上傳加入衣櫃，看目前衣櫃，編輯名稱類別、刪除。
 
@@ -12,30 +15,27 @@ interface ClosetItem {
   source_url?: string | null;
 }
 
-const CATEGORIES = [
-  { value: 'top', label: '上身' },
-  { value: 'outerwear', label: '外套' },
-  { value: 'bottom', label: '下身' },
-  { value: 'shoes', label: '鞋子' },
-  { value: 'accessory', label: '配件' },
-  { value: 'uncategorized', label: '未分類' },
-];
-
-// 這個專案的 Tailwind 是 Figma 匯出時預先編譯好的，沒有 bg-black，按鈕顏色用品牌色變數
-const PRIMARY_BUTTON_STYLE = { background: 'var(--vesti-primary)' };
+const categoryLabel = (value: string) => CLOSET_CATEGORY_LABELS[value as keyof typeof CLOSET_CATEGORY_LABELS] ?? value;
 
 // 匯入的衣物標示圖片來源網站（著作權：保留出處、權利人可據此要求下架）
-function sourceHost(sourceUrl: string | null | undefined): string | null {
-  if (!sourceUrl) return null;
-  try {
-    const url = new URL(sourceUrl);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.hostname.replace(/^www\./, '') : null;
-  } catch {
-    return null;
-  }
+function SourceLink({ url }: { url: string | null | undefined }) {
+  const site = siteNameFromUrl(url);
+  if (!site) return null;
+  return (
+    <p className="truncate text-xs text-gray-400">
+      圖片來源：
+      <a
+        href={url!}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline"
+        aria-label={`前往 ${site} 查看原商品頁`}
+      >
+        {site} ↗
+      </a>
+    </p>
+  );
 }
-
-const categoryLabel = (value: string) => CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
 async function errorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -46,21 +46,12 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   }
 }
 
-function CategorySelect({
-  value,
-  onChange,
-  allowAuto = false,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  allowAuto?: boolean;
-}) {
+function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded border px-3 py-2">
-      {allowAuto && <option value="">未分類</option>}
-      {CATEGORIES.filter((c) => !allowAuto || c.value !== 'uncategorized').map((c) => (
-        <option key={c.value} value={c.value}>
-          {c.label}
+      {CLOSET_CATEGORIES.map((c) => (
+        <option key={c} value={c}>
+          {CLOSET_CATEGORY_LABELS[c]}
         </option>
       ))}
     </select>
@@ -75,14 +66,14 @@ export default function ClosetPage() {
   // 貼連結
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState('uncategorized');
   const [submitting, setSubmitting] = useState(false);
 
   // 拍照 / 選圖上傳
   const [file, setFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [uploadName, setUploadName] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('');
+  const [uploadCategory, setUploadCategory] = useState('uncategorized');
   const [uploading, setUploading] = useState(false);
 
   // 編輯
@@ -122,19 +113,20 @@ export default function ClosetPage() {
         body: JSON.stringify({
           url: url.trim(),
           ...(name.trim() ? { name: name.trim() } : {}),
-          ...(category ? { category } : {}),
+          category,
         }),
       });
-      const body = await res.json();
       if (!res.ok) {
-        setMessage(body.error ?? '匯入失敗');
+        setMessage(await errorMessage(res, '匯入失敗'));
         return;
       }
+      const body = await res.json();
       setUrl('');
       setName('');
-      setCategory('');
+      setCategory('uncategorized');
       setMessage(`已加入：${body.data?.name ?? '商品'}`);
-      await load();
+      // 回應就是新建的那筆（含新簽章圖片網址），不必整個衣櫃重抓
+      if (body.data) setItems((prev) => [body.data, ...prev]);
     } catch {
       setMessage('匯入失敗，請稍後再試');
     } finally {
@@ -151,7 +143,7 @@ export default function ClosetPage() {
       const form = new FormData();
       form.append('file', file);
       if (uploadName.trim()) form.append('name', uploadName.trim());
-      if (uploadCategory) form.append('category', uploadCategory);
+      form.append('category', uploadCategory);
 
       const res = await fetch('/api/closet-items/upload', { method: 'POST', body: form });
       if (!res.ok) {
@@ -162,9 +154,9 @@ export default function ClosetPage() {
       setFile(null);
       setFileInputKey((k) => k + 1); // 清掉 <input type="file"> 的選取
       setUploadName('');
-      setUploadCategory('');
+      setUploadCategory('uncategorized');
       setMessage(`已加入：${body.data?.name ?? '衣物'}`);
-      await load();
+      if (body.data) setItems((prev) => [body.data, ...prev]);
     } catch {
       setMessage('上傳失敗，請稍後再試');
     } finally {
@@ -258,7 +250,7 @@ export default function ClosetPage() {
           </label>
           <label className="block flex-1 text-sm">
             類別
-            <CategorySelect value={uploadCategory} onChange={setUploadCategory} allowAuto />
+            <CategorySelect value={uploadCategory} onChange={setUploadCategory} />
           </label>
         </div>
         <button
@@ -299,7 +291,7 @@ export default function ClosetPage() {
           </label>
           <label className="block flex-1 text-sm">
             類別
-            <CategorySelect value={category} onChange={setCategory} allowAuto />
+            <CategorySelect value={category} onChange={setCategory} />
           </label>
         </div>
         <button
@@ -355,20 +347,7 @@ export default function ClosetPage() {
                 <>
                   <p className="truncate text-xs">{item.name}</p>
                   <p className="text-xs text-gray-400">{categoryLabel(item.category)}</p>
-                  {sourceHost(item.source_url) && (
-                    <p className="truncate text-xs text-gray-400">
-                      圖片來源：
-                      <a
-                        href={item.source_url!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                        aria-label={`前往 ${sourceHost(item.source_url)} 查看原商品頁`}
-                      >
-                        {sourceHost(item.source_url)} ↗
-                      </a>
-                    </p>
-                  )}
+                  <SourceLink url={item.source_url} />
                   <div className="flex gap-2 text-xs">
                     <button type="button" onClick={() => startEdit(item)} className="text-blue-600">
                       編輯

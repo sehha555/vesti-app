@@ -9,8 +9,14 @@ export function outfitKeyFromItemIds(ids: Array<string | null | undefined>): str
   return clean.length > 0 ? [...new Set(clean)].sort().join('|') : null;
 }
 
-export function outfitKeyFromSlots(
-  slots: Array<{ item?: { id?: string | null } | null }> | null | undefined
-): string | null {
-  return outfitKeyFromItemIds((slots ?? []).map((s) => s.item?.id));
+type SlotLike = { item?: { id?: string | null } | null };
+
+/** 一套穿搭的組成單品 id（去掉空值與重複） */
+export function itemIdsFromSlots(slots: SlotLike[] | null | undefined): string[] {
+  const ids = (slots ?? []).map((s) => s.item?.id).filter((id): id is string => typeof id === 'string' && id.length > 0);
+  return [...new Set(ids)];
+}
+
+export function outfitKeyFromSlots(slots: SlotLike[] | null | undefined): string | null {
+  return outfitKeyFromItemIds(itemIdsFromSlots(slots));
 }

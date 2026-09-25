@@ -149,3 +149,23 @@ describe('safeFetch：robots.txt 與 User-Agent', () => {
     await expect(safeFetch('https://public.example/go', OPTS)).rejects.toMatchObject({ code: 'DISALLOWED' });
   });
 });
+
+describe('safeFetch：同時抓同一網站', () => {
+  beforeEach(() => clearRobotsCache());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('平行請求共用同一次 robots.txt 抓取', async () => {
+    const fetchMock = vi.fn(async (input: URL | string) => {
+      const url = input.toString();
+      if (url.endsWith('/robots.txt')) return new Response('', { status: 200, headers: { 'content-type': 'text/plain' } });
+      return new Response('x', { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const opts = { maxBytes: 1024, timeoutMs: 5000, accept: ['image/'] };
+    await Promise.all([1, 2, 3, 4].map((n) => safeFetch(`https://public.example/img/${n}.jpg`, opts)));
+
+    const robotsCalls = fetchMock.mock.calls.filter(([u]) => u.toString().endsWith('/robots.txt'));
+    expect(robotsCalls).toHaveLength(1);
+  });
+});

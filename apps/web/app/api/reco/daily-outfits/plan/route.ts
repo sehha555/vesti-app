@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { requireUser } from '@/lib/http/require-user';
+import { jsonNoStore } from '@/lib/http/no-store';
+import { DateSchema, LayoutSlotSchema, WeatherSchema, type LayoutSlotInput } from '@/lib/outfits/schemas';
 
 /**
  * 今日穿搭計畫：每人每天一筆（daily_outfit_plans 有 UNIQUE(user_id, date)）。
@@ -12,29 +14,14 @@ import { getSupabaseAndUser } from '@/lib/supabase/server';
  * DELETE /api/reco/daily-outfits/plan?date=YYYY-MM-DD → { ok }
  */
 
-const NO_STORE = { 'Cache-Control': 'private, no-store' };
-
-// 日期由前端用使用者當地時間算好送來（台灣早上 8 點前 UTC 還是昨天）
-const DateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD');
-
-const LayoutSlotSchema = z.object({
-  slotKey: z.string().min(1).max(50),
-  item: z
-    .object({
-      id: z.string().max(100).optional(),
-      name: z.string().max(200).optional(),
-      imageUrl: z.string().max(2000).optional(),
-    })
-    .passthrough(),
-  priority: z.number().int(),
-});
+const RATE_LIMIT = { keyPrefix: 'daily-plan', maxRequests: 60, windowMs: 60_000 };
 
 const PutBodySchema = z.object({
   date: DateSchema,
   outfitId: z.number().int(),
   layoutSlots: z.array(LayoutSlotSchema).min(1).max(10),
   occasion: z.string().max(50).optional(),
-  weather: z.record(z.string(), z.unknown()).optional(),
+  weather: WeatherSchema.optional(),
 });
 
 const PatchBodySchema = z.object({
@@ -45,7 +32,7 @@ const PatchBodySchema = z.object({
 interface PlanRow {
   date: string;
   outfit_id: number;
-  layout_slots: z.infer<typeof LayoutSlotSchema>[];
+  layout_slots: LayoutSlotInput[];
   occasion: string | null;
   weather: Record<string, unknown> | null;
   wore: boolean | null;
@@ -66,16 +53,13 @@ function toPlan(row: PlanRow) {
 
 const PLAN_COLUMNS = 'date, outfit_id, layout_slots, occasion, weather, wore, updated_at';
 
-function json(body: unknown, status = 200) {
-  return NextResponse.json(body, { status, headers: NO_STORE });
-}
-
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return json({ ok: false, error: 'Unauthorized' }, 401);
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
 
   const date = DateSchema.safeParse(req.nextUrl.searchParams.get('date'));
-  if (!date.success) return json({ ok: false, error: 'Invalid date' }, 400);
+  if (!date.success) return jsonNoStore({ error: 'Invalid date' }, { status: 400 });
 
   const { data, error } = await supabase
     .from('daily_outfit_plans')
@@ -86,21 +70,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   if (error) {
     console.error('[daily-outfits/plan] select failed:', error.message);
-    return json({ ok: false, error: 'Failed to load plan' }, 500);
+    return jsonNoStore({ error: 'Failed to load plan' }, { status: 500 });
   }
 
-  return json({ ok: true, plan: data ? toPlan(data as PlanRow) : null });
+  return jsonNoStore({ ok: true, plan: data ? toPlan(data as PlanRow) : null });
 }
 
 export async function PUT(req: NextRequest): Promise<NextResponse> {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return json({ ok: false, error: 'Unauthorized' }, 401);
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
 
   let body: z.infer<typeof PutBodySchema>;
   try {
     body = PutBodySchema.parse(await req.json());
   } catch {
-    return json({ ok: false, error: 'Invalid request body' }, 400);
+    return jsonNoStore({ error: 'Invalid request body' }, { status: 400 });
   }
 
   const { data, error } = await supabase
@@ -123,21 +108,22 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
 
   if (error) {
     console.error('[daily-outfits/plan] upsert failed:', error.message);
-    return json({ ok: false, error: 'Failed to save plan' }, 500);
+    return jsonNoStore({ error: 'Failed to save plan' }, { status: 500 });
   }
 
-  return json({ ok: true, plan: toPlan(data as PlanRow) });
+  return jsonNoStore({ ok: true, plan: toPlan(data as PlanRow) });
 }
 
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return json({ ok: false, error: 'Unauthorized' }, 401);
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
 
   let body: z.infer<typeof PatchBodySchema>;
   try {
     body = PatchBodySchema.parse(await req.json());
   } catch {
-    return json({ ok: false, error: 'Invalid request body' }, 400);
+    return jsonNoStore({ error: 'Invalid request body' }, { status: 400 });
   }
 
   const { data, error } = await supabase
@@ -150,19 +136,20 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
 
   if (error) {
     console.error('[daily-outfits/plan] update failed:', error.message);
-    return json({ ok: false, error: 'Failed to update plan' }, 500);
+    return jsonNoStore({ error: 'Failed to update plan' }, { status: 500 });
   }
-  if (!data) return json({ ok: false, error: 'Plan not found' }, 404);
+  if (!data) return jsonNoStore({ error: 'Plan not found' }, { status: 404 });
 
-  return json({ ok: true, plan: toPlan(data as PlanRow) });
+  return jsonNoStore({ ok: true, plan: toPlan(data as PlanRow) });
 }
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return json({ ok: false, error: 'Unauthorized' }, 401);
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
 
   const date = DateSchema.safeParse(req.nextUrl.searchParams.get('date'));
-  if (!date.success) return json({ ok: false, error: 'Invalid date' }, 400);
+  if (!date.success) return jsonNoStore({ error: 'Invalid date' }, { status: 400 });
 
   const { error } = await supabase
     .from('daily_outfit_plans')
@@ -172,8 +159,8 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 
   if (error) {
     console.error('[daily-outfits/plan] delete failed:', error.message);
-    return json({ ok: false, error: 'Failed to delete plan' }, 500);
+    return jsonNoStore({ error: 'Failed to delete plan' }, { status: 500 });
   }
 
-  return json({ ok: true });
+  return jsonNoStore({ ok: true });
 }

@@ -49,6 +49,9 @@ export async function suggestOutfits(params: {
   const rows = ((data ?? []) as ClosetRow[]).filter((r) => r.image_url);
   if (rows.length < MIN_ITEMS) return [];
 
+  // 回饋只需要 userId，跟圖片下載同時開始
+  const feedbackRows = loadRecentFeedback(supabase, userId);
+
   const settled = await Promise.allSettled(
     rows.map(async (row): Promise<ClosetItemForPrompt> => {
       const { buffer, mimeType } = await downloadClosetImage(supabase, storagePathFromImageUrl(row.image_url!));
@@ -73,7 +76,7 @@ export async function suggestOutfits(params: {
 
   // 核心迴圈：把使用者最近的回饋（要這套 / 不要 / 有沒有穿）一起給模型
   const feedbackSummary = summarizeFeedback(
-    await loadRecentFeedback(supabase, userId),
+    await feedbackRows,
     new Map(items.map((item) => [item.id, item.name]))
   );
 

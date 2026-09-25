@@ -222,10 +222,6 @@ export const visibilityExpectations: VisibilityExpectation[] = [
   { state: 'home_authenticated', ui: 'quiz-modal', visible: false, reason: '預設隱藏，由用戶交互觸發' },
   { state: 'wardrobe_authenticated', ui: 'quiz-modal', visible: false },
 
-  // Address Modal - 在結帳時出現
-
-  // Payment Card Modal - 在結帳時出現
-
   // Upload Options Dialog - 在上傳頁面時出現
   { state: 'upload_authenticated', ui: 'upload-options-dialog', visible: false, reason: '預設隱藏，用戶點擊上傳時出現' },
 

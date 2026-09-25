@@ -30,7 +30,7 @@ export function summarizeFeedback(
   now: Date = new Date()
 ): string | null {
   const latest = new Map<string, FeedbackRow>();
-  const skips = new Map<string, number>();
+  const skips = new Map<string, { count: number; row: FeedbackRow }>();
   const wornRecently = new Map<string, FeedbackRow>();
   const recentCutoff = now.getTime() - RECENT_WORN_DAYS * 86_400_000;
 
@@ -39,7 +39,8 @@ export function summarizeFeedback(
     if (!row.item_ids.every((id) => itemNames.has(id))) continue;
 
     if (row.action === 'skip') {
-      skips.set(row.outfit_key, (skips.get(row.outfit_key) ?? 0) + 1);
+      const seen = skips.get(row.outfit_key);
+      skips.set(row.outfit_key, { count: (seen?.count ?? 0) + 1, row: seen?.row ?? row });
       continue;
     }
     if (row.action === 'wore' && new Date(row.created_at).getTime() >= recentCutoff) {
@@ -60,9 +61,8 @@ export function summarizeFeedback(
       disliked.push(`- ${describe(row)}${reasons.length ? `（${reasons.join('、')}）` : ''}`);
     }
   }
-  for (const [key, count] of skips) {
+  for (const [key, { count, row }] of skips) {
     if (count < SKIP_THRESHOLD || latest.has(key)) continue;
-    const row = rows.find((r) => r.outfit_key === key)!;
     disliked.push(`- ${describe(row)}（推薦過 ${count} 次都直接滑過）`);
   }
   const worn = [...wornRecently.values()].map((row) => `- ${describe(row)}`);

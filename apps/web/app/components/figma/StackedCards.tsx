@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Bookmark, Check, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { haptic } from './hooks/useHaptic';
-import { outfitKeyFromSlots } from '../../../lib/outfits/key';
-import { sendFeedback } from '../../../lib/feedback/client';
-import { DISLIKE_REASONS, type DislikeReason } from '../../../lib/feedback/types';
+import { BottomSheet } from './ui/bottom-sheet';
+import { outfitKeyFromSlots } from '@/lib/outfits/key';
+import { localDate, sendFeedback } from '@/lib/feedback/client';
+import { DISLIKE_REASONS, type DislikeReason } from '@/lib/feedback/types';
 
 interface OutfitItem {
   id?: string;
@@ -35,36 +35,32 @@ interface Outfit {
 
 
 
-// 使用者當地的日期（台灣早上 8 點前 toISOString() 還是昨天的 UTC 日期）；offsetDays=-1 是昨天
-function localDate(offsetDays = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 // 卡片的 id 只是這次推薦的順序（1、2、3），重新整理後會變；用組成單品辨認是不是同一套
 const outfitKey = (outfit: Pick<Outfit, 'layoutSlots'>) => outfitKeyFromSlots(outfit.layoutSlots);
+
+// 範例卡片（首頁預設的假穿搭）沒有衣櫃單品，不能收藏 / 選定 / 回饋；回傳 key 或 null（並提示）
+function requireKey(outfit: Outfit, action: string): string | null {
+  const key = outfitKey(outfit);
+  if (!key) toast(`這是範例穿搭，衣櫃裡至少放 3 件衣服後就能${action}`);
+  return key;
+}
+
+async function fetchPlan(date: string): Promise<{ layoutSlots: LayoutSlot[]; wore: boolean | null } | null> {
+  const res = await fetch(`/api/reco/daily-outfits/plan?date=${date}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.ok ? data.plan : null;
+}
 
 interface StackedCardsProps {
   outfits: Outfit[];
   onCardClick: (outfit: Outfit) => void;
-  weather?: {
-    temp_c: number;
-    condition: string;
-    description: string;
-    iconUrl?: string;
-    humidity: number;
-    feels_like: number;
-    locationName?: string;
-  };
-  occasion?: string;
   // 已收藏穿搭的 key（組成單品）；收藏清單由首頁從伺服器載入並管理
   savedKeys?: ReadonlySet<string>;
   onToggleSave?: (outfit: Outfit) => Promise<'saved' | 'removed'>;
 }
 
-export function StackedCards({ outfits, onCardClick, weather, occasion, savedKeys, onToggleSave }: StackedCardsProps) {
+export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave }: StackedCardsProps) {
   const [cards, setCards] = useState(outfits);
   // 首頁一開始給的是預設卡片，Gemini 結果幾秒後才到；props 換了卡片要跟著換
   useEffect(() => {
@@ -82,41 +78,17 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
   // 昨天選的那套還沒回答有沒有穿
   const [yesterdayPlan, setYesterdayPlan] = useState<{ date: string; layoutSlots: LayoutSlot[] } | null>(null);
 
-  // 初始化：從 Supabase 回填今日已選定的穿搭（使用者身分由 session 決定）
+  // 回填今天已選定的穿搭；昨天選的還沒回答有沒有穿就問一次（最可靠的回饋）
   useEffect(() => {
-    const fetchTodayPlan = async () => {
-      try {
-        const res = await fetch(`/api/reco/daily-outfits/plan?date=${localDate()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.ok && data.plan) {
-          setPlannedKey(outfitKey(data.plan));
+    const yesterday = localDate(-1);
+    Promise.all([fetchPlan(localDate()), fetchPlan(yesterday)])
+      .then(([today, prev]) => {
+        if (today) setPlannedKey(outfitKey(today));
+        if (prev && prev.wore === null && prev.layoutSlots?.length) {
+          setYesterdayPlan({ date: yesterday, layoutSlots: prev.layoutSlots });
         }
-      } catch (error) {
-        console.error('[StackedCards] 載入今日計畫失敗:', error);
-      }
-    };
-
-    fetchTodayPlan();
-  }, []);
-
-  // 隔天問一次「昨天有穿嗎」：最可靠的回饋，直接餵回推薦
-  useEffect(() => {
-    const fetchYesterdayPlan = async () => {
-      try {
-        const date = localDate(-1);
-        const res = await fetch(`/api/reco/daily-outfits/plan?date=${date}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.ok && data.plan && data.plan.wore === null && data.plan.layoutSlots?.length) {
-          setYesterdayPlan({ date, layoutSlots: data.plan.layoutSlots });
-        }
-      } catch (error) {
-        console.error('[StackedCards] 載入昨天計畫失敗:', error);
-      }
-    };
-
-    fetchYesterdayPlan();
+      })
+      .catch((error) => console.error('[StackedCards] 載入今日計畫失敗:', error));
   }, []);
 
   const answerYesterday = async (wore: boolean) => {
@@ -143,7 +115,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
   const advanceTopCard = (skipped: boolean) => {
     const top = cards[0];
     if (skipped && top && outfitKey(top) !== plannedKey) {
-      sendFeedback('skip', top, { date: localDate(), occasion });
+      sendFeedback('skip', top);
     }
     setCards((prev) => (prev.length > 1 ? [...prev.slice(1), prev[0]] : prev));
   };
@@ -151,11 +123,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
   const openDislike = (e: React.MouseEvent) => {
     e.stopPropagation();
     const top = cards[0];
-    if (!top) return;
-    if (!outfitKey(top)) {
-      toast('這是範例穿搭，衣櫃裡至少放 3 件衣服後就能告訴我們你的喜好');
-      return;
-    }
+    if (!top || !requireKey(top, '告訴我們你的喜好')) return;
     haptic('light');
     setDislikeReasons([]);
     setDislikeTarget(top);
@@ -167,7 +135,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
 
   const submitDislike = () => {
     if (!dislikeTarget) return;
-    sendFeedback('dislike', dislikeTarget, { reasons: dislikeReasons, date: localDate(), occasion });
+    sendFeedback('dislike', dislikeTarget, { reasons: dislikeReasons });
     setDislikeTarget(null);
     haptic('success');
     toast('收到，下次推薦會避開這種搭配');
@@ -195,22 +163,16 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
     setIsDragging(true);
   };
 
-  const handleSave = async (e: React.MouseEvent, cardId: number) => {
+  const handleSave = async (e: React.MouseEvent, outfit: Outfit) => {
     e.stopPropagation();
     if (saveBusy || !onToggleSave) return;
     haptic('medium');
-
-    const outfit = cards.find(card => card.id === cardId);
-    if (!outfit) return;
-    if (!outfitKey(outfit)) {
-      toast('這是範例穿搭，衣櫃裡至少放 3 件衣服後就能收藏推薦');
-      return;
-    }
+    if (!requireKey(outfit, '收藏推薦')) return;
 
     setSaveBusy(true);
     try {
       const result = await onToggleSave(outfit);
-      sendFeedback(result === 'saved' ? 'save' : 'unsave', outfit, { date: localDate(), occasion });
+      sendFeedback(result === 'saved' ? 'save' : 'unsave', outfit);
       haptic('success');
       if (result === 'saved') {
         toast.success('已儲存穿搭');
@@ -225,19 +187,13 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
     }
   };
 
-  const handleConfirm = async (e: React.MouseEvent, cardId: number) => {
+  const handleConfirm = async (e: React.MouseEvent, card: Outfit) => {
     e.stopPropagation();
     if (planBusy) return;
     haptic('medium');
 
-    const card = cards.find(c => c.id === cardId);
-    if (!card) return;
-
-    const key = outfitKey(card);
-    if (!key) {
-      toast('這是範例穿搭，衣櫃裡至少放 3 件衣服後就能加入今日計畫');
-      return;
-    }
+    const key = requireKey(card, '加入今日計畫');
+    if (!key) return;
 
     const previousKey = plannedKey;
     const isCurrentlyConfirmed = previousKey === key;
@@ -257,8 +213,6 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
               date,
               outfitId: card.id,
               layoutSlots: card.layoutSlots,
-              occasion: occasion || 'casual',
-              ...(weather ? { weather } : {}),
             }),
           });
 
@@ -267,7 +221,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
         throw new Error(result.error || '保存失敗');
       }
 
-      sendFeedback(isCurrentlyConfirmed ? 'unchoose' : 'choose', card, { date, occasion });
+      sendFeedback(isCurrentlyConfirmed ? 'unchoose' : 'choose', card, { date });
       haptic('success');
       toast.success(isCurrentlyConfirmed ? '已取消今日穿搭' : '就穿這套！已加入今日穿搭計畫');
     } catch (error) {
@@ -520,7 +474,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={(e) => handleSave(e, card.id)}
+                          onClick={(e) => handleSave(e, card)}
                           aria-label={isSaved ? '取消收藏' : '收藏穿搭'}
                           aria-pressed={isSaved}
                           className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md ${isSaved
@@ -575,7 +529,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
           <motion.button
             type="button"
             whileTap={{ scale: 0.95 }}
-            onClick={(e) => handleConfirm(e, topCard.id)}
+            onClick={(e) => handleConfirm(e, topCard)}
             disabled={planBusy}
             aria-label={topConfirmed ? '取消今日穿搭' : '選為今日穿搭'}
             aria-pressed={topConfirmed}
@@ -588,55 +542,41 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, savedKey
         </div>
       )}
 
-      {/* 「不要」的原因（可複選，也可以直接送出）
-          用 portal 掛到 body：頁面外層有動畫 transform，留在裡面會被底部導覽列蓋住 */}
-      {dislikeTarget && createPortal(
-        <div
-          className="fixed inset-0 flex items-end justify-center"
-          style={{ background: 'rgba(0,0,0,0.4)', zIndex: 100 }}
-          onClick={() => setDislikeTarget(null)}
-        >
-          <div
-            role="dialog"
-            aria-label="不要這套的原因"
-            className="w-full space-y-3 bg-white p-5"
-            style={{ maxWidth: 480, borderRadius: '20px 20px 0 0' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm font-medium">哪裡不喜歡？（可複選，幫我們下次推得更準）</p>
-            <div className="flex flex-wrap gap-2">
-              {DISLIKE_REASONS.map((r) => {
-                const active = dislikeReasons.includes(r.value);
-                return (
-                  <button
-                    key={r.value}
-                    type="button"
-                    onClick={() => toggleReason(r.value)}
-                    aria-pressed={active}
-                    className={`rounded-full border px-3 py-2 text-xs ${active ? 'text-white' : ''}`}
-                    style={active ? { background: 'var(--vesti-primary)', borderColor: 'var(--vesti-primary)' } : undefined}
-                  >
-                    {r.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setDislikeTarget(null)} className="flex-1 rounded-full border py-3 text-sm">
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={submitDislike}
-                className="flex-1 rounded-full py-3 text-sm text-white"
-                style={{ background: 'var(--vesti-primary)' }}
-              >
-                送出
-              </button>
-            </div>
+      {/* 「不要」的原因（可複選，也可以直接送出） */}
+      {dislikeTarget && (
+        <BottomSheet label="不要這套的原因" onClose={() => setDislikeTarget(null)}>
+          <p className="text-sm font-medium">哪裡不喜歡？（可複選，幫我們下次推得更準）</p>
+          <div className="flex flex-wrap gap-2">
+            {DISLIKE_REASONS.map((r) => {
+              const active = dislikeReasons.includes(r.value);
+              return (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => toggleReason(r.value)}
+                  aria-pressed={active}
+                  className={`rounded-full border px-3 py-2 text-xs ${active ? 'text-white' : ''}`}
+                  style={active ? { background: 'var(--vesti-primary)', borderColor: 'var(--vesti-primary)' } : undefined}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
           </div>
-        </div>,
-        document.body
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setDislikeTarget(null)} className="flex-1 rounded-full border py-3 text-sm">
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={submitDislike}
+              className="flex-1 rounded-full py-3 text-sm text-white"
+              style={{ background: 'var(--vesti-primary)' }}
+            >
+              送出
+            </button>
+          </div>
+        </BottomSheet>
       )}
     </div>
   );
