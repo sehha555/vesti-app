@@ -4,6 +4,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { haptic } from './hooks/useHaptic';
+import { outfitKeyFromSlots } from '../../../lib/outfits/key';
 
 interface OutfitItem {
   id?: string;
@@ -31,10 +32,19 @@ interface Outfit {
 
 
 
+// 使用者當地的今天（台灣早上 8 點前 toISOString() 還是昨天的 UTC 日期）
+function localDate(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// 卡片的 id 只是這次推薦的順序（1、2、3），重新整理後會變；用組成單品辨認是不是同一套
+const outfitKey = (outfit: Pick<Outfit, 'layoutSlots'>) => outfitKeyFromSlots(outfit.layoutSlots);
+
 interface StackedCardsProps {
   outfits: Outfit[];
   onCardClick: (outfit: Outfit) => void;
-  userId?: string;
   weather?: {
     temp_c: number;
     condition: string;
@@ -45,12 +55,12 @@ interface StackedCardsProps {
     locationName?: string;
   };
   occasion?: string;
-  onSaveOutfit?: (outfit: Outfit) => void; // 新增：通知 App.tsx 收藏狀態變化
+  // 已收藏穿搭的 key（組成單品）；收藏清單由首頁從伺服器載入並管理
+  savedKeys?: ReadonlySet<string>;
+  onToggleSave?: (outfit: Outfit) => Promise<'saved' | 'removed'>;
 }
 
-export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOutfit }: StackedCardsProps) {
-  // M2 再改成從 session 取得，目前先讀環境變數或 fallback 測試用戶
-  const userId = process.env.NEXT_PUBLIC_VESTI_TEST_USER_ID || "8b5b6279-7580-4db0-a1f8-e2937913359e";
+export function StackedCards({ outfits, onCardClick, weather, occasion, savedKeys, onToggleSave }: StackedCardsProps) {
   const [cards, setCards] = useState(outfits);
   // 首頁一開始給的是預設卡片，Gemini 結果幾秒後才到；props 換了卡片要跟著換
   useEffect(() => {
@@ -58,35 +68,20 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
   }, [outfits]);
   const [isDragging, setIsDragging] = useState(false);
   const [exitX, setExitX] = useState(0);
-  const [savedCards, setSavedCards] = useState<Set<number>>(new Set());
-  const [confirmedCards, setConfirmedCards] = useState<Set<number>>(new Set());
+  const [saveBusy, setSaveBusy] = useState(false);
+  // 今日計畫選定的那一套（以組成單品辨認），每人每天只有一套
+  const [plannedKey, setPlannedKey] = useState<string | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
 
-  useEffect(() => {
-    // 從 localStorage 讀取已保存的穿搭 ID
-    const savedOutfitsKey = `vesti_saved_outfits_${userId}`;
-    const existingSaved = localStorage.getItem(savedOutfitsKey);
-    if (existingSaved) {
-      try {
-        const savedOutfits = JSON.parse(existingSaved);
-        // 提取所有已收藏穿搭的 ID
-        const savedIds = savedOutfits.map((outfit: any) => outfit.id);
-        setSavedCards(new Set(savedIds));
-      } catch (error) {
-        console.error('讀取收藏穿搭失敗:', error);
-      }
-    }
-  }, [userId]);
-
-  // 初始化：從 Supabase 回填今日已選定的穿搭
+  // 初始化：從 Supabase 回填今日已選定的穿搭（使用者身分由 session 決定）
   useEffect(() => {
     const fetchTodayPlan = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
-        const res = await fetch(`/api/reco/daily-outfits/plan?userId=${userId}&date=${today}`);
+        const res = await fetch(`/api/reco/daily-outfits/plan?date=${localDate()}`);
+        if (!res.ok) return;
         const data = await res.json();
-
-        if (data.ok && data.plan?.outfitId) {
-          setConfirmedCards(new Set([data.plan.outfitId]));
+        if (data.ok && data.plan) {
+          setPlannedKey(outfitKey(data.plan));
         }
       } catch (error) {
         console.error('[StackedCards] 載入今日計畫失敗:', error);
@@ -94,7 +89,7 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
     };
 
     fetchTodayPlan();
-  }, [userId]);
+  }, []);
 
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 80;
@@ -126,156 +121,83 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
 
   const handleSave = async (e: React.MouseEvent, cardId: number) => {
     e.stopPropagation();
+    if (saveBusy || !onToggleSave) return;
     haptic('medium');
 
-    const isSaved = savedCards.has(cardId);
+    const outfit = cards.find(card => card.id === cardId);
+    if (!outfit) return;
+    if (!outfitKey(outfit)) {
+      toast('這是範例穿搭，衣櫃裡至少放 3 件衣服後就能收藏推薦');
+      return;
+    }
 
-    if (isSaved) {
-      // 取消收藏
-      setSavedCards(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(cardId);
-        return newSet;
-      });
-
-      // 從 localStorage 移除
-      const savedOutfitsKey = `vesti_saved_outfits_${userId}`;
-      const existingSaved = localStorage.getItem(savedOutfitsKey);
-      if (existingSaved) {
-        const savedOutfits = JSON.parse(existingSaved);
-        const updatedOutfits = savedOutfits.filter((o: any) => o.id !== cardId);
-        localStorage.setItem(savedOutfitsKey, JSON.stringify(updatedOutfits));
+    setSaveBusy(true);
+    try {
+      const result = await onToggleSave(outfit);
+      haptic('success');
+      if (result === 'saved') {
+        toast.success('已儲存穿搭');
+      } else {
+        toast('已取消收藏');
       }
-
-      toast('已取消收藏');
-    } else {
-      // 儲存穿搭
-      const outfit = cards.find(card => card.id === cardId);
-      if (!outfit || !userId) {
-        toast.error('儲存失敗：缺少必要資訊');
-        return;
-      }
-
-      try {
-        // 立即更新為已收藏狀態
-        setSavedCards(prev => {
-          const newSet = new Set(prev);
-          newSet.add(cardId);
-          return newSet;
-        });
-
-        // 儲存到 localStorage
-        const savedOutfitsKey = `vesti_saved_outfits_${userId}`;
-        const outfitData = {
-          id: cardId,
-          imageUrl: outfit.imageUrl,
-          styleName: outfit.styleName,
-          description: outfit.description,
-          weather,
-          occasion,
-          savedAt: new Date().toISOString(),
-        };
-
-        // 獲取現有的收藏
-        const existingSaved = localStorage.getItem(savedOutfitsKey);
-        const savedOutfits = existingSaved ? JSON.parse(existingSaved) : [];
-
-        // 檢查是否已存在
-        const alreadyExists = savedOutfits.some((o: any) => o.id === cardId);
-
-        if (!alreadyExists) {
-          savedOutfits.push(outfitData);
-          localStorage.setItem(savedOutfitsKey, JSON.stringify(savedOutfits));
-        }
-
-        // 成功震動
-        haptic('success');
-
-        if (alreadyExists) {
-          toast.success('此穿搭已在收藏中');
-        } else {
-          toast.success('已儲存穿搭 ');
-        }
-
-        // 通知 App.tsx 收藏狀態變化
-        if (onSaveOutfit) {
-          onSaveOutfit(outfit);
-        }
-      } catch (error) {
-        console.error('儲存穿搭失敗:', error);
-        // 如果失敗，還原收藏狀態
-        setSavedCards(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(cardId);
-          return newSet;
-        });
-        toast.error('儲存失敗，請再試一次');
-      }
+    } catch (error) {
+      console.error('[StackedCards] 更新收藏失敗:', error);
+      toast.error('收藏失敗，請再試一次');
+    } finally {
+      setSaveBusy(false);
     }
   };
 
   const handleConfirm = async (e: React.MouseEvent, cardId: number) => {
     e.stopPropagation();
+    if (planBusy) return;
     haptic('medium');
 
     const card = cards.find(c => c.id === cardId);
     if (!card) return;
 
-    const isCurrentlyConfirmed = confirmedCards.has(cardId);
-
-    // Optimistic UI 更新
-    setConfirmedCards(prev => {
-      const newSet = new Set(prev);
-      if (isCurrentlyConfirmed) {
-        newSet.delete(cardId);
-      } else {
-        newSet.add(cardId);
-      }
-      return newSet;
-    });
-
-    // 如果取消選定，不需要調用 API
-    if (isCurrentlyConfirmed) {
-      toast('已取消選定');
+    const key = outfitKey(card);
+    if (!key) {
+      toast('這是範例穿搭，衣櫃裡至少放 3 件衣服後就能加入今日計畫');
       return;
     }
 
+    const previousKey = plannedKey;
+    const isCurrentlyConfirmed = previousKey === key;
+    const date = localDate();
+
+    // Optimistic UI：每天只有一套，選新的就取代舊的
+    setPlannedKey(isCurrentlyConfirmed ? null : key);
+    setPlanBusy(true);
+
     try {
-      // 準備 API 請求資料
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const payload = {
-        userId: userId,
-        date: today,
-        outfitId: card.id,
-        layoutSlots: card.layoutSlots || {},
-        occasion: 'casual', // 暫時硬編
-        weather: {} // 暫時硬編
-      };
+      const response = isCurrentlyConfirmed
+        ? await fetch(`/api/reco/daily-outfits/plan?date=${date}`, { method: 'DELETE' })
+        : await fetch('/api/reco/daily-outfits/plan', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date,
+              outfitId: card.id,
+              layoutSlots: card.layoutSlots,
+              occasion: occasion || 'casual',
+              ...(weather ? { weather } : {}),
+            }),
+          });
 
-      // 呼叫 Supabase API
-      const response = await fetch('/api/reco/daily-outfits/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.ok) {
-        throw new Error(result.message || '保存失敗');
+        throw new Error(result.error || '保存失敗');
       }
 
-      haptic('success'); // 成功震動
-      toast.success('已加入今日穿搭計畫 ');
+      haptic('success');
+      toast.success(isCurrentlyConfirmed ? '已取消今日穿搭' : '已加入今日穿搭計畫');
     } catch (error) {
-      // 失敗時 Rollback optimistic UI
-      setConfirmedCards(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(cardId);
-        return newSet;
-      });
-
-      console.error('[StackedCards] 保存穿搭計畫失敗:', error);
-      toast.error('保存失敗，請重試');
+      setPlannedKey(previousKey);
+      console.error('[StackedCards] 更新今日穿搭計畫失敗:', error);
+      toast.error(isCurrentlyConfirmed ? '取消失敗，請重試' : '保存失敗，請重試');
+    } finally {
+      setPlanBusy(false);
     }
   };
 
@@ -285,8 +207,9 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
         <AnimatePresence mode="popLayout">
           {cards.slice(0, 3).map((card, index) => {
             const isTop = index === 0;
-            const isSaved = savedCards.has(card.id);
-            const isConfirmed = confirmedCards.has(card.id);
+            const cardKey = outfitKey(card);
+            const isSaved = cardKey !== null && (savedKeys?.has(cardKey) ?? false);
+            const isConfirmed = cardKey !== null && cardKey === plannedKey;
 
             // 水平堆疊參數 - 右側露出
             const xOffset = index === 0 ? 0 : index === 1 ? 15 : 30;
@@ -487,6 +410,8 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => handleSave(e, card.id)}
+                          aria-label={isSaved ? '取消收藏' : '收藏穿搭'}
+                          aria-pressed={isSaved}
                           className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md ${isSaved
                             ? 'bg-[var(--vesti-primary)] shadow-lg'
                             : 'bg-black/20 hover:bg-black/30'
@@ -502,6 +427,8 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={(e) => handleConfirm(e, card.id)}
+                          aria-label={isConfirmed ? '取消今日穿搭' : '選為今日穿搭'}
+                          aria-pressed={isConfirmed}
                           className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all shadow-md ${isConfirmed
                             ? 'bg-[var(--vesti-accent)] shadow-lg'
                             : 'bg-black/20 hover:bg-black/30'

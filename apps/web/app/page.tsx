@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RefreshCw, Bell, ShoppingCart } from 'lucide-react';
 import type { WeatherSummary } from '@/packages/types/src/weather';
@@ -36,6 +36,7 @@ import { DeliveryTrackingPage } from './components/figma/DeliveryTrackingPage';
 import { NotificationPage } from './components/figma/NotificationPage';
 import { PaymentMethodsPage } from './components/figma/PaymentMethodsPage';
 import type { PaymentCard } from './components/figma/AddPaymentCardModal';
+import { outfitKeyFromSlots } from '../lib/outfits/key';
 
 // --- Types and Mock Data ---
 interface OutfitItem {
@@ -67,6 +68,39 @@ interface Outfit {
     accessories?: OutfitItem;   // 配件 (預留)
   };
   layoutSlots?: LayoutSlot[];   // 白板結構：人體結構分槽
+}
+
+// 伺服器上的收藏（/api/saved-outfits），savedId 用來取消收藏
+interface SavedOutfit extends Outfit {
+  savedId: string;
+  key: string;
+}
+
+interface SavedOutfitRow {
+  id: string;
+  outfit_data: {
+    imageUrl: string;
+    styleName: string;
+    description?: string;
+    layoutSlots?: LayoutSlot[];
+  };
+}
+
+// 收藏的 id 給衣櫃頁當 key 用，跟推薦卡片的 1、2、3 分開
+const SAVED_ID_BASE = 100000;
+
+function toSavedOutfit(row: SavedOutfitRow, index: number): SavedOutfit | null {
+  const key = outfitKeyFromSlots(row.outfit_data?.layoutSlots);
+  if (!key) return null;
+  return {
+    id: SAVED_ID_BASE + index,
+    imageUrl: row.outfit_data.imageUrl,
+    styleName: row.outfit_data.styleName,
+    description: row.outfit_data.description ?? '',
+    layoutSlots: row.outfit_data.layoutSlots,
+    savedId: row.id,
+    key,
+  };
 }
 
 const outfits: Outfit[] = [
@@ -127,7 +161,8 @@ export default function Page() {
   const [dailyOutfits, setDailyOutfits] = useState<Outfit[]>([]);
 
   // Mock Data States
-  const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
+  const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
+  const savedKeys = useMemo(() => new Set(savedOutfits.map((o) => o.key)), [savedOutfits]);
   const [savedCards, setSavedCards] = useState<PaymentCard[]>([]);
   const [savedOutfitSets, setSavedOutfitSets] = useState<any[]>([]); // Mock state
   const [tryOnBasketItems, setTryOnBasketItems] = useState<any[]>([]); // Mock state
@@ -306,11 +341,64 @@ export default function Page() {
     setTimeout(() => setSelectedOutfit(null), 300);
   };
 
-  const handleSaveOutfit = (outfit: Outfit) => {
-    setSavedOutfits(prev => {
-      const exists = prev.find(o => o.id === outfit.id);
-      return exists ? prev.filter(o => o.id !== outfit.id) : [...prev, outfit];
+  // 登入後從伺服器載入收藏（首頁愛心狀態 + 衣櫃頁「收藏」都用這份）
+  const isLoggedIn = currentPage !== null && currentPage !== 'login';
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/saved-outfits?limit=100');
+        if (!res.ok) return;
+        const body = await res.json();
+        const rows: SavedOutfitRow[] = body.outfits ?? [];
+        const list = rows.map(toSavedOutfit).filter((o): o is SavedOutfit => o !== null);
+        if (!cancelled) setSavedOutfits(list);
+      } catch (error) {
+        console.error('[Page] 載入收藏失敗:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
+
+  const handleToggleSave = async (outfit: Outfit): Promise<'saved' | 'removed'> => {
+    const key = outfitKeyFromSlots(outfit.layoutSlots);
+    if (!key) throw new Error('範例穿搭無法收藏');
+
+    const existing = savedOutfits.find((o) => o.key === key);
+    if (existing) {
+      const res = await fetch(`/api/saved-outfits?id=${existing.savedId}`, { method: 'DELETE' });
+      // 404 代表伺服器上已經沒有了，一樣從畫面移除
+      if (!res.ok && res.status !== 404) throw new Error(`取消收藏失敗 (${res.status})`);
+      setSavedOutfits((prev) => prev.filter((o) => o.key !== key));
+      return 'removed';
+    }
+
+    const res = await fetch('/api/saved-outfits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        outfitData: {
+          imageUrl: outfit.imageUrl,
+          styleName: outfit.styleName,
+          description: outfit.description,
+          layoutSlots: outfit.layoutSlots,
+        },
+        occasion: 'casual',
+      }),
     });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.savedOutfit?.id) throw new Error(body.error || `收藏失敗 (${res.status})`);
+
+    setSavedOutfits((prev) => {
+      const saved = toSavedOutfit(body.savedOutfit, 0);
+      if (!saved || prev.some((o) => o.key === key)) return prev;
+      // 新收藏放最前面，重新編 id 讓衣櫃頁的 key 不重複
+      return [saved, ...prev].map((o, i) => ({ ...o, id: SAVED_ID_BASE + i }));
+    });
+    return 'saved';
   };
 
   // --- Page Renderer ---
@@ -350,7 +438,7 @@ export default function Page() {
             <WeatherCard weather={weatherData} />
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
             <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
-            <div className="mb-16"><StackedCards outfits={dailyOutfits.length > 0 ? dailyOutfits : outfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} /></div>
+            <div className="mb-16"><StackedCards outfits={dailyOutfits.length > 0 ? dailyOutfits : outfits} onCardClick={handleCardClick} savedKeys={savedKeys} onToggleSave={handleToggleSave} /></div>
             <WardrobeUtilization />
             <CPWRanking onNavigateToFullRanking={() => navigateTo('cpwranking')} />
             <EstimatedDelivery onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} />
