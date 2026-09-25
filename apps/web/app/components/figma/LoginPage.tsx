@@ -459,6 +459,12 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                 {isLogin ? '立即註冊' : '登入'}
              </button>
           </p>
+          <p className="mt-3 text-xs text-[var(--vesti-gray-mid)]">
+             註冊或登入即表示您同意
+             <a href="/legal/terms" style={{ textDecoration: 'underline', margin: '0 2px' }}>服務條款</a>
+             與
+             <a href="/legal/privacy" style={{ textDecoration: 'underline', margin: '0 2px' }}>隱私權政策</a>
+          </p>
        </div>
 
 

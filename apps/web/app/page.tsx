@@ -433,7 +433,7 @@ export default function Page() {
       case 'store':
         return <StorePage onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToTrending={() => navigateTo('trending')} />;
       case 'profile':
-        return <ProfilePage onLogout={handleLogout} />;
+        return <ProfilePage onLogout={handleLogout} onAccountDeleted={() => navigateTo('login')} />;
       case 'tryon':
         return <TryOnPage onBack={() => navigateTo(previousPage)} />;
       case 'discount':

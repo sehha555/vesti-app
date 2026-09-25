@@ -229,6 +229,10 @@ export default function ClosetPage() {
       <form onSubmit={submitUpload} className="space-y-3 rounded-lg border p-4">
         <label className="block text-sm">
           拍照或從相簿選一張（JPEG / PNG / WebP，最大 10MB，會自動去背）
+          <span className="mt-1 block text-xs text-gray-500">
+            只要拍衣服本身，請避免拍到臉或其他人。照片會送到去背服務與 AI 分析（可能傳到國外處理），詳見
+            <a href="/legal/privacy" className="underline">隱私權政策</a>。
+          </span>
           <input
             key={fileInputKey}
             type="file"

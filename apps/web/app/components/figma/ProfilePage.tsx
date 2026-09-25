@@ -4,6 +4,8 @@ import { Camera, User, Ruler, Settings, Upload, Edit2, Check, X, Sparkles, Searc
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { UploadOptionsDialog } from './UploadOptionsDialog';
+import { DeleteAccount } from './DeleteAccount';
+import { LEGAL_LINKS } from '@/lib/legal/links';
 
 import { Switch } from './ui/switch';
 import { Input } from './ui/input';
@@ -33,10 +35,11 @@ const categoryDistribution = [
 
 interface ProfilePageProps {
   onLogout?: () => void;
+  onAccountDeleted?: () => void;
   onTryOnPhotoUpdate?: (photoUrl: string) => void;
 }
 
-export function ProfilePage({ onLogout, onTryOnPhotoUpdate }: ProfilePageProps = {}) {
+export function ProfilePage({ onLogout, onAccountDeleted, onTryOnPhotoUpdate }: ProfilePageProps = {}) {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [tryOnPhoto, setTryOnPhoto] = useState<string | null>(null);
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
@@ -764,6 +767,14 @@ export function ProfilePage({ onLogout, onTryOnPhotoUpdate }: ProfilePageProps =
                <LogOut className="h-5 w-5" />
                <span>登出帳號</span>
              </button>
+             {onAccountDeleted && <DeleteAccount onDeleted={onAccountDeleted} />}
+             <nav aria-label="法律資訊" className="flex justify-center gap-4 text-xs text-[var(--vesti-gray-mid)]">
+               {LEGAL_LINKS.map((l) => (
+                 <a key={l.href} href={l.href} style={{ textDecoration: 'underline' }}>
+                   {l.label}
+                 </a>
+               ))}
+             </nav>
           </motion.div>
         )}
       </div>
