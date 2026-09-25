@@ -6,7 +6,7 @@
         "./app/*"
       ],
       "@/services/*": [
-        "./app/services/*"
+        "../../services/*"
       ],
       "@/lib/*": [
         "./lib/*"

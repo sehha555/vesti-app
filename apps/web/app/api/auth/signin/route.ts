@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createSupabaseServerClient } from '../../../../lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { setAuthStatusCookie } from '@/lib/auth/cookies';
 import {
   checkIPRateLimit,

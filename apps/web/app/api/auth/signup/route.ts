@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '../../../../lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { setAuthStatusCookie } from '@/lib/auth/cookies';
 import { checkIPRateLimit, checkEmailRateLimit } from '@/lib/auth/rateLimit';
 
