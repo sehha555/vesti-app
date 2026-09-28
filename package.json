@@ -21,7 +21,12 @@
     "supabase:link": "supabase link",
     "supabase:db:pull": "supabase db pull",
     "supabase:db:push": "supabase db push",
-    "supabase:migration:new": "supabase migration new"
+    "supabase:migration:new": "supabase migration new",
+    "local:db:start": "supabase start",
+    "local:db:stop": "supabase stop",
+    "local:db:reset": "supabase db reset",
+    "local:env": "node scripts/local/env.mjs",
+    "local:setup": "npm run local:db:start && npm run local:env"
   },
   "keywords": [],
   "author": "",

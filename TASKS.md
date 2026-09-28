@@ -1,8 +1,60 @@
 # Vesti 任務進度與待辦
 
-> 最後更新：2026-09-28（依 2026-09-26～28 的討論結論整理）
+> 最後更新：2026-09-28（依 2026-09-26～28 的討論結論整理；本機 Supabase 已設定好）
 > 所有改動都在分支 `claude/resume-ot3fvx`，**還沒合進 `master`**。
 > 接手的人（或 Claude）請先讀這份，法律相關再讀 `docs/legal/link-out-compliance.md`。
+
+---
+
+## 回家後照這個做（Windows 用 PowerShell 或終端機都可以）
+
+**第一步：拿到最新的程式碼**（在專案資料夾執行）
+
+```bash
+git fetch origin
+git checkout claude/resume-ot3fvx
+git pull
+npm install
+```
+
+**第二步：啟動本機 Supabase**（要先打開 Docker Desktop）
+
+```bash
+npm run local:setup
+```
+
+- 第一次會下載好幾 GB 的東西，要等一陣子；之後就很快。
+- 它會自動把本機 Supabase 的網址和金鑰寫進 `apps/web/.env.local`。
+  - 原本的 `apps/web/.env.local` 會先備份成 `apps/web/.env.local.before-local`，想換回原本的設定就把它改回原名。
+  - 原本檔案裡的其他設定（例如 Gemini 金鑰）不會被動到。
+- **Gemini 金鑰**：你說本機可能有，只是沒推上 GitHub（`.env.local` 本來就不會上傳，這是對的）。
+  - 如果在 `apps/web/.env.local`：不用做任何事。
+  - 如果在專案最外層的 `.env.local` 或 `.env`：程式會自動複製過去。
+  - 都沒有的話，程式會提醒你，在 `apps/web/.env.local` 加一行 `GEMINI_API_KEY=你的金鑰`。
+
+**第三步：開網站**
+
+```bash
+npm run dev
+```
+
+打開 http://localhost:3000 ，用測試帳號登入：`test@vesti.local`／`vesti-test-1234`
+
+**其他常用指令**
+
+| 指令 | 做什麼 |
+|---|---|
+| `npm run local:db:stop` | 關掉本機 Supabase（資料會保留） |
+| `npm run local:db:reset` | 把本機資料庫清空重來（測試帳號會自動重建） |
+| 打開 http://127.0.0.1:54323 | 本機 Supabase 的管理後台，可以直接看資料表 |
+
+**如果下載失敗**（出現 `Data limit exceeded` 之類的錯誤），先執行下面這行，再重跑 `npm run local:setup`：
+
+```powershell
+$env:SUPABASE_INTERNAL_IMAGE_REGISTRY="docker.io"
+```
+
+然後跟 Claude 說：「讀 TASKS.md，接著做」。
 
 ---
 
@@ -71,10 +123,10 @@ App 的主流程已經串起來了：**放衣服進衣櫃 → AI 認出是什麼
 - 改寫 `apps/web/lib/ai/outfit-prompt.ts` 裡的守則，加入好、壞搭配範例。
 - 每改一版就跑一次考卷，只留下分數有上升的修改。
 
-### 任務 3. 本機 Supabase
-- **Claude 要做**：產生 `supabase/config.toml`、加一個啟動指令、寫好 `.env.local` 範例和白話步驟。
-- **你要做**：在家電腦打一行指令啟動，然後照步驟開網站。
-- 啟動時會自動套上所有資料庫更新（包含這次新增的 3 個）。
+### 任務 3. 本機 Supabase ✅ 設定完成，等你在家啟動
+- 已經做好：設定檔、測試帳號、啟動指令（見最上面「回家後照這個做」）。
+- 已經在雲端環境實際跑過：登入、上傳衣服、今日穿搭、回饋、收藏、刪除帳號都正常；所有資料庫更新都會自動套上。
+- **你要做**：在家照步驟啟動一次，確認你的電腦上也正常。
 
 ### 任務 4. 測試衣櫃
 - **前提**：任務 3 完成。
@@ -119,7 +171,7 @@ App 的主流程已經串起來了：**放衣服進衣櫃 → AI 認出是什麼
 ## 你要做的事（總整理）
 
 - [ ] 準備 Gemini 金鑰（任務 1 就要用）
-- [ ] 家裡電腦的 Docker 能正常開啟（任務 3）
+- [ ] 在家照「回家後照這個做」啟動本機 Supabase，用測試帳號登入看看（任務 3）
 - [ ] 有空時到 Supabase 後台看舊專案能不能按 Restore 恢復（任務 7 才需要）
 - [ ] 決定什麼時候開 PR，把分支合進 master（跟 Claude 說「開 PR」即可）
 
@@ -158,4 +210,7 @@ App 的主流程已經串起來了：**放衣服進衣櫃 → AI 認出是什麼
   - ⑤ 回饋：`app/api/reco/events`、`lib/feedback/*`、`app/components/figma/StackedCards.tsx`
 - 考卷（任務 1）建議放在 `evals/outfits/`：情境檔（JSON）＋執行腳本＋每次成績（依日期存檔）。直接呼叫 `lib/ai` 的函式，不經過 API 與資料庫。評審用不同的模型或不同的 system prompt，並輸出評分理由方便使用者抽查。可參考既有的 `docs/evals/metrics.md`。
 - 一套搭配的識別碼是「單品 id 排序後用 | 串起來」（`lib/outfits/key.ts`），卡片 id 1/2/3 只是位置。
-- 本機 Supabase（任務 3）：專案已有 `supabase` CLI（devDependency），但還沒有 `supabase/config.toml`；需要 `supabase init`，並確認 `supabase start` 會套上 `supabase/migrations/` 全部檔案。Storage bucket 由 migration 建立。
+- 本機 Supabase（任務 3）：`supabase/config.toml`（關掉 edge_runtime、analytics；site_url 為 localhost:3000）、`supabase/seed.sql`（測試帳號）、`scripts/local/env.mjs`（寫 `apps/web/.env.local`）。Storage bucket 由 migration 建立。
+  - 2026-09-28 在雲端容器驗證過：`supabase start` 套上全部 7 個 migration、seed 帳號可登入，upload / plan / events / saved-outfits / DELETE /api/account 端到端正常，`db reset` 後帳號重建。
+  - 雲端容器沒有 IPv6，realtime 起不來，驗證時暫時關掉 realtime；使用者電腦應該不受影響。ECR 下載被限流時用 `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io`。
+  - 使用者是 Windows（`next.config.js` 的 watchOptions 有 pagefile.sys），指令要能在 PowerShell 跑。
