@@ -11,7 +11,7 @@ const DATASET = 'ashraq/fashion-product-images-small';
 // /rows 不需要索引，資料男女裝、各類別混在一起排，逐頁讀再自己挑就夠了。
 const API = 'https://datasets-server.huggingface.co/rows';
 const PAGE_SIZE = 100;
-const MAX_PAGES = 150; // 最多讀 1.5 萬筆（全部約 4.4 萬筆），每頁約 2 秒
+const MAX_PAGES = 250; // 最多讀 2.5 萬筆（全部約 4.4 萬筆），每頁約 2 秒；有風格篩選，要多讀一些才湊得滿
 
 const ARTICLE_TYPES: Record<'Men' | 'Women', Record<ClosetCategory, string[]>> = {
   Men: {
@@ -33,11 +33,25 @@ const ARTICLE_TYPES: Record<'Men' | 'Women', Record<ClosetCategory, string[]>> =
 };
 
 // 題目裡每類最多用到：上衣 14、外套 6、下身 10、鞋 6、配件 4，這裡多抓一些
-export const DEFAULT_COUNTS: Partial<Record<ClosetCategory, number>> = { top: 20, outerwear: 10, bottom: 15, shoes: 10, accessory: 8 };
+export const DEFAULT_COUNTS: Partial<Record<ClosetCategory, number>> = { top: 24, outerwear: 10, bottom: 15, shoes: 10, accessory: 8 };
 
 // 同一類裡各種的比重，沒列的是 1。厚上衣各給半份，比例才像真實衣櫃；
 // 平均分的話上衣一半是毛衣衛衣，熱天題目常抽不到短袖
 const TYPE_WEIGHT: Partial<Record<string, number>> = { Sweatshirts: 0.5, Sweaters: 0.5 };
+
+// 日系簡約：只要中性色（Blue 只給丹寧），名稱看得出印花、logo、童裝的不要。
+// 名稱看不出來的大圖案 T 恤，辨識完 pattern 是 print 的會在 run 時再排掉。
+const NEUTRAL_COLOURS = new Set([
+  'White', 'Off White', 'Cream', 'Black', 'Grey', 'Grey Melange', 'Charcoal', 'Navy Blue',
+  'Beige', 'Khaki', 'Olive', 'Brown', 'Coffee Brown', 'Tan', 'Taupe', 'Silver', 'Steel',
+]);
+const DENIM_TYPES = new Set(['Jeans', 'Shorts']);
+const EXCLUDE_NAME = /print|graphic|logo|kids|boys?\b|girls?\b|manchester|heritage/i;
+
+function fitsStyle(row: Row): boolean {
+  if (EXCLUDE_NAME.test(row.productDisplayName ?? '')) return false;
+  return NEUTRAL_COLOURS.has(row.baseColour) || (row.baseColour === 'Blue' && DENIM_TYPES.has(row.articleType));
+}
 
 function countForType(type: string, types: string[], total: number): number {
   const sum = types.reduce((s, t) => s + (TYPE_WEIGHT[t] ?? 1), 0);
@@ -79,7 +93,7 @@ async function scanRows(gender: string, wanted: Record<string, number>): Promise
     if (!body.rows?.length) break;
     for (const { row } of body.rows) {
       const list = found[row?.articleType];
-      if (row.gender === gender && list && list.length < wanted[row.articleType] && row.image?.src) list.push(row);
+      if (row.gender === gender && list && list.length < wanted[row.articleType] && row.image?.src && fitsStyle(row)) list.push(row);
     }
   }
   return found;
@@ -104,7 +118,7 @@ export async function fetchImages(params: {
     if (!types?.length || !total) continue;
     for (const type of types) wanted[type] = countForType(type, types, total) * 4;
   }
-  log('讀取資料集清單（逐頁讀，約 2～6 分鐘）…');
+  log('讀取資料集清單（逐頁讀，約 5～12 分鐘）…');
   const pool = await scanRows(gender, wanted);
 
   for (const [category, total] of Object.entries(counts) as Array<[ClosetCategory, number]>) {
