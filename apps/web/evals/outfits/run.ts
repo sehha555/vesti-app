@@ -3,7 +3,8 @@
 //   npm run eval:outfits -- fetch-brand        （UNIQLO / GU 基本款，清單在 brand-items.json）
 //   npm run eval:outfits -- run [--scenario id] [--limit N] [--repeat N] [--no-judge]
 //   npm run eval:outfits -- compare results/A.json results/B.json
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+//   npm run eval:outfits -- tryon [results/A.json] [--per N] [--limit N]
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,6 +63,26 @@ async function main() {
     const { compareReports } = await import('./report');
     const load = (p: string) => JSON.parse(readFileSync(resolve(process.cwd(), p), 'utf8'));
     console.log(compareReports(load(a), load(b)));
+    return;
+  }
+
+  if (command === 'tryon') {
+    const sdDir = process.env.SD_CPP_DIR;
+    if (!sdDir) throw new Error('找不到 SD_CPP_DIR。請在 apps/web/.env.local 加一行 SD_CPP_DIR=stable-diffusion.cpp 的資料夾');
+    // 沒指定成績單就用最新一份
+    const target = args[1] && !args[1].startsWith('--') ? resolve(process.cwd(), args[1]) : undefined;
+    const latest = readdirSync(resultsDir).filter((f) => f.endsWith('.json')).sort().at(-1);
+    const resultsPath = target ?? (latest && join(resultsDir, latest));
+    if (!resultsPath) throw new Error('results/ 沒有成績單，請先跑 run。');
+    const { renderTryons } = await import('./tryon');
+    const page = renderTryons({
+      resultsPath,
+      imagesDir,
+      sdDir,
+      perScenario: Number(option('per') ?? 2),
+      limit: Number(option('limit') ?? Infinity),
+    });
+    console.log(`抽查頁：${page}`);
     return;
   }
 
@@ -173,7 +194,10 @@ async function main() {
       --limit <N>           只跑前 N 題（第一次建議 --limit 3 試試）
       --repeat <N>          每題跑 N 次（AI 每次答案不同，比較版本時建議 3）
       --no-judge            不請評審打分數，只檢查規則（比較省）
-  npm run eval:outfits -- compare <之前.json> <之後.json>   比較兩次成績`);
+  npm run eval:outfits -- compare <之前.json> <之後.json>   比較兩次成績
+  npm run eval:outfits -- tryon [成績單.json] [選項]       用本機 stable-diffusion.cpp 生成試穿圖和抽查頁（預設最新成績單）
+      --per <N>             每題生成前 N 套（預設 2）
+      --limit <N>           只做前 N 題`);
 }
 
 main().catch((err) => {
