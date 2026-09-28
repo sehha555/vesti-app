@@ -80,6 +80,18 @@ npm run eval:outfits -- compare results/之前.json results/之後.json
 | `--repeat 3` | 每題跑 3 次 |
 | `--no-judge` | 不請評審，只檢查規則（比較省錢） |
 
+## 試穿圖（看穿起來的樣子）
+
+```bash
+npm run eval:outfits -- tryon                       # 最新成績單，每題前 2 套
+npm run eval:outfits -- tryon results/某次.json --per 1 --limit 5
+```
+
+用本機的 stable-diffusion.cpp＋Qwen-Image 2.1（6 步加速 LoRA）把每套單品生成穿上身的照片，一張約 1 分鐘，已生成的會跳過。
+結果在 `results/<成績單>-tryon/index.html`：左邊試穿圖、右邊照身體位置排的單品，照著打分。
+要先在 `apps/web/.env.local` 設 `SD_CPP_DIR`（資料夾內要有 `bin/sd-cli.exe` 和 `models/` 裡的模型檔，檔名見 `tryon.ts`）。
+Qwen-Image 2.1 是研究授權，只能用在考卷，不能放進 App。
+
 ## 花費
 
 完整跑一次約 40 次 AI 呼叫（20 題 × 搭配＋評審），第一次另外要辨識約 60 張照片。每次搭配最多送 30 張照片。
@@ -95,6 +107,7 @@ npm run eval:outfits -- compare results/之前.json results/之後.json
 | `pipeline.ts` | 考試流程（呼叫正式推薦程式） |
 | `report.ts` | 成績單 |
 | `fetch-images.ts` | 下載照片 |
+| `tryon.ts` | 試穿圖與抽查頁 |
 | `run.ts` | 指令入口 |
 
 ⚠ 寫這份考卷的雲端環境連不到 Hugging Face，也沒有 Gemini 金鑰，所以 **下載照片** 和 **真正的 AI 回應** 都還沒實際跑過；
