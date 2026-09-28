@@ -104,6 +104,8 @@ export function pickCloset(pool: PoolItem[], scenario: Scenario): Map<ClosetCate
 
 // 連續幾張辨識失敗就停（多半是金鑰錯或額度用完），不要白白打幾十次
 const MAX_CONSECUTIVE_TAG_FAILURES = 3;
+// Gemini 免費方案每個模型每分鐘最多 15 次，連續辨識要隔開，不然第 16 張起就 429
+const TAG_INTERVAL_MS = 4500;
 
 /**
  * 替還沒辨識過的照片跑衣物辨識（正式的 tagClosetItem），成功的存在 attributes.json，下次不用重跑。
@@ -119,6 +121,7 @@ export async function ensureAttributes(
   let done = 0;
   let failuresInRow = 0;
   for (const item of missing) {
+    if (done > 0) await new Promise((r) => setTimeout(r, TAG_INTERVAL_MS));
     const attrs = await tagClosetItem({ buffer: readFileSync(item.path), contentType: item.mimeType });
     if (attrs) {
       cache[item.id] = attrs;

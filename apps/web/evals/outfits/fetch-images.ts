@@ -4,10 +4,14 @@ import type { ClosetCategory } from '../../lib/closet/categories';
 
 // 從 Hugging Face 下載考卷用的衣服照片（公開資料集 ashraq/fashion-product-images-small，
 // 原始資料來自 Kaggle 的 Fashion Product Images）。照片只在本機用來測試，不要上傳到 GitHub（images/ 已被 gitignore）。
-// ⚠ 寫這支程式的雲端環境連不到 Hugging Face，這支沒有實際跑過；失敗時改用「自己放照片」（見 README）。
+// 失敗時改用「自己放照片」（見 README）。
 
 const DATASET = 'ashraq/fashion-product-images-small';
-const API = 'https://datasets-server.huggingface.co/filter';
+// 不用 /filter：它要先載入整份資料集的索引，冷門資料集常卡在 "index is loading" 十幾分鐘。
+// /rows 不需要索引，資料男女裝、各類別混在一起排，逐頁讀再自己挑就夠了。
+const API = 'https://datasets-server.huggingface.co/rows';
+const PAGE_SIZE = 100;
+const MAX_PAGES = 150; // 最多讀 1.5 萬筆（全部約 4.4 萬筆），每頁約 2 秒
 
 const ARTICLE_TYPES: Record<'Men' | 'Women', Record<ClosetCategory, string[]>> = {
   Men: {
@@ -33,19 +37,42 @@ export const DEFAULT_COUNTS: Partial<Record<ClosetCategory, number>> = { top: 20
 
 interface Row {
   id: number;
+  gender: string;
   articleType: string;
   baseColour: string;
   productDisplayName: string;
   image: { src: string };
 }
 
-async function queryRows(gender: string, articleType: string, length: number): Promise<Row[]> {
-  const where = `"gender"='${gender}' AND "articleType"='${articleType}'`;
-  const url = `${API}?dataset=${encodeURIComponent(DATASET)}&config=default&split=train&where=${encodeURIComponent(where)}&offset=0&length=${length}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Hugging Face 回 ${res.status}（${articleType}）`);
-  const body = (await res.json()) as { rows?: Array<{ row: Row }> };
-  return (body.rows ?? []).map((r) => r.row).filter((r) => r?.image?.src);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// 連續讀太快會被回 429（限流）：每頁間隔一下，被限流就照 Retry-After（沒有就 10 秒起跳加倍）等了再試
+async function fetchWithBackoff(url: string, tries = 5): Promise<Response> {
+  await sleep(500);
+  for (let i = 0; ; i++) {
+    const res = await fetch(url);
+    if (res.status !== 429 || i >= tries - 1) return res;
+    const wait = Number(res.headers.get('retry-after')) * 1000 || 10_000 * 2 ** i;
+    await sleep(wait);
+  }
+}
+
+// 逐頁讀，把符合性別的列依 articleType 分堆；每種都湊到 wanted 張（或讀到上限）就停
+async function scanRows(gender: string, wanted: Record<string, number>): Promise<Record<string, Row[]>> {
+  const found: Record<string, Row[]> = Object.fromEntries(Object.keys(wanted).map((t) => [t, []]));
+  for (let page = 0; page < MAX_PAGES; page++) {
+    if (Object.entries(wanted).every(([t, n]) => found[t].length >= n)) break;
+    const url = `${API}?dataset=${encodeURIComponent(DATASET)}&config=default&split=train&offset=${page * PAGE_SIZE}&length=${PAGE_SIZE}`;
+    const res = await fetchWithBackoff(url);
+    if (!res.ok) throw new Error(`Hugging Face 回 ${res.status}（第 ${page + 1} 頁）`);
+    const body = (await res.json()) as { rows?: Array<{ row: Row }> };
+    if (!body.rows?.length) break;
+    for (const { row } of body.rows) {
+      const list = found[row?.articleType];
+      if (row.gender === gender && list && list.length < wanted[row.articleType] && row.image?.src) list.push(row);
+    }
+  }
+  return found;
 }
 
 export async function fetchImages(params: {
@@ -60,6 +87,16 @@ export async function fetchImages(params: {
     ? JSON.parse(readFileSync(metaPath, 'utf8'))
     : {};
 
+  // 每種多抓幾倍再間隔挑，避免同一個品牌、同一系列連在一起
+  const wanted: Record<string, number> = {};
+  for (const [category, total] of Object.entries(counts) as Array<[ClosetCategory, number]>) {
+    const types = ARTICLE_TYPES[gender][category];
+    if (!types?.length || !total) continue;
+    for (const type of types) wanted[type] = Math.ceil(total / types.length) * 4;
+  }
+  log('讀取資料集清單（逐頁讀，約 2～6 分鐘）…');
+  const pool = await scanRows(gender, wanted);
+
   for (const [category, total] of Object.entries(counts) as Array<[ClosetCategory, number]>) {
     const types = ARTICLE_TYPES[gender][category];
     if (!types?.length || !total) continue;
@@ -68,8 +105,7 @@ export async function fetchImages(params: {
     let saved = 0;
     for (const type of types) {
       if (saved >= total) break;
-      // 多抓幾倍再間隔挑，避免同一個品牌、同一系列連在一起
-      const rows = await queryRows(gender, type, perType * 4);
+      const rows = pool[type] ?? [];
       const step = Math.max(1, Math.floor(rows.length / perType));
       for (let i = 0; i < rows.length && saved < total; i += step) {
         const row = rows[i];
