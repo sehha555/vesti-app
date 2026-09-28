@@ -221,6 +221,8 @@ App 的主流程已經串起來了：**放衣服進衣櫃 → AI 認出是什麼
 - 考卷（任務 1）在 `apps/web/evals/outfits/`，用 `tsx` 執行（`npm run eval:outfits`）。
   - 搭配呼叫正式的 `generateOutfits`（從 `suggestOutfits` 抽出來的純函式），候選用 `selectCandidates`，回饋用 `summarizeFeedback`，辨識用 `tagClosetItem`。改推薦程式時考卷會跟著改，不要在考卷裡另寫一份。
   - 評審模型用 `GEMINI_JUDGE_MODEL` 設定，溫度 0；`generateJson` 多了 `model` 參數。
+  - 成績單的「穿搭守則版本」只是 `OUTFIT_SYSTEM_PROMPT` 的指紋；改 `buildOutfitParts`、`candidates.ts` 等程式不會變，比較時同版本分數不同是正常的。
+  - 辨識失敗的照片不會存起來，每次跑都會重試。
   - 端對端測試 `pipeline.test.ts` 把 Gemini 換成假的，會在 CI 跑。
   - 2026-09-28 發現雲端容器連得到 Google 的 Gemini API（假金鑰回 400），只有 Hugging Face 被擋。
 - `/api/daily-outfits` 推薦失敗時回 200 ＋天氣＋`reason`（`AI_UNAVAILABLE` / `CLOSET_TOO_SMALL` / `NO_OUTFIT`），首頁 `RecoNotice` 顯示原因。

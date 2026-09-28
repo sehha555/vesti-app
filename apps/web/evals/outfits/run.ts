@@ -88,14 +88,16 @@ async function main() {
     if (selected.length === 0) throw new Error(`找不到題目 ${only}`);
     if (scenarios.length === 0) throw new Error('每一題的照片都不夠，請先下載或放更多照片。');
 
-    console.log(`照片 ${pool.length} 張。先替還沒辨識的照片跑 AI 辨識（結果會存起來，下次不用重跑）…`);
-    const attributes = await ensureAttributes(pool, join(imagesDir, 'attributes.json'), (done, total) =>
-      process.stdout.write(`\r  辨識 ${done}/${total}`)
-    );
-    console.log('');
-
+    const cachePath = join(imagesDir, 'attributes.json');
+    const cached = existsSync(cachePath) ? JSON.parse(readFileSync(cachePath, 'utf8')) : {};
+    const toTag = pool.filter((p) => !(p.id in cached)).length;
     const calls = scenarios.length * repeat * (judge ? 2 : 1);
-    console.log(`要跑 ${scenarios.length} 題 × ${repeat} 次，約 ${calls} 次 AI 呼叫（每次搭配最多送 30 張照片）。`);
+    console.log(
+      `照片 ${pool.length} 張。${toTag > 0 ? `先辨識 ${toTag} 張還沒辨識的照片（${toTag} 次 AI 呼叫，結果會存起來），` : ''}` +
+        `再跑 ${scenarios.length} 題 × ${repeat} 次（約 ${calls} 次 AI 呼叫，每次搭配最多送 30 張照片）。`
+    );
+    const attributes = await ensureAttributes(pool, cachePath, (done, total) => process.stdout.write(`\r  辨識 ${done}/${total}`));
+    if (toTag > 0) console.log('');
 
     const summaries = [];
     let errorsInRow = 0;
