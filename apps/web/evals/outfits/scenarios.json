@@ -296,9 +296,9 @@
       },
       "occasion": "casual",
       "closet": {
-        "top": 14,
+        "top": 15,
         "outerwear": 6,
-        "bottom": 10,
+        "bottom": 9,
         "shoes": 6
       },
       "seed": 16

@@ -67,6 +67,16 @@ export function checkRules(input: RuleInput): RuleResult[] {
       passed: bad.length === 0,
       detail: bad.map(names).join('；') || undefined,
     });
+
+    const longSleeve = outfits.filter((o) =>
+      o.layoutSlots.some((s) => s.slotKey.startsWith('top_') && attributes.get(s.item.id)?.sleeve === 'long')
+    );
+    results.push({
+      rule: 'hot_no_long_sleeve',
+      label: '熱天（體感 28 度以上）上身不穿長袖',
+      passed: longSleeve.length === 0,
+      detail: longSleeve.map(names).join('；') || undefined,
+    });
   }
 
   if (feelsLike < 12) {
@@ -101,6 +111,20 @@ export function checkRules(input: RuleInput): RuleResult[] {
       passed: bad.length === 0,
       detail: bad.map(names).join('；') || undefined,
     });
+
+    // 衣櫃有正式一點的鞋子才要求，只有休閒鞋時不扣分
+    const hasDressShoes = [...attributes.values()].some((a) => a?.category === 'shoes' && a.formality >= 3);
+    if (hasDressShoes) {
+      const casualShoes = outfits.filter((o) =>
+        o.layoutSlots.some((s) => s.slotKey === 'shoes' && (attributes.get(s.item.id)?.formality ?? 5) < 3)
+      );
+      results.push({
+        rule: 'work_dress_shoes',
+        label: '上班場合穿樂福鞋、皮鞋這類正式度 3 以上的鞋',
+        passed: casualShoes.length === 0,
+        detail: casualShoes.map(names).join('；') || undefined,
+      });
+    }
   }
 
   if (input.dislikedCombos.length > 0) {

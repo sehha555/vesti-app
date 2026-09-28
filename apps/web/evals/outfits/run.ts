@@ -87,7 +87,11 @@ async function main() {
     const attributes = await ensureAttributes(allPhotos, cachePath, (done, total) => process.stdout.write(`\r  辨識 ${done}/${total}`));
     if (toTag > 0) console.log('');
     // 日系簡約守則不要大印花：辨識成印花的不放進題目衣櫃
-    const pool = allPhotos.filter((p) => attributes.get(p.id)?.pattern !== 'print');
+    // 模特兒照會被認成身上另一件（褲子的照片認成上衣），類別跟資料夾對不上的也拿掉
+    const pool = allPhotos.filter((p) => {
+      const a = attributes.get(p.id);
+      return a?.pattern !== 'print' && (!a || a.category === p.category);
+    });
 
     const all = JSON.parse(readFileSync(join(here, 'scenarios.json'), 'utf8')).scenarios as import('./pipeline').Scenario[];
     const only = option('scenario');
@@ -110,7 +114,7 @@ async function main() {
 
     const calls = scenarios.length * repeat * (judge ? 2 : 1);
     console.log(
-      `照片 ${allPhotos.length} 張（排除印花後 ${pool.length} 張）。` +
+      `照片 ${allPhotos.length} 張（排除印花、認錯類別後 ${pool.length} 張）。` +
         `跑 ${scenarios.length} 題 × ${repeat} 次（約 ${calls} 次 AI 呼叫，每次搭配最多送 30 張照片）。`
     );
 

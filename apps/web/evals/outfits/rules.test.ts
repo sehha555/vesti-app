@@ -45,6 +45,25 @@ describe('考卷規則', () => {
     expect(rule(checkRules(base({ occasion: 'work', outfits: [outfit('flip', 'b'), outfit('t', 'b')] })), 'work_not_too_casual')?.passed).toBe(false);
   });
 
+  it('熱天穿長袖、上班有皮鞋卻穿休閒鞋', () => {
+    const attributes = new Map([
+      ['t', a(2, 2)], ['b', a(2, 3)], ['long', { ...a(2, 3), sleeve: 'long' as const }],
+      ['sneaker', { ...a(2, 2), category: 'shoes' as const }], ['loafer', { ...a(2, 4), category: 'shoes' as const }],
+    ]);
+    expect(rule(checkRules(base({ feelsLike: 33, attributes, outfits: [outfit('long', 'b'), outfit('t', 'b')] })), 'hot_no_long_sleeve')?.passed).toBe(false);
+    expect(rule(checkRules(base({ feelsLike: 33, attributes })), 'hot_no_long_sleeve')?.passed).toBe(true);
+
+    const withShoes = (shoes: string) => {
+      const o = outfit('t', 'b');
+      return { ...o, layoutSlots: [...o.layoutSlots, { slotKey: 'shoes', item: { id: shoes, name: shoes, imageUrl: '' }, priority: 4 }] } as RuleInput['outfits'][number];
+    };
+    expect(rule(checkRules(base({ occasion: 'work', attributes, outfits: [withShoes('sneaker'), withShoes('loafer')] })), 'work_dress_shoes')?.passed).toBe(false);
+    expect(rule(checkRules(base({ occasion: 'work', attributes, outfits: [withShoes('loafer')] })), 'work_dress_shoes')?.passed).toBe(true);
+    // 衣櫃沒有正式的鞋就不檢查
+    attributes.delete('loafer');
+    expect(rule(checkRules(base({ occasion: 'work', attributes, outfits: [withShoes('sneaker')] })), 'work_dress_shoes')).toBeUndefined();
+  });
+
   it('回饋：說過不要的組合、最近穿過的整套', () => {
     const r = checkRules(base({ dislikedCombos: [['t', 'b']], wornCombos: [['b', 't2']] }));
     expect(rule(r, 'respect_dislike')?.passed).toBe(false);
