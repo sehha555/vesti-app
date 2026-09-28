@@ -61,7 +61,7 @@ export async function generateOutfits(params: {
 }
 
 /**
- * 從使用者衣櫃撈衣服 → 依天氣與類別挑候選 → 圖片轉 base64 → generateOutfits → 組成首頁要的 outfits。
+ * 從使用者衣櫃撈衣服 → 依天氣、場合與類別挑候選 → 圖片轉 base64 → generateOutfits → 組成首頁要的 outfits。
  * 沒有推薦時回空陣列與原因（沒設 AI、衣櫃不足 3 件、模型沒給出合法搭配），讓首頁顯示提示。
  */
 export async function suggestOutfits(params: {
@@ -86,7 +86,7 @@ export async function suggestOutfits(params: {
   const closet = ((data ?? []) as ClosetRow[])
     .filter((r) => r.image_url)
     .map((r) => ({ ...r, attributes: parseAttributes(r.attributes) as ItemAttributes | null }));
-  const rows = selectCandidates(closet, weather.feelsLike, MAX_ITEMS);
+  const rows = selectCandidates(closet, weather.feelsLike, occasion, MAX_ITEMS);
   if (rows.length < MIN_ITEMS) return { outfits: [], reason: 'CLOSET_TOO_SMALL' };
 
   // 回饋只需要 userId，跟圖片下載同時開始

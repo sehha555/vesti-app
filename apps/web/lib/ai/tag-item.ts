@@ -1,5 +1,5 @@
 import { generateJson, imagePart } from './gemini';
-import { ATTRIBUTES_VERSION, ItemAttributesSchema, PATTERNS, SEASONS, type ItemAttributes } from '../closet/attributes';
+import { ATTRIBUTES_VERSION, FITS, ItemAttributesSchema, LENGTHS, PATTERNS, SEASONS, SLEEVES, type ItemAttributes } from '../closet/attributes';
 import { CLOSET_CATEGORIES } from '../closet/categories';
 
 const SYSTEM_PROMPT = `你是服飾商品標註員。看一張衣物照片（通常已去背），辨識這一件衣物的屬性。
@@ -11,7 +11,10 @@ const SYSTEM_PROMPT = `你是服飾商品標註員。看一張衣物照片（通
 - warmth 保暖度 1–5：1 背心短褲涼鞋、2 短袖或薄長褲、3 長袖襯衫薄針織、4 毛衣厚帽T薄外套、5 羽絨大衣厚外套。
 - formality 正式度 1–5：1 運動居家拖鞋、2 休閒 T 恤牛仔、3 休閒襯衫卡其褲、4 商務休閒西裝外套樂福鞋、5 西裝正裝皮鞋。
 - styles：最多 4 個風格詞，繁體中文，例如 休閒、簡約、街頭、運動、日系、復古、優雅、商務。
-- seasons：適合的季節，可複選。`;
+- seasons：適合的季節，可複選。
+- fit 版型：slim 合身／窄管、regular 一般、loose 寬鬆（oversize、寬褲、寬直筒）。鞋子配件填 regular。
+- sleeve 袖長：sleeveless 無袖、short 短袖（含五分袖）、long 長袖（含七分袖）；下身、鞋子、配件填 none。
+- length 衣長：上身和外套看下襬，cropped 短版（在腰上）、regular 到褲頭附近、long 蓋過臀部；下身 cropped 是短褲或七分褲、regular 是一般長褲、long 是拖地長褲；鞋子配件填 regular。`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -25,8 +28,11 @@ const RESPONSE_SCHEMA = {
     formality: { type: 'integer', minimum: 1, maximum: 5 },
     styles: { type: 'array', items: { type: 'string' }, maxItems: 4 },
     seasons: { type: 'array', items: { type: 'string', enum: [...SEASONS] } },
+    fit: { type: 'string', enum: [...FITS] },
+    sleeve: { type: 'string', enum: [...SLEEVES] },
+    length: { type: 'string', enum: [...LENGTHS] },
   },
-  required: ['category', 'subcategory', 'name', 'colors', 'pattern', 'warmth', 'formality', 'styles', 'seasons'],
+  required: ['category', 'subcategory', 'name', 'colors', 'pattern', 'warmth', 'formality', 'styles', 'seasons', 'fit', 'sleeve', 'length'],
 };
 
 // 模型偶爾超出長度或重複，先修剪再驗證，不要整筆丟掉
