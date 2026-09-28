@@ -105,7 +105,13 @@ async function main() {
       const runs = [];
       for (let i = 0; i < repeat; i++) {
         process.stdout.write(`  ${scenario.title}（第 ${i + 1} 次）… `);
-        const run = await runScenario({ scenario, pool, attributes, judge });
+        let run = await runScenario({ scenario, pool, attributes, judge });
+        // 免費方案每分鐘額度用完（或模型暫時太忙）時，等一分鐘重跑這一次，不算失敗
+        if (run.error && /quota|high demand/i.test(run.error)) {
+          process.stdout.write('額度用完，等 60 秒重試… ');
+          await new Promise((r) => setTimeout(r, 60_000));
+          run = await runScenario({ scenario, pool, attributes, judge });
+        }
         const scores = run.verdicts.map((v) => v.score).join(',') || '—';
         console.log(run.error ? `⚠ ${run.error}` : `${run.outfits.length} 套，分數 ${scores}`);
         runs.push(run);
