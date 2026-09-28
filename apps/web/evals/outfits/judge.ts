@@ -1,29 +1,30 @@
 import type { Part } from '@google/genai';
 import { generateJson, imagePart, GEMINI_MODEL } from '../../lib/ai/gemini';
 import { describeAttributes, type ItemAttributes } from '../../lib/closet/attributes';
-import type { OutfitSuggestion } from '../../lib/ai/outfit-prompt';
+import { STYLE_GUIDE, type OutfitSuggestion } from '../../lib/ai/outfit-prompt';
 import type { WeatherSummary } from '../../../../packages/types/src/weather';
 
 // 評審：跟「搭配的 AI」分開的評分標準，溫度 0 讓分數穩定。
 // 最好用不同的模型（GEMINI_JUDGE_MODEL），避免「學生改自己的考卷」。
 export const JUDGE_MODEL = process.env.GEMINI_JUDGE_MODEL || GEMINI_MODEL;
 
-const JUDGE_SYSTEM_PROMPT = `你是嚴格的穿搭評審，評分對象是 AI 造型師替使用者從自己衣櫃挑的搭配。你不是造型師，不要替它辯護，只依下面的標準評分。
-每一套給 1 到 5 分（整數）：
-5 = 很好看，適合今天天氣和場合，會想直接穿出門
-4 = 好看，小地方可以更好
-3 = 可以穿，但普通，或有一個明顯缺點
-2 = 有明顯問題（配色衝突、比例不對、不合天氣或場合）
-1 = 不能穿（嚴重不合天氣、場合，或搭配很奇怪）
+const JUDGE_SYSTEM_PROMPT = `你是嚴格的日系簡約穿搭評審，評分對象是 AI 造型師替使用者從自己衣櫃挑的搭配。你不是造型師，不要替它辯護，只依下面的守則與給分標準評分。
+使用者的品味很挑，覺得「還可以」的搭配在他眼裡就是不好看，寧可給低分也不要給人情分。
 
-評分時檢查：
-- 天氣：溫度、下雨是否合適（體感 28 度以上不該有厚重衣物；20 度以下要夠暖）
-- 場合：work 要整齊，date 稍微講究，sport 要機能，casual 輕鬆
-- 配色：主色不超過三個，顏色之間協調
-- 風格與正式度：同一套是否一致
-- 比例與完整度：上下身比例、有沒有缺鞋（衣櫃有鞋時）
+守則（跟造型師看到的是同一份）：
+${STYLE_GUIDE}
 
-reasons 用繁體中文，每點一句、具體（提到哪一件、什麼顏色），不要客套。problems 只列會扣分的問題，沒有就給空陣列。`;
+另外檢查天氣：體感 28 度以上不該有厚重或長袖保暖衣物；20 度以下要夠暖；下雨避免淺色下身。
+
+給分（1 到 5 的整數），從 3 分起評：
+5 = 可以直接放進 UNIQLO／MUJI 型錄當範例，挑不出毛病
+4 = 好看且完全符合守則，只有很小的地方可以更好
+3 = 能穿但普通、沒有記憶點，或有一個小缺點
+2 = 違反守則任一條（有印花或大 logo、非中性色當主色、超過 3 色、正式度衝突、窄管緊身褲等過時版型、寬上寬下卻沒有腰線、場合或天氣不對）
+1 = 違反兩條以上，或整套看起來很奇怪
+違反任一條守則，最高只能給 2 分。
+
+reasons 用繁體中文，每點一句、具體（提到哪一件、什麼顏色）。problems 只列會扣分的問題，並寫出違反的是守則哪一段（例如「配色：紅色衛衣當主色」），沒有就給空陣列。`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -94,7 +95,7 @@ export async function judgeOutfits(params: {
     },
   ];
   outfits.forEach((outfit, i) => {
-    parts.push({ text: `\n第 ${i + 1} 套（index ${i + 1}）：「${outfit.styleName}」，造型師的理由：${outfit.description}` });
+    parts.push({ text: `\n第 ${i + 1} 套（index ${i + 1}）：「${outfit.styleName}」，造型師的理由：${outfit.description}${outfit.howToWear ? `；穿法：${outfit.howToWear}` : ''}` });
     for (const slot of outfit.layoutSlots) {
       const item = items.get(slot.item.id);
       if (!item) continue;

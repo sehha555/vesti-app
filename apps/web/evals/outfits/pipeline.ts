@@ -45,7 +45,14 @@ export interface ScenarioRun {
   closetSize: number;
   candidates: number;
   rawCount: number;
-  outfits: Array<{ title: string; reason: string; items: string[] }>;
+  outfits: Array<{
+    title: string;
+    reason: string;
+    howToWear?: string;
+    items: string[];
+    /** 每件放在哪個位置，抽查頁照身體位置排版用 */
+    slots?: Array<{ slotKey: string; itemId: string; name: string }>;
+  }>;
   feedbackSummary: string | null;
   rules: RuleResult[];
   verdicts: JudgeVerdict[];
@@ -238,7 +245,13 @@ export async function runScenario(params: {
   return {
     ...base,
     rawCount: raw.length,
-    outfits: outfits.map((o) => ({ title: o.styleName, reason: o.description, items: o.layoutSlots.map((s) => s.item.name) })),
+    outfits: outfits.map((o) => ({
+      title: o.styleName,
+      reason: o.description,
+      howToWear: o.howToWear,
+      items: o.layoutSlots.map((s) => s.item.name),
+      slots: o.layoutSlots.map((s) => ({ slotKey: s.slotKey, itemId: s.item.id, name: s.item.name })),
+    })),
     rules,
     verdicts,
     ...(error ? { error } : {}),

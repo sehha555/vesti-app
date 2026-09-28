@@ -30,6 +30,7 @@ interface Outfit {
   imageUrl: string;
   styleName: string;
   description: string;
+  howToWear?: string;
   layoutSlots?: LayoutSlot[];
 }
 
@@ -444,13 +445,16 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave }: 
                     {/* 漸層遮罩 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
 
-                    {/* 底部：這套叫什麼、要穿哪幾件、Gemini 為什麼這樣搭 */}
+                    {/* 底部：這套叫什麼、要穿哪幾件、怎麼穿、Gemini 為什麼這樣搭 */}
                     <div className="absolute inset-x-0 bottom-0 z-20 bg-black/55 px-4 pb-3 pt-2 text-white backdrop-blur-sm pointer-events-none">
                       <p className="truncate text-[13px] font-semibold leading-tight">{card.styleName}</p>
                       {card.layoutSlots && card.layoutSlots.length > 0 && (
                         <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/95">
                           {card.layoutSlots.map((s) => s.item?.name).filter(Boolean).join('・')}
                         </p>
+                      )}
+                      {card.howToWear && (
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/95">穿法：{card.howToWear}</p>
                       )}
                       {card.description && (
                         <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/75">{card.description}</p>

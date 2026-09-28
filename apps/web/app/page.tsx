@@ -55,6 +55,7 @@ interface Outfit {
   imageUrl: string;
   styleName: string;
   description: string;
+  howToWear?: string;
   items?: {
     top?: OutfitItem;           // 上衣/內層
     outerwear?: OutfitItem;     // 外套/外層 (預留)
@@ -282,6 +283,7 @@ export default function Page() {
                 outfit.bottom?.name,
                 outfit.shoes?.name
               ].filter(Boolean).join(' ・ '),
+              howToWear: outfit.howToWear,
               // 完整單品資料 (為未來 IG 風格 UI 與試穿功能預留)
               items: items,
               // 白板結構：依人體結構分槽

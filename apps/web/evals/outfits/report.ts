@@ -97,6 +97,7 @@ export function toMarkdown(report: Report): string {
       const v = run.verdicts.find((x) => x.index === i + 1);
       lines.push(`**第 ${i + 1} 套：${o.title}**${v ? `　評審 ${v.score} 分` : ''}`, '');
       lines.push(`- 衣服：${o.items.join(' + ')}`, `- 造型師理由：${o.reason}`);
+      if (o.howToWear) lines.push(`- 穿法：${o.howToWear}`);
       if (v?.reasons.length) lines.push(`- 評審理由：${v.reasons.join('；')}`);
       if (v?.problems.length) lines.push(`- 扣分原因：${v.problems.join('；')}`);
       lines.push('');
