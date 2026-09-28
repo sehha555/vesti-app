@@ -109,14 +109,22 @@ App 的主流程已經串起來了：**放衣服進衣櫃 → AI 認出是什麼
 
 ## 任務清單（照順序做）
 
-### 任務 1. 考卷 ⭐ 最先做
+### 任務 1. 考卷 ✅ 程式完成，等你用真的金鑰跑第一次
 - **只需要 Gemini 金鑰，不用 Supabase、不用開網站。**
-- **Claude 要做**：
-  - 一支獨立的小程式：讀資料夾裡的衣服照片 → AI 認衣服 → AI 搭配 → 另一個 AI 打分數 → 印出每題分數與平均。
-  - 約 20 個情境：不同天氣（熱、涼、冷、下雨）× 不同場合（休閒、上班、約會、運動）× 不同衣櫃（衣服很少、很多、缺鞋子）。
-  - 衣服照片用公開資料集（例如 Kaggle 的 Fashion Product Images），不用自己拍。
-  - 每次跑完把成績存檔，方便比較「改之前、改之後」。
-- **你要做**：準備 Gemini 金鑰；看第一次的成績和 5 套抽查。
+- 完整說明在 `apps/web/evals/outfits/README.md`。
+- 已經做好：
+  - 20 道題目：熱、舒服、涼、冷、下雨 × 休閒、上班、約會、運動；衣服很少、很多、沒鞋子；3 題有模擬回饋。
+  - 兩種分數：規則檢查（不用 AI，抓明顯的錯），加上 AI 評審的 1～5 分和理由。
+  - 成績單會列出每套搭配和評審理由，方便你抽查。
+  - 可以比較兩次成績，看改了之後是變好還是變差。
+- 還沒實際跑過的：**下載照片**（這個雲端環境連不到 Hugging Face）和**真正的 AI 回應**（沒有金鑰）。其他部分已經用假的 AI 回應測過。
+- **你要做**（在專案資料夾）：
+  ```bash
+  npm run eval:outfits -- fetch              # 下載約 60 張衣服照片（女裝加 --gender Women）
+  npm run eval:outfits -- run --limit 3      # 先試 3 題
+  npm run eval:outfits -- run                # 跑完整份
+  ```
+  然後打開 `apps/web/evals/outfits/results/` 裡的 `.md` 成績單，看 5 套左右，確認評審的分數跟你的感覺差不多。
 
 ### 任務 2. 加強穿搭守則（prompt）
 - **前提**：任務 1 完成。
@@ -192,7 +200,9 @@ App 的主流程已經串起來了：**放衣服進衣櫃 → AI 認出是什麼
 | 刪除帳號 | 個人頁可以刪帳號，照片、收藏、回饋紀錄一起刪。 |
 | AI 認衣服 | 上傳時 AI 自動填類別、顏色、花紋、保暖度 1–5、正式度 1–5、風格；舊衣服可按「AI 辨識」補上。 |
 | 挑衣服更聰明 | 先依天氣排除不合適的，再每類輪流挑，不再只拿最新 30 件。 |
-| 自動檢查 | 每次推程式碼會自動跑 lint、型別檢查、測試（目前 505 個測試）。 |
+| 推薦失敗時的提示 | 沒有 AI 金鑰、衣櫃不到 3 件時，首頁會說明原因（衣櫃太少會連到衣櫃頁），天氣照樣顯示。 |
+| 穿搭考卷 | 20 道題目＋規則檢查＋AI 評審，量推薦好不好（見任務 1）。 |
+| 自動檢查 | 每次推程式碼會自動跑 lint、型別檢查、測試（目前 515 個測試）。 |
 
 ---
 
@@ -208,7 +218,12 @@ App 的主流程已經串起來了：**放衣服進衣櫃 → AI 認出是什麼
   - ③ 搭配：`lib/ai/suggest-outfits.ts`、`lib/ai/outfit-prompt.ts`（`OUTFIT_SYSTEM_PROMPT` 就是穿搭守則）
   - ④ 排序器（任務 6，未實作）：建議放 `lib/reco/rank.ts`；輸入候選搭配與 `lib/feedback/summary.ts` 讀到的回饋，輸出前 3 套；比重依回饋筆數調整
   - ⑤ 回饋：`app/api/reco/events`、`lib/feedback/*`、`app/components/figma/StackedCards.tsx`
-- 考卷（任務 1）建議放在 `evals/outfits/`：情境檔（JSON）＋執行腳本＋每次成績（依日期存檔）。直接呼叫 `lib/ai` 的函式，不經過 API 與資料庫。評審用不同的模型或不同的 system prompt，並輸出評分理由方便使用者抽查。可參考既有的 `docs/evals/metrics.md`。
+- 考卷（任務 1）在 `apps/web/evals/outfits/`，用 `tsx` 執行（`npm run eval:outfits`）。
+  - 搭配呼叫正式的 `generateOutfits`（從 `suggestOutfits` 抽出來的純函式），候選用 `selectCandidates`，回饋用 `summarizeFeedback`，辨識用 `tagClosetItem`。改推薦程式時考卷會跟著改，不要在考卷裡另寫一份。
+  - 評審模型用 `GEMINI_JUDGE_MODEL` 設定，溫度 0；`generateJson` 多了 `model` 參數。
+  - 端對端測試 `pipeline.test.ts` 把 Gemini 換成假的，會在 CI 跑。
+  - 2026-09-28 發現雲端容器連得到 Google 的 Gemini API（假金鑰回 400），只有 Hugging Face 被擋。
+- `/api/daily-outfits` 推薦失敗時回 200 ＋天氣＋`reason`（`AI_UNAVAILABLE` / `CLOSET_TOO_SMALL` / `NO_OUTFIT`），首頁 `RecoNotice` 顯示原因。
 - 一套搭配的識別碼是「單品 id 排序後用 | 串起來」（`lib/outfits/key.ts`），卡片 id 1/2/3 只是位置。
 - 本機 Supabase（任務 3）：`supabase/config.toml`（關掉 edge_runtime、analytics；site_url 為 localhost:3000）、`supabase/seed.sql`（測試帳號）、`scripts/local/env.mjs`（寫 `apps/web/.env.local`）。Storage bucket 由 migration 建立。
   - 2026-09-28 在雲端容器驗證過：`supabase start` 套上全部 7 個 migration、seed 帳號可登入，upload / plan / events / saved-outfits / DELETE /api/account 端到端正常，`db reset` 後帳號重建。

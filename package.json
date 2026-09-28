@@ -26,7 +26,8 @@
     "local:db:stop": "supabase stop",
     "local:db:reset": "supabase db reset",
     "local:env": "node scripts/local/env.mjs",
-    "local:setup": "npm run local:db:start && npm run local:env"
+    "local:setup": "npm run local:db:start && npm run local:env",
+    "eval:outfits": "tsx apps/web/evals/outfits/run.ts"
   },
   "keywords": [],
   "author": "",
@@ -47,6 +48,7 @@
     "node-mocks-http": "^1.17.2",
     "react": "^19.1.1",
     "supabase": "^2.72.8",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.2",
     "vite-tsconfig-paths": "^6.0.3",
     "vitest": "^3.2.4",

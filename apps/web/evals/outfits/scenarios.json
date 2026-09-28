@@ -1,0 +1,469 @@
+{
+  "_說明": "每一題 = 一個衣櫃（每類挑幾件照片）＋天氣＋場合，seed 固定所以每次挑到同樣的衣服。feedback 的 pick 是 [類別, 第幾件]，從 0 開始。",
+  "scenarios": [
+    {
+      "id": "hot-casual",
+      "title": "大熱天・休閒（體感 38 度）",
+      "weather": {
+        "temperature": 34,
+        "feelsLike": 38,
+        "humidity": 70,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 1
+    },
+    {
+      "id": "hot-work",
+      "title": "大熱天・上班（體感 35 度）",
+      "weather": {
+        "temperature": 32,
+        "feelsLike": 35,
+        "humidity": 75,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "work",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 2
+    },
+    {
+      "id": "hot-date",
+      "title": "大熱天・約會（體感 33 度）",
+      "weather": {
+        "temperature": 30,
+        "feelsLike": 33,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "date",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 3
+    },
+    {
+      "id": "hot-sport",
+      "title": "大熱天・運動（體感 34 度）",
+      "weather": {
+        "temperature": 31,
+        "feelsLike": 34,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "sport",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 4
+    },
+    {
+      "id": "warm-casual",
+      "title": "舒服天・休閒（25 度）",
+      "weather": {
+        "temperature": 25,
+        "feelsLike": 25,
+        "humidity": 65,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 5
+    },
+    {
+      "id": "warm-work",
+      "title": "舒服天・上班（23 度）",
+      "weather": {
+        "temperature": 23,
+        "feelsLike": 23,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "work",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 6
+    },
+    {
+      "id": "warm-date",
+      "title": "舒服天・約會（24 度）",
+      "weather": {
+        "temperature": 24,
+        "feelsLike": 24,
+        "humidity": 65,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "date",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 7
+    },
+    {
+      "id": "cool-casual",
+      "title": "涼天・休閒（體感 16 度）",
+      "weather": {
+        "temperature": 17,
+        "feelsLike": 16,
+        "humidity": 65,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 8
+    },
+    {
+      "id": "cool-work",
+      "title": "涼天有風・上班（體感 15 度）",
+      "weather": {
+        "temperature": 16,
+        "feelsLike": 15,
+        "humidity": 60,
+        "condition": "windy",
+        "windSpeed": 25
+      },
+      "occasion": "work",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 9
+    },
+    {
+      "id": "cold-casual",
+      "title": "冷天・休閒（體感 7 度）",
+      "weather": {
+        "temperature": 9,
+        "feelsLike": 7,
+        "humidity": 65,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 10
+    },
+    {
+      "id": "cold-work",
+      "title": "冷天・上班（體感 8 度）",
+      "weather": {
+        "temperature": 10,
+        "feelsLike": 8,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "work",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 11
+    },
+    {
+      "id": "rainy-casual",
+      "title": "下雨・休閒（23 度）",
+      "weather": {
+        "temperature": 22,
+        "feelsLike": 23,
+        "humidity": 90,
+        "condition": "rainy",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 12
+    },
+    {
+      "id": "rainy-work-cool",
+      "title": "下雨偏涼・上班（體感 15 度）",
+      "weather": {
+        "temperature": 16,
+        "feelsLike": 15,
+        "humidity": 90,
+        "condition": "rainy",
+        "windSpeed": 8
+      },
+      "occasion": "work",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 13
+    },
+    {
+      "id": "tiny-closet",
+      "title": "衣櫃很少（4 件）・休閒",
+      "weather": {
+        "temperature": 25,
+        "feelsLike": 25,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 2,
+        "bottom": 1,
+        "shoes": 1
+      },
+      "seed": 14
+    },
+    {
+      "id": "no-shoes",
+      "title": "衣櫃沒有鞋子・休閒",
+      "weather": {
+        "temperature": 24,
+        "feelsLike": 24,
+        "humidity": 65,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 4,
+        "outerwear": 1,
+        "bottom": 3
+      },
+      "seed": 15
+    },
+    {
+      "id": "large-closet",
+      "title": "衣櫃很多（40 件，超過一次能送的 30 件）・休閒",
+      "weather": {
+        "temperature": 24,
+        "feelsLike": 24,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 14,
+        "outerwear": 6,
+        "bottom": 10,
+        "shoes": 6,
+        "accessory": 4
+      },
+      "seed": 16
+    },
+    {
+      "id": "hot-many-coats",
+      "title": "大熱天但外套很多・休閒",
+      "weather": {
+        "temperature": 31,
+        "feelsLike": 33,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 2,
+        "outerwear": 4,
+        "bottom": 2,
+        "shoes": 1
+      },
+      "seed": 17
+    },
+    {
+      "id": "feedback-dislike",
+      "title": "回饋：說過不要某個上衣＋褲子組合（顏色）",
+      "weather": {
+        "temperature": 25,
+        "feelsLike": 25,
+        "humidity": 65,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 18,
+      "feedback": [
+        {
+          "action": "dislike",
+          "pick": [
+            [
+              "top",
+              0
+            ],
+            [
+              "bottom",
+              0
+            ]
+          ],
+          "reasons": [
+            "color"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "feedback-worn",
+      "title": "回饋：昨天穿過某一整套",
+      "weather": {
+        "temperature": 25,
+        "feelsLike": 25,
+        "humidity": 65,
+        "condition": "sunny",
+        "windSpeed": 8
+      },
+      "occasion": "casual",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 19,
+      "feedback": [
+        {
+          "action": "wore",
+          "pick": [
+            [
+              "top",
+              0
+            ],
+            [
+              "bottom",
+              0
+            ],
+            [
+              "shoes",
+              0
+            ]
+          ],
+          "daysAgo": 1
+        }
+      ]
+    },
+    {
+      "id": "feedback-mixed",
+      "title": "回饋：喜歡一套、嫌一套太正式・上班",
+      "weather": {
+        "temperature": 16,
+        "feelsLike": 15,
+        "humidity": 65,
+        "condition": "cloudy",
+        "windSpeed": 8
+      },
+      "occasion": "work",
+      "closet": {
+        "top": 5,
+        "outerwear": 2,
+        "bottom": 4,
+        "shoes": 3,
+        "accessory": 1
+      },
+      "seed": 20,
+      "feedback": [
+        {
+          "action": "choose",
+          "pick": [
+            [
+              "top",
+              1
+            ],
+            [
+              "bottom",
+              1
+            ]
+          ]
+        },
+        {
+          "action": "dislike",
+          "pick": [
+            [
+              "top",
+              0
+            ],
+            [
+              "bottom",
+              0
+            ]
+          ],
+          "reasons": [
+            "too_formal"
+          ]
+        }
+      ]
+    }
+  ]
+}

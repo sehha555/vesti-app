@@ -21,10 +21,10 @@ export async function generateJson<T>(
   systemInstruction: string,
   parts: Part[],
   responseJsonSchema: Record<string, unknown>,
-  { temperature = 0.7 }: { temperature?: number } = {}
+  { temperature = 0.7, model = GEMINI_MODEL }: { temperature?: number; model?: string } = {}
 ): Promise<T> {
   const response = await getClient().models.generateContent({
-    model: GEMINI_MODEL,
+    model,
     contents: [{ role: 'user', parts }],
     config: {
       systemInstruction,
