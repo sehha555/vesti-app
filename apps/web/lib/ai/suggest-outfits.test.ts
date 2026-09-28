@@ -44,6 +44,7 @@ const HOT = { temperature: 31, feelsLike: 34, humidity: 70, condition: 'sunny' a
 
 beforeEach(() => {
   vi.clearAllMocks();
+  process.env.GEMINI_API_KEY = 'k';
   vi.mocked(generateJson).mockResolvedValue({
     outfits: [{ title: '清爽', reason: '熱', slots: [{ slotKey: 'top_inner', itemId: 'tee' }, { slotKey: 'bottom', itemId: 'jeans' }] }],
   });
@@ -52,7 +53,7 @@ beforeEach(() => {
 describe('suggestOutfits', () => {
   it('熱天不把羽絨外套送給模型，並附上辨識屬性', async () => {
     const { client, select } = supabaseWith(ROWS);
-    const outfits = await suggestOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: 'casual' });
+    const { outfits, reason } = await suggestOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: 'casual' });
 
     expect(select.mock.calls[0][0]).toContain('attributes');
     const parts = vi.mocked(generateJson).mock.calls[0][1] as Part[];
@@ -62,11 +63,31 @@ describe('suggestOutfits', () => {
     // 沒辨識過的照舊只寫顏色
     expect(text).toContain('itemId: shoes｜名稱: 白鞋｜類別: shoes｜顏色: 白');
     expect(outfits).toHaveLength(1);
+    expect(reason).toBe('OK');
   });
 
-  it('候選不足 3 件就不叫模型', async () => {
+  it('候選不足 3 件就不叫模型，原因是衣櫃太少', async () => {
     const { client } = supabaseWith(ROWS.slice(0, 2));
-    expect(await suggestOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: 'casual' })).toEqual([]);
+    expect(await suggestOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: 'casual' })).toEqual({
+      outfits: [],
+      reason: 'CLOSET_TOO_SMALL',
+    });
     expect(generateJson).not.toHaveBeenCalled();
+  });
+
+  it('沒設 GEMINI_API_KEY 直接回 AI_UNAVAILABLE，不查資料庫', async () => {
+    delete process.env.GEMINI_API_KEY;
+    const { client, select } = supabaseWith(ROWS);
+    expect(await suggestOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: 'casual' })).toEqual({
+      outfits: [],
+      reason: 'AI_UNAVAILABLE',
+    });
+    expect(select).not.toHaveBeenCalled();
+  });
+
+  it('模型給的搭配都不合法時原因是 NO_OUTFIT', async () => {
+    vi.mocked(generateJson).mockResolvedValue({ outfits: [{ title: 'x', reason: 'x', slots: [{ slotKey: 'top_inner', itemId: 'nope' }] }] });
+    const { client } = supabaseWith(ROWS);
+    expect((await suggestOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: 'casual' })).reason).toBe('NO_OUTFIT');
   });
 });

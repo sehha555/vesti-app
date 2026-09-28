@@ -139,6 +139,32 @@ const pageHierarchy: Record<PageType, number> = {
 };
 
 
+// 沒有真的推薦時，說明為什麼卡片是範例穿搭
+const RECO_NOTICES: Record<string, { text: string; link?: { href: string; label: string } }> = {
+  CLOSET_TOO_SMALL: { text: '衣櫃至少要有 3 件衣服（含上衣和下身）才能幫你搭配，下面先看範例穿搭。', link: { href: '/closet', label: '去加衣服 →' } },
+  AI_UNAVAILABLE: { text: 'AI 推薦暫時無法使用，下面先看範例穿搭。' },
+  NO_OUTFIT: { text: '今天沒搭出合適的組合，下面先看範例穿搭；衣服多一點會更好搭。', link: { href: '/closet', label: '去加衣服 →' } },
+};
+
+function RecoNotice({ reason }: { reason: string | null }) {
+  const notice = reason ? RECO_NOTICES[reason] : null;
+  if (!notice) return null;
+  return (
+    <p
+      role="status"
+      className="mx-5 mb-3 rounded-lg p-3 text-sm"
+      style={{ background: 'var(--vesti-gray-light, #f3f4f6)', color: 'var(--vesti-dark, #1f2937)' }}
+    >
+      {notice.text}
+      {notice.link && (
+        <a href={notice.link.href} style={{ marginLeft: 6, color: 'var(--vesti-primary)', fontWeight: 600 }}>
+          {notice.link.label}
+        </a>
+      )}
+    </p>
+  );
+}
+
 export default function Page() {
   // --- State Management ---
   const [currentPage, setCurrentPage] = useState<PageType | null>(null); // null = loading
@@ -150,6 +176,8 @@ export default function Page() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
   const [weatherData, setWeatherData] = useState<WeatherSummary | undefined>();
   const [dailyOutfits, setDailyOutfits] = useState<Outfit[]>([]);
+  // /api/daily-outfits 沒給推薦時的原因（顯示在卡片上方）；null = 還沒回來或有推薦
+  const [recoReason, setRecoReason] = useState<string | null>(null);
 
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
@@ -224,6 +252,7 @@ export default function Page() {
         if (data.weather) {
           setWeatherData(data.weather);
         }
+        setRecoReason(typeof data.reason === 'string' && data.reason !== 'OK' ? data.reason : null);
 
         if (data.outfits && Array.isArray(data.outfits) && data.outfits.length > 0) {
           const mapped: Outfit[] = data.outfits.map((outfit: any, index: number) => {
@@ -421,6 +450,7 @@ export default function Page() {
             <WeatherCard weather={weatherData} />
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
             <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
+            {dailyOutfits.length === 0 && <RecoNotice reason={recoReason} />}
             <div className="mb-16"><StackedCards outfits={dailyOutfits.length > 0 ? dailyOutfits : outfits} onCardClick={handleCardClick} savedKeys={savedKeys} onToggleSave={handleToggleSave} /></div>
             <WardrobeUtilization />
             <CPWRanking onNavigateToFullRanking={() => navigateTo('cpwranking')} />

@@ -22,7 +22,7 @@ beforeEach(() => {
   vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: {} as never, user: { id: 'u1' } as never });
   vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, remaining: 19, limit: 20, resetAfter: 3600, resetAt: 0 });
   vi.mocked(getCachedResponse).mockResolvedValue(null);
-  vi.mocked(suggestOutfits).mockResolvedValue([OUTFIT]);
+  vi.mocked(suggestOutfits).mockResolvedValue({ outfits: [OUTFIT], reason: 'OK' });
 });
 
 describe('GET /api/daily-outfits', () => {
@@ -53,17 +53,20 @@ describe('GET /api/daily-outfits', () => {
   });
 
   it('快取命中時不呼叫模型、不算限流', async () => {
-    vi.mocked(getCachedResponse).mockResolvedValue({ outfits: [OUTFIT], weather: WEATHER });
+    vi.mocked(getCachedResponse).mockResolvedValue({ outfits: [OUTFIT], weather: WEATHER, reason: 'OK' });
     const res = await GET(makeReq('latitude=25&longitude=121.5&occasion=casual'));
     expect(res.status).toBe(200);
     expect(suggestOutfits).not.toHaveBeenCalled();
     expect(checkRateLimit).not.toHaveBeenCalled();
   });
 
-  it('衣櫃不足時 outfits 空陣列且不寫快取', async () => {
-    vi.mocked(suggestOutfits).mockResolvedValue([]);
+  it('衣櫃不足時 outfits 空陣列、附原因、不寫快取', async () => {
+    vi.mocked(suggestOutfits).mockResolvedValue({ outfits: [], reason: 'CLOSET_TOO_SMALL' });
     const res = await GET(makeReq('latitude=25&longitude=121.5&occasion=casual'));
-    expect((await res.json()).outfits).toEqual([]);
+    const body = await res.json();
+    expect(body.outfits).toEqual([]);
+    expect(body.reason).toBe('CLOSET_TOO_SMALL');
+    expect(body.weather).toBeDefined();
     expect(cacheResponse).not.toHaveBeenCalled();
   });
 
@@ -74,10 +77,14 @@ describe('GET /api/daily-outfits', () => {
     expect(suggestOutfits).not.toHaveBeenCalled();
   });
 
-  it('模型失敗回 500 且不外洩訊息', async () => {
+  it('模型失敗仍回 200 與天氣，reason 為 AI_UNAVAILABLE，不外洩訊息、不寫快取', async () => {
     vi.mocked(suggestOutfits).mockRejectedValue(new Error('secret detail'));
     const res = await GET(makeReq('latitude=25&longitude=121.5&occasion=casual'));
-    expect(res.status).toBe(500);
-    expect(JSON.stringify(await res.json())).not.toContain('secret');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ outfits: [], reason: 'AI_UNAVAILABLE' });
+    expect(body.weather).toBeDefined();
+    expect(JSON.stringify(body)).not.toContain('secret');
+    expect(cacheResponse).not.toHaveBeenCalled();
   });
 });
