@@ -1,5 +1,6 @@
 // 穿搭考卷。用法見同資料夾的 README.md。
 //   npm run eval:outfits -- fetch [--gender Men|Women]
+//   npm run eval:outfits -- fetch-brand        （UNIQLO / GU 基本款，清單在 brand-items.json）
 //   npm run eval:outfits -- run [--scenario id] [--limit N] [--repeat N] [--no-judge]
 //   npm run eval:outfits -- compare results/A.json results/B.json
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -37,6 +38,15 @@ function requireKey() {
 }
 
 async function main() {
+  if (command === 'fetch-brand') {
+    requireKey();
+    const { fetchBrandImages } = await import('./fetch-brand');
+    console.log(`從 UNIQLO / GU 下載 brand-items.json 的商品圖到 ${imagesDir}（每件讓 AI 挑一張平拍圖）…`);
+    await fetchBrandImages({ imagesDir, itemsPath: join(here, 'brand-items.json') });
+    console.log('完成。');
+    return;
+  }
+
   if (command === 'fetch') {
     const { fetchImages } = await import('./fetch-images');
     const gender = option('gender') === 'Women' ? 'Women' : 'Men';
@@ -63,11 +73,21 @@ async function main() {
     const { GEMINI_MODEL } = await import('../../lib/ai/gemini');
     const { OUTFIT_SYSTEM_PROMPT } = await import('../../lib/ai/outfit-prompt');
 
-    const pool = loadPool(imagesDir);
-    if (pool.length === 0) {
+    const allPhotos = loadPool(imagesDir);
+    if (allPhotos.length === 0) {
       console.error(`${imagesDir} 裡沒有照片。先執行 npm run eval:outfits -- fetch，或自己放照片（見 README）。`);
       process.exit(1);
     }
+
+    // 先辨識（結果會存起來），才知道哪些是印花
+    const cachePath = join(imagesDir, 'attributes.json');
+    const cached = existsSync(cachePath) ? JSON.parse(readFileSync(cachePath, 'utf8')) : {};
+    const toTag = allPhotos.filter((p) => !(p.id in cached)).length;
+    if (toTag > 0) console.log(`先辨識 ${toTag} 張還沒辨識的照片（${toTag} 次 AI 呼叫，結果會存起來）。`);
+    const attributes = await ensureAttributes(allPhotos, cachePath, (done, total) => process.stdout.write(`\r  辨識 ${done}/${total}`));
+    if (toTag > 0) console.log('');
+    // 日系簡約守則不要大印花：辨識成印花的不放進題目衣櫃
+    const pool = allPhotos.filter((p) => attributes.get(p.id)?.pattern !== 'print');
 
     const all = JSON.parse(readFileSync(join(here, 'scenarios.json'), 'utf8')).scenarios as import('./pipeline').Scenario[];
     const only = option('scenario');
@@ -88,16 +108,11 @@ async function main() {
     if (selected.length === 0) throw new Error(`找不到題目 ${only}`);
     if (scenarios.length === 0) throw new Error('每一題的照片都不夠，請先下載或放更多照片。');
 
-    const cachePath = join(imagesDir, 'attributes.json');
-    const cached = existsSync(cachePath) ? JSON.parse(readFileSync(cachePath, 'utf8')) : {};
-    const toTag = pool.filter((p) => !(p.id in cached)).length;
     const calls = scenarios.length * repeat * (judge ? 2 : 1);
     console.log(
-      `照片 ${pool.length} 張。${toTag > 0 ? `先辨識 ${toTag} 張還沒辨識的照片（${toTag} 次 AI 呼叫，結果會存起來），` : ''}` +
-        `再跑 ${scenarios.length} 題 × ${repeat} 次（約 ${calls} 次 AI 呼叫，每次搭配最多送 30 張照片）。`
+      `照片 ${allPhotos.length} 張（排除印花後 ${pool.length} 張）。` +
+        `跑 ${scenarios.length} 題 × ${repeat} 次（約 ${calls} 次 AI 呼叫，每次搭配最多送 30 張照片）。`
     );
-    const attributes = await ensureAttributes(pool, cachePath, (done, total) => process.stdout.write(`\r  辨識 ${done}/${total}`));
-    if (toTag > 0) console.log('');
 
     const summaries = [];
     let errorsInRow = 0;
