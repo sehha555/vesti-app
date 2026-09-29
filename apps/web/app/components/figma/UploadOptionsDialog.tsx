@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, Image, Link, X } from 'lucide-react';
+import { Camera, Image, Link, Receipt, X } from 'lucide-react';
 
 interface UploadOptionsDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectCamera: () => void;
   onSelectGallery: () => void;
+  onSelectOrder?: () => void;
   // 回傳錯誤訊息；成功回 null（由呼叫端關閉對話框）
   onImportUrl?: (input: { url: string; name?: string; category?: string }) => Promise<string | null>;
 }
@@ -25,6 +26,7 @@ export function UploadOptionsDialog({
   onClose,
   onSelectCamera,
   onSelectGallery,
+  onSelectOrder,
   onImportUrl
 }: UploadOptionsDialogProps) {
   const [selectedOption, setSelectedOption] = useState<'camera' | 'gallery' | null>(null);
@@ -212,6 +214,28 @@ export function UploadOptionsDialog({
                       </div>
                     </div>
                   </motion.button>
+
+                  {/* 外部購買紀錄：訂單截圖 */}
+                  {onSelectOrder && !showUrlForm && (
+                    <motion.button
+                      onClick={onSelectOrder}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center gap-4 rounded-2xl p-4 text-left shadow-lg transition-all duration-300 bg-[var(--vesti-secondary)]/30 hover:bg-[var(--vesti-secondary)]/40 hover:shadow-xl"
+                    >
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/60">
+                        <Receipt className="h-7 w-7 text-[var(--vesti-primary)]" strokeWidth={2.5} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="mb-1 text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
+                          上傳訂單截圖
+                        </div>
+                        <div className="text-[var(--vesti-text-secondary)]" style={{ fontSize: '13px' }}>
+                          蝦皮、momo、品牌官網的訂單都可以，一次加入多件
+                        </div>
+                      </div>
+                    </motion.button>
+                  )}
 
                   {/* 貼商品網址匯入 */}
                   {onImportUrl && !showUrlForm && (

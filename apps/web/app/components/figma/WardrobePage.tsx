@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Plus, Sparkles, Bell, Radio, Calendar, Search, Heart, X, ShoppingBag, Upload } from 'lucide-react';
 import { useDebounce } from './hooks/useDebounce';
 import { EmptyState } from './EmptyState';
+import { OrderImportDialog } from './OrderImportDialog';
 
 interface ClothingItem {
   id: number;
@@ -146,6 +147,8 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
   // 新增：用於相簿上傳的檔案選擇器
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const orderInputRef = useRef<HTMLInputElement>(null);
+  const [orderFile, setOrderFile] = useState<File | null>(null);
   
   // 整套搭配視圖的狀態
   const [selectedFilter, setSelectedFilter] = useState('全部');
@@ -504,6 +507,17 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
     galleryInputRef.current?.click();
   };
   
+  const handleOrderUpload = () => {
+    setIsUploadDialogOpen(false);
+    orderInputRef.current?.click();
+  };
+
+  const handleOrderFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // 同一張截圖再選一次也要觸發
+    if (file) setOrderFile(file);
+  };
+
   // 處理檔案選擇後的上傳
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1177,7 +1191,17 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
           onClose={() => setIsUploadDialogOpen(false)}
           onSelectCamera={handleCameraUpload}
           onSelectGallery={handleGalleryUpload}
+          onSelectOrder={handleOrderUpload}
           onImportUrl={handleImportUrl}
+        />
+
+        <OrderImportDialog
+          file={orderFile}
+          onClose={() => setOrderFile(null)}
+          onSaved={() => {
+            setOrderFile(null);
+            loadItems();
+          }}
         />
 
         {/* 搭配詳細視窗 */}
@@ -1197,6 +1221,13 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
           type="file"
           accept="image/jpeg,image/png,image/jpg"
           onChange={handleFileSelect}
+          className="hidden"
+        />
+        <input
+          ref={orderInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleOrderFileSelect}
           className="hidden"
         />
         <input
