@@ -14,7 +14,9 @@
       "Bash(npx supabase migration list:*)",
       "Bash(npm test:*)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npx vitest *)",
+      "Read(//Users/sehha555/Desktop/**)"
     ]
   }
 }
