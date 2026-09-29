@@ -144,4 +144,13 @@ describe('buildOutfitParts', () => {
     expect(withFeedback.at(-2)?.text).toContain('白 T + 牛仔褲（太正式）');
     expect(withFeedback.at(-1)?.text).toContain('請依照原則');
   });
+
+  it('冷天而且衣櫃有外套時，最後指令要求每套穿外套', () => {
+    const top = { id: 't1', name: '針織衫', category: 'top', color: null, imageBase64: 'AAA', mimeType: 'image/jpeg' };
+    const coat = { ...top, id: 'o1', name: '大衣', category: 'outerwear' };
+    const cold = { temperature: 9, feelsLike: 7, humidity: 60, condition: 'cloudy' as const, windSpeed: 3 };
+    expect(buildOutfitParts([top, coat], cold, 'casual').at(-1)?.text).toContain('每套都要從類別 outerwear');
+    expect(buildOutfitParts([top], cold, 'casual').at(-1)?.text).not.toContain('outerwear');
+    expect(buildOutfitParts([top, coat], { ...cold, feelsLike: 16 }, 'casual').at(-1)?.text).not.toContain('outerwear');
+  });
 });

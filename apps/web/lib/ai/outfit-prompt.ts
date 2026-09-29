@@ -166,7 +166,11 @@ export function buildOutfitParts(
     parts.push({ text: `使用者回饋（最近 30 天）：\n${feedbackSummary}` });
   }
 
-  parts.push({ text: '請依照原則挑出 2 到 3 套搭配。' });
+  // 守則寫了冷天要穿外套，模型還是常拿針織衫當外層；在最後指令再講一次，而且只在真的有外套時講
+  const needCoat = weather.feelsLike < 12 && items.some((item) => item.category === 'outerwear');
+  parts.push({
+    text: `請依照原則挑出 2 到 3 套搭配。${needCoat ? `今天體感 ${weather.feelsLike} 度，每套都要從類別 outerwear 的衣服選一件外套放在 top_outer，針織衫、襯衫不算外套。` : ''}`,
+  });
   return parts;
 }
 

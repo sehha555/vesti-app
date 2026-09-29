@@ -56,6 +56,8 @@ export interface ScenarioRun {
   feedbackSummary: string | null;
   rules: RuleResult[];
   verdicts: JudgeVerdict[];
+  /** 模型給的搭配有被丟掉時才存原始回覆，方便查是哪裡不合法 */
+  rawOutfits?: unknown[];
   error?: string;
 }
 
@@ -255,6 +257,7 @@ export async function runScenario(params: {
     })),
     rules,
     verdicts,
+    ...(outfits.length < raw.length ? { rawOutfits: raw } : {}),
     ...(error ? { error } : {}),
   };
 }
