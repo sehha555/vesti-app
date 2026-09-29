@@ -80,7 +80,11 @@ function toLayers(rows: ClosetItemRow[]): Layer[] {
       uploadDate: row.created_at.slice(0, 10),
     });
   });
-  // 未分類沒東西就不顯示
+  return withoutEmptyUncategorized(layers);
+}
+
+// 未分類沒東西就不顯示
+function withoutEmptyUncategorized(layers: Layer[]): Layer[] {
   return layers.filter((l) => l.id !== 'uncategorized' || l.items.length > 0);
 }
 
@@ -429,12 +433,12 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
       toast.error('刪除失敗，請稍後再試');
       return;
     }
-    setLayers(prev =>
+    setLayers(prev => withoutEmptyUncategorized(
       prev.map(layer => ({
         ...layer,
         items: layer.items.filter(i => i.id !== id),
       }))
-    );
+    ));
     toast('已移除衣物');
   };
 
