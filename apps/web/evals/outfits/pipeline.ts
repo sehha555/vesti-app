@@ -20,7 +20,7 @@ const MIME_BY_EXT: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'im
 const MAX_CANDIDATES = 30; // 跟 suggest-outfits 的 MAX_ITEMS 一致
 
 export interface PoolItem {
-  /** 例如 top/12345.jpg，也是送給模型的 itemId */
+  /** 例如 top/12345.jpg（送給模型時換成 item1、item2…，見 runScenario） */
   id: string;
   category: ClosetCategory;
   name: string;
@@ -175,8 +175,12 @@ export async function runScenario(params: {
   const images = new Map<string, { base64: string; mimeType: string }>();
   for (const item of candidates) images.set(item.id, { base64: readFileSync(item.path).toString('base64'), mimeType: item.mimeType });
 
+  // 路徑當 itemId 時模型常把前綴抄錯（褲子寫成 top/…），整套被丟掉；線上是 UUID 沒有這問題，送給模型前換成短編號
+  const promptId = new Map(candidates.map((c, i) => [c.id, `item${i + 1}`]));
+  const realId = new Map([...promptId].map(([real, short]) => [short, real]));
+
   const promptItems: ClosetItemForPrompt[] = candidates.map((item) => ({
-    id: item.id,
+    id: promptId.get(item.id)!,
     name: nameOf(item),
     category: item.category,
     color: item.attributes?.colors[0] ?? null,
@@ -214,10 +218,13 @@ export async function runScenario(params: {
       weather: scenario.weather,
       occasion: scenario.occasion,
       feedbackSummary,
-      itemsById: new Map(candidates.map((c) => [c.id, { name: nameOf(c), imageUrl: c.path }])),
+      itemsById: new Map(candidates.map((c) => [promptId.get(c.id)!, { name: nameOf(c), imageUrl: c.path }])),
     });
     raw = result.raw;
-    outfits = result.outfits;
+    outfits = result.outfits.map((o) => ({
+      ...o,
+      layoutSlots: o.layoutSlots.map((s) => ({ ...s, item: { ...s.item, id: realId.get(s.item.id)! } })),
+    }));
   } catch (err) {
     return { ...base, rawCount: 0, outfits: [], rules: [], verdicts: [], error: `搭配失敗：${shortError(err)}` };
   }
