@@ -98,28 +98,32 @@ export function DroppableClothingRow({
       <div className="mb-3 flex items-center justify-between px-5">
         <div className="flex items-center gap-2">
           <h3 className="text-[var(--vesti-dark)]">{title}</h3>
+          {onEditLayer && (
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => onEditLayer?.(layerId)}
+            onClick={() => onEditLayer(layerId)}
             className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--vesti-secondary)] text-[var(--vesti-gray-mid)] transition-colors hover:bg-[var(--vesti-primary)] hover:text-white"
           >
             <Edit2 className="h-3 w-3" strokeWidth={2} />
           </motion.button>
+          )}
         </div>
         
         <div className="flex items-center gap-3">
           <span className="text-xs text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
             {items.length} 件
           </span>
+          {onDeleteLayer && (
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => onDeleteLayer?.(layerId)}
+            onClick={() => onDeleteLayer(layerId)}
             className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--vesti-secondary)] text-[var(--vesti-gray-mid)] transition-colors hover:bg-red-500 hover:text-white"
           >
             <Trash2 className="h-3 w-3" strokeWidth={2} />
           </motion.button>
+          )}
         </div>
       </div>
 

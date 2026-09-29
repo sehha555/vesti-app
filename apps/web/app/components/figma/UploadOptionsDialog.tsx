@@ -1,21 +1,65 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, Image, X } from 'lucide-react';
+import { Camera, Image, Link, X } from 'lucide-react';
 
 interface UploadOptionsDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectCamera: () => void;
   onSelectGallery: () => void;
+  // 回傳錯誤訊息；成功回 null（由呼叫端關閉對話框）
+  onImportUrl?: (input: { url: string; name?: string; category?: string }) => Promise<string | null>;
 }
+
+const IMPORT_CATEGORIES = [
+  { value: '', label: '自動判斷（未分類）' },
+  { value: 'top', label: '上身' },
+  { value: 'outerwear', label: '外套' },
+  { value: 'bottom', label: '下身' },
+  { value: 'shoes', label: '鞋子' },
+  { value: 'accessory', label: '配件' },
+];
 
 export function UploadOptionsDialog({
   isOpen,
   onClose,
   onSelectCamera,
-  onSelectGallery
+  onSelectGallery,
+  onImportUrl
 }: UploadOptionsDialogProps) {
   const [selectedOption, setSelectedOption] = useState<'camera' | 'gallery' | null>(null);
+  const [showUrlForm, setShowUrlForm] = useState(false);
+  const [url, setUrl] = useState('');
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onImportUrl) return;
+    setSubmitting(true);
+    setImportError(null);
+    try {
+      const error = await onImportUrl({
+        url: url.trim(),
+        ...(name.trim() ? { name: name.trim() } : {}),
+        ...(category ? { category } : {}),
+      });
+      if (error) {
+        setImportError(error);
+        return;
+      }
+      setUrl('');
+      setName('');
+      setCategory('');
+      setShowUrlForm(false);
+    } catch {
+      setImportError('匯入失敗，請稍後再試');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleCameraClick = () => {
     setSelectedOption('camera');
@@ -168,6 +212,72 @@ export function UploadOptionsDialog({
                       </div>
                     </div>
                   </motion.button>
+
+                  {/* 貼商品網址匯入 */}
+                  {onImportUrl && !showUrlForm && (
+                    <motion.button
+                      onClick={() => setShowUrlForm(true)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center gap-4 rounded-2xl p-4 text-left shadow-lg transition-all duration-300 bg-[var(--vesti-secondary)]/30 hover:bg-[var(--vesti-secondary)]/40 hover:shadow-xl"
+                    >
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/60">
+                        <Link className="h-7 w-7 text-[var(--vesti-primary)]" strokeWidth={2.5} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="mb-1 text-[var(--vesti-dark)]" style={{ fontWeight: 600 }}>
+                          貼商品網址
+                        </div>
+                        <div className="text-[var(--vesti-text-secondary)]" style={{ fontSize: '13px' }}>
+                          UNIQLO 台灣可貼商品頁；其他品牌貼圖片網址
+                        </div>
+                      </div>
+                    </motion.button>
+                  )}
+
+                  {onImportUrl && showUrlForm && (
+                    <form onSubmit={handleImportSubmit} className="flex flex-col gap-3 rounded-2xl bg-[var(--vesti-secondary)]/30 p-4">
+                      <input
+                        type="url"
+                        required
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://www.uniqlo.com/tw/..."
+                        className="w-full rounded-xl bg-white px-3 py-2 text-[var(--vesti-dark)] outline-none"
+                        style={{ fontSize: '14px' }}
+                      />
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        maxLength={100}
+                        placeholder="名稱（選填）"
+                        className="w-full rounded-xl bg-white px-3 py-2 text-[var(--vesti-dark)] outline-none"
+                        style={{ fontSize: '14px' }}
+                      />
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full rounded-xl bg-white px-3 py-2 text-[var(--vesti-dark)] outline-none"
+                        style={{ fontSize: '14px' }}
+                      >
+                        {IMPORT_CATEGORIES.map((c) => (
+                          <option key={c.value} value={c.value}>{c.label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        disabled={submitting || !url.trim()}
+                        className="rounded-xl bg-[var(--vesti-primary)] py-2 text-white disabled:opacity-50"
+                        style={{ fontWeight: 600 }}
+                      >
+                        {submitting ? '匯入中…' : '加入衣櫃'}
+                      </button>
+                      {importError && (
+                        <p className="text-[var(--vesti-accent)]" style={{ fontSize: '13px' }}>{importError}</p>
+                      )}
+                    </form>
+                  )}
                 </div>
               </div>
             </motion.div>

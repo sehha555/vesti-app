@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { DroppableClothingRow } from './DroppableClothingRow';
-import { CreateLayerDialog } from './CreateLayerDialog';
 import { CreateCategoryDialog } from './CreateCategoryDialog';
 import { ClothingDetailModal } from './ClothingDetailModal';
 import { UploadOptionsDialog } from './UploadOptionsDialog';
@@ -17,6 +16,7 @@ import { EmptyState } from './EmptyState';
 
 interface ClothingItem {
   id: number;
+  dbId: string; // closet_items.id；子元件沿用數字 id，打 API 用這個
   imageUrl: string;
   name: string;
   category: string;
@@ -38,201 +38,51 @@ interface Layer {
   items: ClothingItem[];
 }
 
+interface ClosetItemRow {
+  id: string;
+  name: string;
+  category: string;
+  brand: string | null;
+  size: string | null;
+  tags: string[] | null;
+  image_url: string | null;
+  created_at: string;
+}
+
 // 預設值常數 - 確保參考穩定性
 const EMPTY_OUTFITS: any[] = [];
 const EMPTY_OUTFIT_SETS: any[] = [];
 
-const initialLayers: Layer[] = [
-  {
-    id: 'layer-1',
-    name: '上衣',
-    items: [
-      { 
-        id: 1, 
-        imageUrl: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=400', 
-        name: '白色 T-shirt', 
-        category: '上衣',
-        brand: 'UNIQLO',
-        source: 'user-upload',
-        size: 'M',
-        material: '100% 棉',
-        wearCount: 12,
-        uploadDate: '2024-09-15',
-        lastWornDate: '2025-11-01',
-        tags: ['休閒', '基本款'],
-      },
-      { 
-        id: 2, 
-        imageUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400', 
-        name: '藍色襯衫', 
-        category: '上衣',
-        brand: 'ZARA',
-        source: 'app-purchase',
-        isPurchased: true,
-        price: 890,
-        size: 'L',
-        material: '65% 棉, 35% 聚酯纖維',
-        wearCount: 8,
-        uploadDate: '2024-10-20',
-        lastWornDate: '2025-10-28',
-        tags: ['正式', '商務'],
-      },
-      { 
-        id: 3, 
-        imageUrl: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400', 
-        name: '黑色針織衫', 
-        category: '上衣',
-        brand: 'H&M',
-        source: 'user-upload',
-        size: 'M',
-        material: '80% 羊毛, 20% 尼龍',
-        wearCount: 5,
-        uploadDate: '2024-11-01',
-        lastWornDate: '2025-11-05',
-        tags: ['保暖', '秋冬'],
-      },
-      { 
-        id: 4, 
-        imageUrl: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=400', 
-        name: '條紋上衣', 
-        category: '上衣',
-        brand: 'GAP',
-        source: 'app-purchase',
-        isPurchased: true,
-        price: 650,
-        size: 'S',
-        material: '95% 棉, 5% 彈性纖維',
-        wearCount: 15,
-        uploadDate: '2024-08-10',
-        lastWornDate: '2025-11-03',
-        tags: ['休閒', '條紋'],
-      },
-    ],
-  },
-  {
-    id: 'layer-2',
-    name: '下身',
-    items: [
-      { 
-        id: 11, 
-        imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400', 
-        name: '牛仔褲', 
-        category: '下身',
-        brand: "LEVI'S",
-        source: 'app-purchase',
-        isPurchased: false,
-        price: 1580,
-        size: '32',
-        material: '98% 棉, 2% 彈性纖維',
-        wearCount: 0,
-        uploadDate: '2025-11-06',
-        tags: ['牛仔', '經典'],
-      },
-      { 
-        id: 12, 
-        imageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400', 
-        name: '卡其褲', 
-        category: '下身',
-        brand: 'MUJI',
-        source: 'user-upload',
-        size: '30',
-        material: '100% 棉',
-        wearCount: 20,
-        uploadDate: '2024-07-15',
-        lastWornDate: '2025-11-02',
-        tags: ['休閒', '百搭'],
-      },
-      { 
-        id: 13, 
-        imageUrl: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=400', 
-        name: '黑色長褲', 
-        category: '下身',
-        brand: 'UNIQLO',
-        source: 'user-upload',
-        size: '31',
-        material: '70% 聚酯纖維, 30% 人造纖維',
-        wearCount: 18,
-        uploadDate: '2024-09-01',
-        lastWornDate: '2025-11-04',
-        tags: ['正式', '西裝褲'],
-      },
-    ],
-  },
-  {
-    id: 'layer-3',
-    name: '外套',
-    items: [
-      { 
-        id: 21, 
-        imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400', 
-        name: '牛仔外套', 
-        category: '外套',
-        brand: "LEVI'S",
-        source: 'app-purchase',
-        isPurchased: true,
-        price: 2390,
-        size: 'M',
-        material: '100% 棉',
-        wearCount: 10,
-        uploadDate: '2024-10-01',
-        lastWornDate: '2025-10-30',
-        tags: ['牛仔', '休閒'],
-      },
-      { 
-        id: 22, 
-        imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400', 
-        name: '米色運動外套', 
-        category: '外套',
-        brand: 'ADIDAS',
-        source: 'app-purchase',
-        isPurchased: true,
-        price: 780,
-        size: 'M',
-        material: '87% 尼龍, 13% 彈性纖維',
-        wearCount: 15,
-        uploadDate: '2024-08-01',
-        lastWornDate: '2025-11-04',
-        tags: ['Sporty', '運動', '毒軟'],
-      },
-    ],
-  },
-  {
-    id: 'layer-4',
-    name: '鞋子',
-    items: [
-      { 
-        id: 31, 
-        imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400', 
-        name: '白色球鞋', 
-        category: '鞋子',
-        brand: 'NIKE',
-        source: 'app-purchase',
-        isPurchased: true,
-        price: 2890,
-        size: 'US 9',
-        material: '合成皮革',
-        wearCount: 25,
-        uploadDate: '2024-06-10',
-        lastWornDate: '2025-11-06',
-        tags: ['運動', '百搭'],
-      },
-      { 
-        id: 32, 
-        imageUrl: 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=400', 
-        name: '黑色靴子', 
-        category: '鞋子',
-        brand: 'Dr. Martens',
-        source: 'user-upload',
-        size: 'UK 8',
-        material: '真皮',
-        wearCount: 7,
-        uploadDate: '2024-10-15',
-        lastWornDate: '2025-11-01',
-        tags: ['正式', '皮革'],
-      },
-    ],
-  },
+// 衣櫃層固定對應 closet_items.category，不開放自訂
+const CATEGORY_LAYERS = [
+  { id: 'top', name: '上身' },
+  { id: 'outerwear', name: '外套' },
+  { id: 'bottom', name: '下身' },
+  { id: 'shoes', name: '鞋子' },
+  { id: 'accessory', name: '配件' },
+  { id: 'uncategorized', name: '未分類' },
 ];
+
+function toLayers(rows: ClosetItemRow[]): Layer[] {
+  const layers: Layer[] = CATEGORY_LAYERS.map((c) => ({ ...c, items: [] }));
+  rows.forEach((row, index) => {
+    const layer = layers.find((l) => l.id === row.category) ?? layers[layers.length - 1];
+    layer.items.push({
+      id: index + 1,
+      dbId: row.id,
+      imageUrl: row.image_url ?? '',
+      name: row.name,
+      category: layer.name,
+      brand: row.brand ?? undefined,
+      size: row.size ?? undefined,
+      tags: row.tags ?? undefined,
+      source: 'user-upload',
+      uploadDate: row.created_at.slice(0, 10),
+    });
+  });
+  // 未分類沒東西就不顯示
+  return layers.filter((l) => l.id !== 'uncategorized' || l.items.length > 0);
+}
 
 // Mock outfit data for the outfits view
 interface SavedOutfit {
@@ -281,9 +131,8 @@ interface WardrobePageProps {
 
 export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigateToBroadcast, savedOutfitsFromHome = EMPTY_OUTFITS, savedOutfitSetsFromTryOn = EMPTY_OUTFIT_SETS }: WardrobePageProps = {} as WardrobePageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('items');
-  const [layers, setLayers] = useState<Layer[]>(initialLayers);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingLayer, setEditingLayer] = useState<{ id: string; name: string } | null>(null);
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'unauthorized' | 'error' | 'ready'>('loading');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -544,84 +393,80 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
     }
   };
 
-  const handleDeleteItem = (id: number) => {
-    setLayers(prev => 
+  const loadItems = useCallback(async () => {
+    try {
+      const res = await fetch('/api/closet-items');
+      if (res.status === 401) {
+        setLoadState('unauthorized');
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      setLayers(toLayers(body.data ?? []));
+      setLoadState('ready');
+    } catch {
+      setLoadState('error');
+    }
+  }, []);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
+
+  const findItem = (id: number) => {
+    for (const layer of layers) {
+      const item = layer.items.find(i => i.id === id);
+      if (item) return item;
+    }
+    return undefined;
+  };
+
+  const handleDeleteItem = async (id: number) => {
+    const item = findItem(id);
+    if (!item) return;
+    const res = await fetch(`/api/closet-items/${item.dbId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      toast.error('刪除失敗，請稍後再試');
+      return;
+    }
+    setLayers(prev =>
       prev.map(layer => ({
         ...layer,
-        items: layer.items.filter(item => item.id !== id),
+        items: layer.items.filter(i => i.id !== id),
       }))
     );
     toast('已移除衣物');
   };
 
-  const handleDrop = (item: ClothingItem & { sourceLayerId: string }, targetLayerId: string) => {
-    setLayers(prev => {
-      // 從來源層移除
-      const newLayers = prev.map(layer => {
-        if (layer.id === item.sourceLayerId) {
-          return {
-            ...layer,
-            items: layer.items.filter(i => i.id !== item.id),
-          };
-        }
-        return layer;
-      });
-
-      // 添加到目標層
-      return newLayers.map(layer => {
-        if (layer.id === targetLayerId) {
-          // Remove sourceLayerId from item before adding
-          const { sourceLayerId, ...itemData } = item;
-          return {
-            ...layer,
-            items: [...layer.items, itemData],
-          };
-        }
-        return layer;
-      });
+  // 拖到別層 = 改 category；存檔成功後重新載入，失敗就維持原樣
+  const handleDrop = async (dragged: ClothingItem & { sourceLayerId: string }, targetLayerId: string) => {
+    const item = findItem(dragged.id);
+    if (!item) return;
+    const res = await fetch(`/api/closet-items/${item.dbId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: targetLayerId }),
     });
-
+    if (!res.ok) {
+      toast.error('移動失敗，請稍後再試');
+      return;
+    }
+    await loadItems();
     toast.success('已移動衣物');
   };
 
-  const handleCreateLayer = (layerName: string) => {
-    if (editingLayer) {
-      // 編輯現有層
-      setLayers(prev =>
-        prev.map(layer =>
-          layer.id === editingLayer.id ? { ...layer, name: layerName } : layer
-        )
-      );
-      toast.success('已更新層名稱');
-      setEditingLayer(null);
-    } else {
-      // 創建新層
-      const newLayer: Layer = {
-        id: `layer-${Date.now()}`,
-        name: layerName,
-        items: [],
-      };
-      setLayers(prev => [...prev, newLayer]);
-      toast.success('已創建新層 ');
-    }
-  };
-
-  const handleEditLayer = (layerId: string) => {
-    const layer = layers.find(l => l.id === layerId);
-    if (layer) {
-      setEditingLayer({ id: layer.id, name: layer.name });
-      setIsDialogOpen(true);
-    }
-  };
-
-  const handleDeleteLayer = (layerId: string) => {
-    const layer = layers.find(l => l.id === layerId);
-    if (layer && layer.items.length > 0) {
-      toast.error('請先清空此層的衣物');
-      return;
-    }
-    setLayers(prev => prev.filter(l => l.id !== layerId));
-    toast('已移除層');
+  const handleImportUrl = async (input: { url: string; name?: string; category?: string }) => {
+    const res = await fetch('/api/closet-items/from-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return body.error ?? '匯入失敗';
+    await loadItems();
+    toast.success(`已加入：${body.data?.name ?? '商品'}`);
+    setIsUploadDialogOpen(false);
+    return null;
   };
 
   const handleEditItem = () => {
@@ -1170,8 +1015,18 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
         >
           {viewMode === 'items' ? (
             <>
-              {/* 衣櫃層列表 */}
-              {layers.map((layer) => (
+              {loadState === 'loading' && (
+                <p className="px-5 py-8 text-center text-sm text-[var(--vesti-gray-mid)]">載入中…</p>
+              )}
+              {loadState === 'unauthorized' && (
+                <p className="px-5 py-8 text-center text-sm text-[var(--vesti-gray-mid)]">請先登入才能看到你的衣櫃</p>
+              )}
+              {loadState === 'error' && (
+                <p className="px-5 py-8 text-center text-sm text-[var(--vesti-gray-mid)]">衣櫃載入失敗，請稍後再試</p>
+              )}
+
+              {/* 衣櫃層列表：固定依類別分層 */}
+              {loadState === 'ready' && layers.map((layer) => (
                 <DroppableClothingRow
                   key={layer.id}
                   layerId={layer.id}
@@ -1180,34 +1035,35 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
                   onLike={handleLike}
                   onDelete={handleDeleteItem}
                   onDrop={handleDrop}
-                  onEditLayer={handleEditLayer}
-                  onDeleteLayer={handleDeleteLayer}
                   onItemClick={handleItemClick}
                   onUpload={handleUploadClick}
                 />
               ))}
 
-              {/* 添加新層按鈕 */}
-              <div className="px-5">
-                <motion.button
-                  onClick={() => {
-                    setEditingLayer(null);
-                    setIsDialogOpen(true);
-                  }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--vesti-gray-mid)] bg-[var(--vesti-secondary)]/50 py-4 text-[var(--vesti-gray-mid)] transition-all hover:border-[var(--vesti-primary)] hover:text-[var(--vesti-primary)]"
-                >
-                  <Plus className="h-5 w-5" strokeWidth={2} />
-                  <span style={{ fontWeight: 400 }}>新增衣櫃層</span>
-                </motion.button>
-              </div>
+              {/* 新增衣物（衣櫃全空時也要有入口） */}
+              {loadState === 'ready' && (
+                <div className="px-5">
+                  <motion.button
+                    onClick={handleUploadClick}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--vesti-gray-mid)] bg-[var(--vesti-secondary)]/50 py-4 text-[var(--vesti-gray-mid)] transition-all hover:border-[var(--vesti-primary)] hover:text-[var(--vesti-primary)]"
+                  >
+                    <Plus className="h-5 w-5" strokeWidth={2} />
+                    <span style={{ fontWeight: 400 }}>新增衣物</span>
+                  </motion.button>
+                </div>
+              )}
             </>
           ) : (
             <>
               {/* 我的搭配標題與按鈕 */}
               <div className="px-5 mb-4 flex items-center justify-between">
-                <h2 className="text-[var(--vesti-dark)]">我的搭配</h2>
+                <h2 className="text-[var(--vesti-dark)]">
+                  我的搭配
+                  {/* 搭配資料還沒接後端（路線第 2 站處理） */}
+                  <span className="ml-2 text-xs text-[var(--vesti-gray-mid)]">示意</span>
+                </h2>
                 <div className="flex items-center gap-2 p-[5px] m-[3px]">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
@@ -1291,17 +1147,6 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
           )}
         </div>
 
-        {/* 創建/編輯層對話框 */}
-        <CreateLayerDialog
-          isOpen={isDialogOpen}
-          onClose={() => {
-            setIsDialogOpen(false);
-            setEditingLayer(null);
-          }}
-          onConfirm={handleCreateLayer}
-          editingLayer={editingLayer}
-        />
-        
         {/* 創建分類對話框 */}
         <CreateCategoryDialog
           isOpen={isCategoryDialogOpen}
@@ -1328,6 +1173,7 @@ export function WardrobePage({ onNavigateToUpload, onNavigateToTryOn, onNavigate
           onClose={() => setIsUploadDialogOpen(false)}
           onSelectCamera={handleCameraUpload}
           onSelectGallery={handleGalleryUpload}
+          onImportUrl={handleImportUrl}
         />
 
         {/* 搭配詳細視窗 */}
