@@ -75,6 +75,9 @@ interface PaymentCard {
   isDefault?: boolean;
 }
 
+// 首頁下半部（衣櫃利用率、CPW 排行、預計配送）與購物車/通知角標仍是電商規劃的假資料，先隱藏
+const SHOW_COMMERCE_MOCKS = false;
+
 const outfits: Outfit[] = [
   {
     id: 1,
@@ -328,11 +331,11 @@ export default function Page() {
                 <div className="flex items-center gap-2">
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigateTo('checkout')} className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors">
                     <ShoppingCart className="h-6 w-6 text-foreground" strokeWidth={2} />
-                    <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">3</div>
+                    {SHOW_COMMERCE_MOCKS && <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">3</div>}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigateTo('notification')} className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors">
                     <Bell className="h-6 w-6 text-foreground" strokeWidth={2} />
-                    <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
+                    {SHOW_COMMERCE_MOCKS && <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />}
                   </motion.button>
                 </div>
               </div>
@@ -348,9 +351,13 @@ export default function Page() {
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
             <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
             <div className="mb-16"><StackedCards outfits={dailyOutfits.length > 0 ? dailyOutfits : outfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} /></div>
-            <WardrobeUtilization />
-            <CPWRanking onNavigateToFullRanking={() => navigateTo('cpwranking')} />
-            <EstimatedDelivery onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} />
+            {SHOW_COMMERCE_MOCKS && (
+              <>
+                <WardrobeUtilization />
+                <CPWRanking onNavigateToFullRanking={() => navigateTo('cpwranking')} />
+                <EstimatedDelivery onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} />
+              </>
+            )}
           </>
         );
       case 'wardrobe':
