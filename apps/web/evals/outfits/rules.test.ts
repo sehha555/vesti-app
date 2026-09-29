@@ -64,6 +64,15 @@ describe('考卷規則', () => {
     expect(rule(checkRules(base({ occasion: 'work', attributes, outfits: [withShoes('sneaker')] })), 'work_dress_shoes')).toBeUndefined();
   });
 
+  it('冷天衣櫃有外套卻只穿針織衫', () => {
+    const attributes = new Map([['t', a(2, 2)], ['knit', a(4, 3)], ['b', a(2, 3)], ['jacket', { ...a(3, 3), category: 'outerwear' as const }]]);
+    expect(rule(checkRules(base({ feelsLike: 8, attributes, outfits: [outfit('knit', 'b'), outfit('jacket', 'b')] })), 'cold_outerwear')?.passed).toBe(false);
+    expect(rule(checkRules(base({ feelsLike: 8, attributes, outfits: [outfit('jacket', 'b'), outfit('t', 'jacket')] })), 'cold_outerwear')?.passed).toBe(true);
+    // 衣櫃沒有外套就不檢查
+    attributes.delete('jacket');
+    expect(rule(checkRules(base({ feelsLike: 8, attributes })), 'cold_outerwear')).toBeUndefined();
+  });
+
   it('回饋：說過不要的組合、最近穿過的整套', () => {
     const r = checkRules(base({ dislikedCombos: [['t', 'b']], wornCombos: [['b', 't2']] }));
     expect(rule(r, 'respect_dislike')?.passed).toBe(false);

@@ -90,6 +90,18 @@ export function checkRules(input: RuleInput): RuleResult[] {
         detail: bad.map(names).join('；') || undefined,
       });
     }
+
+    // 針織衫的保暖度常標到 4，光看保暖度會放過「襯衫＋針織衫」就出門；衣櫃有外套就要穿
+    const hasOuterwear = [...attributes.values()].some((a) => a?.category === 'outerwear');
+    if (hasOuterwear) {
+      const bad = outfits.filter((o) => !attrsOf(o).some((a) => a.category === 'outerwear'));
+      results.push({
+        rule: 'cold_outerwear',
+        label: '冷天（體感 12 度以下）衣櫃有外套時每套都穿外套',
+        passed: bad.length === 0,
+        detail: bad.map(names).join('；') || undefined,
+      });
+    }
   }
 
   const spread = outfits.filter((o) => {
