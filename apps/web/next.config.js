@@ -36,8 +36,9 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           {
+            // blob:：上傳頁要把衣櫃頁選好的照片（blob: 預覽網址）讀回 File 送分析
             key: 'Content-Security-Policy',
-            value: "connect-src 'self' http://localhost:*"
+            value: "connect-src 'self' blob: http://localhost:*"
           }
         ]
       }

@@ -26,7 +26,6 @@ import {
 
 interface UploadClothingPageProps {
   onBack: () => void;
-  onSave?: (clothingData: ClothingData) => void;
   initialImageUrl?: string;
 }
 
@@ -36,32 +35,29 @@ interface ClothingData {
   category: string;
   brand?: string;
   color?: string;
-  material?: string;
   size?: string;
-  price?: number;
   tags?: string[];
-  source: 'user-upload';
 }
 
+// value 對應 closet_items.category，label 與衣櫃頁的分層名稱一致
 const CATEGORIES = [
-  '上衣',
-  '外套',
-  '褲子',
-  '裙子',
-  '洋裝',
-  '鞋子',
-  '配件',
-  '包包',
-  '其他',
+  { value: 'top', label: '上身' },
+  { value: 'outerwear', label: '外套' },
+  { value: 'bottom', label: '下身' },
+  { value: 'shoes', label: '鞋子' },
+  { value: 'accessory', label: '配件' },
 ];
+
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
 
-export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadClothingPageProps) {
+export function UploadClothingPage({ onBack, initialImageUrl }: UploadClothingPageProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(initialImageUrl || '');
   const [isAnalyzing, setIsAnalyzing] = useState(!!initialImageUrl);
   const [isAiSuggested, setIsAiSuggested] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tagInput, setTagInput] = useState('');
 
@@ -72,48 +68,60 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
     category: '',
     brand: '',
     color: '',
-    material: '',
     size: '',
-    price: undefined,
     tags: [],
-    source: 'user-upload',
   });
 
-  // 如果有初始圖片，自動觸發 AI 分析
+  // 衣櫃頁傳進來的是 blob: 預覽網址，轉回 File 才能送分析與上傳
   useEffect(() => {
-    if (initialImageUrl && !isAiSuggested) {
-      analyzeImage();
-    }
+    if (!initialImageUrl) return;
+    // 開發模式 effect 會跑兩次；被取消的那次不送分析，免得多叫一次模型
+    let cancelled = false;
+    fetch(initialImageUrl)
+      .then((res) => res.blob())
+      .then((blob) => {
+        if (cancelled) return;
+        const file = new File([blob], 'photo', { type: blob.type });
+        setImageFile(file);
+        analyzeImage(file);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsAnalyzing(false);
+        toast.error('讀取照片失敗，請重新選擇');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [initialImageUrl]);
 
-  // 模擬 AI 分析
-  const analyzeImage = async () => {
+  const analyzeImage = async (file: File) => {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setIsAnalyzing(false);
+      toast.error('只支援 JPG、PNG、WebP，請手動填寫');
+      return;
+    }
     setIsAnalyzing(true);
-    
-    // 模擬 API 呼叫延遲
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // 模擬 AI 預測結果
-    const aiPrediction = {
-      name: '棉質條紋 T-shirt',
-      category: '上衣',
-      brand: 'Uniqlo',
-      color: 'blue',
-      material: '100% 純棉',
-      size: 'M',
-      tags: ['休閒', '條紋', '基本款', '夏季'],
-    };
-
-    setFormData(prev => ({
-      ...prev,
-      ...aiPrediction,
-    }));
-    
-    setIsAnalyzing(false);
-    setIsAiSuggested(true);
-    toast.success('AI 已完成分析！你可以修改任何內容', {
-      icon: <Sparkles className="h-4 w-4" />,
-    });
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/closet-items/analyze', { method: 'POST', body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(body.error ?? 'AI 分析失敗，請手動填寫');
+        return;
+      }
+      const { name, category, color, brand, tags } = body.data;
+      setFormData(prev => ({ ...prev, name, category, color, brand: brand ?? '', tags }));
+      setIsAiSuggested(true);
+      toast.success('AI 已完成分析！你可以修改任何內容', {
+        icon: <Sparkles className="h-4 w-4" />,
+      });
+    } catch {
+      toast.error('AI 分析失敗，請手動填寫');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   // 處理圖片上傳
@@ -133,7 +141,7 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
         setFormData(prev => ({ ...prev, imageUrl: result }));
         
         // 自動開始 AI 分析
-        analyzeImage();
+        analyzeImage(file);
       };
       reader.readAsDataURL(file);
     }
@@ -169,9 +177,9 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
     }));
   };
 
-  // 儲存
-  const handleSave = () => {
-    if (!formData.imageUrl) {
+  // 儲存：照片與表單一起送 closet-items/upload，成功後回衣櫃（衣櫃頁重新載入就看得到）
+  const handleSave = async () => {
+    if (!imageFile) {
       toast.error('請先上傳圖片');
       return;
     }
@@ -184,11 +192,31 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
       return;
     }
 
-    onSave?.(formData);
-    toast.success('成功新增衣物到衣櫃！', {
-      icon: <Check className="h-4 w-4" />,
-    });
-    onBack();
+    setIsSaving(true);
+    try {
+      const form = new FormData();
+      form.append('file', imageFile);
+      form.append('name', formData.name);
+      form.append('category', formData.category);
+      if (formData.brand) form.append('brand', formData.brand);
+      if (formData.color) form.append('color', formData.color);
+      if (formData.size) form.append('size', formData.size);
+      form.append('tags', JSON.stringify(formData.tags ?? []));
+      const res = await fetch('/api/closet-items/upload', { method: 'POST', body: form });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error ?? '儲存失敗，請稍後再試');
+        return;
+      }
+      toast.success('成功新增衣物到衣櫃！', {
+        icon: <Check className="h-4 w-4" />,
+      });
+      onBack();
+    } catch {
+      toast.error('儲存失敗，請稍後再試');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -215,11 +243,11 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleSave}
-            disabled={!formData.imageUrl || !formData.name || !formData.category}
+            disabled={!imageFile || !formData.name || !formData.category || isSaving}
             className="rounded-xl bg-[var(--vesti-primary)] px-5 py-2 text-white transition-all hover:bg-[var(--vesti-primary)]/90 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ fontWeight: 600 }}
           >
-            儲存
+            {isSaving ? '儲存中…' : '儲存'}
           </motion.button>
         </div>
       </motion.header>
@@ -253,7 +281,7 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
                     點擊上傳照片
                   </p>
                   <p className="text-sm text-[var(--vesti-gray-mid)]" style={{ fontWeight: 400 }}>
-                    支援 JPG、PNG 格式，最大 10MB
+                    支援 JPG、PNG、WebP，最大 10MB
                   </p>
                 </div>
                 <Badge className="bg-[var(--vesti-primary)] text-white">
@@ -317,7 +345,7 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/jpg"
+              accept="image/jpeg,image/png,image/webp"
               onChange={handleImageChange}
               className="hidden"
             />
@@ -361,8 +389,8 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
                     </SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -402,43 +430,6 @@ export function UploadClothingPage({ onBack, onSave, initialImageUrl }: UploadCl
                         {size}
                       </motion.button>
                     ))}
-                  </div>
-                </div>
-
-                {/* 材質 */}
-                <div>
-                  <Label htmlFor="material" className="mb-2 block">
-                    材質
-                  </Label>
-                  <Input
-                    id="material"
-                    value={formData.material}
-                    onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
-                    placeholder="例如：100% 純棉、聚酯纖維"
-                    className="h-12"
-                  />
-                </div>
-
-                {/* 購買價格 */}
-                <div>
-                  <Label htmlFor="price" className="mb-2 block">
-                    購買價格
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--vesti-gray-mid)]">
-                      NT$
-                    </span>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={formData.price || ''}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        price: e.target.value ? parseFloat(e.target.value) : undefined 
-                      }))}
-                      placeholder="0"
-                      className="h-12 pl-14"
-                    />
                   </div>
                 </div>
 
