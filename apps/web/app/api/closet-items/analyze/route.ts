@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { verifyFileSignature } from '../../../../lib/security/file-signature';
-import { isClosetImageMime } from '../../../../lib/closet/storage';
+import { readImageUpload } from '../../../../lib/closet/read-image-upload';
 import { analyzeClothingImage } from '../../../../lib/closet/analyze-clothing';
 
 export const runtime = 'nodejs';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const RATE_LIMIT = { keyPrefix: 'closet-analyze', maxRequests: 20, windowMs: 600_000 };
 const NO_STORE = { 'Cache-Control': 'private, no-store' };
 
@@ -30,29 +28,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  let file: File | null;
-  try {
-    file = (await req.formData()).get('file') as File | null;
-  } catch {
-    return NextResponse.json({ error: 'Invalid request format' }, { status: 400, headers: NO_STORE });
-  }
-  if (!file) {
-    return NextResponse.json({ error: 'File is required' }, { status: 400, headers: NO_STORE });
-  }
-  if (!isClosetImageMime(file.type)) {
-    return NextResponse.json({ error: '只支援 JPG、PNG、WebP' }, { status: 400, headers: NO_STORE });
-  }
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: '圖片不能超過 10MB' }, { status: 400, headers: NO_STORE });
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  if (!verifyFileSignature(buffer, file.type).valid) {
-    return NextResponse.json({ error: '檔案內容與格式不符' }, { status: 400, headers: NO_STORE });
-  }
+  const image = await readImageUpload(req);
+  if (image instanceof NextResponse) return image;
 
   try {
-    const data = await analyzeClothingImage(buffer, file.type);
+    const data = await analyzeClothingImage(image.buffer, image.contentType);
     return NextResponse.json({ data }, { headers: NO_STORE });
   } catch (err) {
     console.error('[closet-items/analyze] 分析失敗:', (err as Error).message);
