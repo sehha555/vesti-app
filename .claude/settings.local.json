@@ -12,7 +12,9 @@
       "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\Desktop\\vesti\\batch-copy.ps1\")",
       "Bash(npx supabase db push:*)",
       "Bash(npx supabase migration list:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
