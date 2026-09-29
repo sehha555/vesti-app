@@ -99,4 +99,18 @@ describe('buildOutfitParts', () => {
     expect(parts[2].inlineData).toEqual({ data: 'AAA', mimeType: 'image/jpeg' });
     expect(parts[3].text).not.toContain('顏色');
   });
+
+  it('最近穿過的衣服會被標註', () => {
+    const parts = buildOutfitParts(
+      [
+        { id: 't1', name: '白 T', category: 'top', color: null, imageBase64: 'AAA', mimeType: 'image/jpeg' },
+        { id: 'b1', name: '牛仔褲', category: 'bottom', color: null, imageBase64: 'BBB', mimeType: 'image/png' },
+      ],
+      { temperature: 30, feelsLike: 33, humidity: 70, condition: 'sunny', windSpeed: 5 },
+      'casual',
+      new Set(['b1'])
+    );
+    expect(parts[1].text).not.toContain('最近穿過');
+    expect(parts[3].text).toContain('最近穿過');
+  });
 });

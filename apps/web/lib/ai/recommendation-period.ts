@@ -10,3 +10,8 @@ export function currentPeriodStart(now: Date = new Date(), hours: number = RECOM
   const localMs = now.getTime() + TAIPEI_OFFSET_MS;
   return new Date(Math.floor(localMs / periodMs) * periodMs - TAIPEI_OFFSET_MS);
 }
+
+/** 台灣今天的日期字串 YYYY-MM-DD（每日穿搭計畫用） */
+export function taipeiDate(now: Date = new Date()): string {
+  return new Date(now.getTime() + TAIPEI_OFFSET_MS).toISOString().slice(0, 10);
+}

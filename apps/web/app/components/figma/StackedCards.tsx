@@ -3,6 +3,7 @@ import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { PLAN_CHANGED_EVENT, clearTodayOutfit, confirmTodayOutfit, fetchTodayItemIds, outfitItemKey, slotItemIds } from '../../../lib/daily-plan';
 import { haptic } from './hooks/useHaptic';
 
 interface OutfitItem {
@@ -77,24 +78,23 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
     }
   }, [userId]);
 
-  // 初始化：從 Supabase 回填今日已選定的穿搭
+  // 回填今天選定的那套：用單品 id 比對（卡片 id 只是順序）；詳情頁選定時也會通知這裡重抓
   useEffect(() => {
-    const fetchTodayPlan = async () => {
+    const syncTodayPlan = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
-        const res = await fetch(`/api/reco/daily-outfits/plan?userId=${userId}&date=${today}`);
-        const data = await res.json();
-
-        if (data.ok && data.plan?.outfitId) {
-          setConfirmedCards(new Set([data.plan.outfitId]));
-        }
+        const itemIds = await fetchTodayItemIds();
+        const key = itemIds ? outfitItemKey(itemIds) : null;
+        const match = key ? cards.find((c) => outfitItemKey(slotItemIds(c)) === key) : undefined;
+        setConfirmedCards(match ? new Set([match.id]) : new Set());
       } catch (error) {
         console.error('[StackedCards] 載入今日計畫失敗:', error);
       }
     };
 
-    fetchTodayPlan();
-  }, [userId]);
+    syncTodayPlan();
+    window.addEventListener(PLAN_CHANGED_EVENT, syncTodayPlan);
+    return () => window.removeEventListener(PLAN_CHANGED_EVENT, syncTodayPlan);
+  }, [cards]);
 
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 80;
@@ -222,58 +222,22 @@ export function StackedCards({ outfits, onCardClick, weather, occasion, onSaveOu
     if (!card) return;
 
     const isCurrentlyConfirmed = confirmedCards.has(cardId);
+    const previous = confirmedCards;
 
-    // Optimistic UI 更新
-    setConfirmedCards(prev => {
-      const newSet = new Set(prev);
-      if (isCurrentlyConfirmed) {
-        newSet.delete(cardId);
-      } else {
-        newSet.add(cardId);
-      }
-      return newSet;
-    });
-
-    // 如果取消選定，不需要調用 API
-    if (isCurrentlyConfirmed) {
-      toast('已取消選定');
-      return;
-    }
+    // Optimistic UI：一天只選一套，選新的會取代舊的
+    setConfirmedCards(isCurrentlyConfirmed ? new Set() : new Set([cardId]));
 
     try {
-      // 準備 API 請求資料
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const payload = {
-        userId: userId,
-        date: today,
-        outfitId: card.id,
-        layoutSlots: card.layoutSlots || {},
-        occasion: 'casual', // 暫時硬編
-        weather: {} // 暫時硬編
-      };
-
-      // 呼叫 Supabase API
-      const response = await fetch('/api/reco/daily-outfits/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
-      if (!response.ok || !result.ok) {
-        throw new Error(result.message || '保存失敗');
+      if (isCurrentlyConfirmed) {
+        await clearTodayOutfit();
+        toast('已取消選定');
+      } else {
+        await confirmTodayOutfit(card, occasion);
+        haptic('success');
+        toast.success('今天就穿這套');
       }
-
-      haptic('success'); // 成功震動
-      toast.success('已加入今日穿搭計畫 ');
     } catch (error) {
-      // 失敗時 Rollback optimistic UI
-      setConfirmedCards(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(cardId);
-        return newSet;
-      });
-
+      setConfirmedCards(previous);
       console.error('[StackedCards] 保存穿搭計畫失敗:', error);
       toast.error('保存失敗，請重試');
     }

@@ -3,6 +3,7 @@ import { X, Check, Bookmark } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { confirmTodayOutfit } from '../../../lib/daily-plan';
 
 interface OutfitItem {
   id?: string;
@@ -52,13 +53,20 @@ export function OutfitDetailModal({ outfit, isOpen, onClose }: OutfitDetailModal
     }
   };
 
-  const handleConfirm = () => {
-    setIsConfirmed(true);
-    toast.success('已加入今日穿搭計畫 ');
-    setTimeout(() => {
-      setIsConfirmed(false);
-      onClose();
-    }, 1200);
+  const handleConfirm = async () => {
+    if (!outfit) return;
+    try {
+      await confirmTodayOutfit(outfit);
+      setIsConfirmed(true);
+      toast.success('今天就穿這套');
+      setTimeout(() => {
+        setIsConfirmed(false);
+        onClose();
+      }, 1200);
+    } catch (error) {
+      console.error('[OutfitDetailModal] 保存穿搭計畫失敗:', error);
+      toast.error('保存失敗，請重試');
+    }
   };
 
   if (!outfit) return null;

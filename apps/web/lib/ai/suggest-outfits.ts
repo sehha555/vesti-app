@@ -11,9 +11,11 @@ import {
   type RawOutfitSuggestion,
 } from './outfit-prompt';
 import { downloadClosetImage, freshSignedUrls, storagePathFromImageUrl } from '../closet/storage';
+import { taipeiDate } from './recommendation-period';
 
 const MIN_ITEMS = 3;
 const MAX_ITEMS = 30;
+const RECENT_DAYS = 3;
 
 interface ClosetRow {
   id: string;
@@ -75,7 +77,7 @@ export async function pickOutfits(params: {
 
   const raw = await generateJson<{ outfits: RawOutfitSuggestion[] }>(
     OUTFIT_SYSTEM_PROMPT,
-    buildOutfitParts(items, weather, occasion),
+    buildOutfitParts(items, weather, occasion, await recentlyWornIds(supabase, userId)),
     OUTFIT_RESPONSE_SCHEMA
   );
 
@@ -113,4 +115,21 @@ export async function resolveOutfits(
     if (url) itemsById.set(row.id, { name: row.name, imageUrl: url });
   }
   return toOutfitSuggestions(raw, itemsById);
+}
+
+/** 最近幾天（不含今天）選定穿過的單品 id；查不到就當沒有，不擋推薦 */
+async function recentlyWornIds(supabase: SupabaseClient, userId: string): Promise<Set<string>> {
+  const now = Date.now();
+  const { data, error } = await supabase
+    .from('daily_outfit_plans')
+    .select('layout_slots')
+    .eq('user_id', userId)
+    .gte('date', taipeiDate(new Date(now - RECENT_DAYS * 86_400_000)))
+    .lt('date', taipeiDate(new Date(now)));
+  if (error) {
+    console.error('[suggest-outfits] recent plans query failed:', error.message);
+    return new Set();
+  }
+  const rows = (data ?? []) as Array<{ layout_slots: Array<{ item?: { id?: string } }> | null }>;
+  return new Set(rows.flatMap((r) => (r.layout_slots ?? []).map((s) => s.item?.id)).filter((id): id is string => !!id));
 }
