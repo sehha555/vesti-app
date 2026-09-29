@@ -78,27 +78,6 @@ interface PaymentCard {
 // 首頁下半部（衣櫃利用率、CPW 排行、預計配送）與購物車/通知角標仍是電商規劃的假資料，先隱藏
 const SHOW_COMMERCE_MOCKS = false;
 
-const outfits: Outfit[] = [
-  {
-    id: 1,
-    imageUrl: 'https://images.unsplash.com/photo-1762343287340-8aa94082e98b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXN1YWwlMjBmYXNoaW9uJTIwb3V0Zml0JTIwc3RyZWV0JTIwc3R5bGV8ZW58MXx8fHwxNzYyNTI5NjgzfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    styleName: 'Casual Comfort',
-    description: 'Perfect for a cool, breezy day. Layer a light sweater with comfortable chinos and soft sneakers for effortless style.',
-  },
-  {
-    id: 2,
-    imageUrl: 'https://images.unsplash.com/photo-1704775990327-90f7c43436fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwYnVzaW5lc3MlMjBjYXN1YWwlMjBvdXRmaXR8ZW58MXx8fHwxNzYyNTI5NjgzfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    styleName: 'Business Elegant',
-    description: 'Sophisticated and polished look that transitions seamlessly from office meetings to evening events.',
-  },
-  {
-    id: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1762114468792-ced36e281323?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdW1tZXIlMjBjb21mb3J0YWJsZSUyMGNsb3RoaW5nJTIwc3R5bGV8ZW58MXx8fHwxNzYyNTI5NjgzfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    styleName: 'Summer Breeze',
-    description: 'Light and airy outfit perfect for warm weather. Stay cool while looking stylish with breathable fabrics.',
-  },
-];
-
 type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile' | 'tryon' | 'checkout' | 'discount' | 'trending' | 'upload' | 'login' | 'broadcast' | 'calendar' | 'cpwranking' | 'delivery' | 'notification' | 'payment-methods';
 
 const pageHierarchy: Record<PageType, number> = {
@@ -134,6 +113,8 @@ export default function Page() {
   const [selectedDeliveryMerchant, setSelectedDeliveryMerchant] = useState<string>('');
   const [weatherData, setWeatherData] = useState<WeatherSummary | undefined>();
   const [dailyOutfits, setDailyOutfits] = useState<Outfit[]>([]);
+  // 推薦要等 AI 5-10 秒；empty = 衣櫃不到 3 件，AI 沒得挑
+  const [outfitsStatus, setOutfitsStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
 
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
@@ -206,6 +187,7 @@ export default function Page() {
         });
 
         const response = await fetch(`/api/daily-outfits?${params}`);
+        if (!response.ok) throw new Error(`daily-outfits ${response.status}`);
         const data = await response.json();
 
         if (data.weather) {
@@ -249,10 +231,14 @@ export default function Page() {
             };
           });
           setDailyOutfits(mapped);
+          setOutfitsStatus('ready');
           console.log('[Home] dailyOutfits from API:', mapped);
+        } else {
+          setOutfitsStatus('empty');
         }
       } catch (error) {
         console.error('[WeatherCard] Failed to fetch weather data:', error);
+        setOutfitsStatus('error');
       }
     };
 
@@ -350,7 +336,24 @@ export default function Page() {
             <WeatherCard weather={weatherData} />
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
             <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
-            <div className="mb-16"><StackedCards outfits={dailyOutfits.length > 0 ? dailyOutfits : outfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} /></div>
+            <div className="mb-16">
+              {outfitsStatus === 'ready' ? (
+                <StackedCards outfits={dailyOutfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} />
+              ) : (
+                <div className="px-4">
+                  <div className={`mx-auto flex h-[400px] max-w-[300px] flex-col items-center justify-center gap-2 rounded-3xl bg-gray-100 px-6 text-center ${outfitsStatus === 'loading' ? 'animate-pulse' : ''}`}>
+                    <p className="text-sm text-muted-foreground">
+                      {outfitsStatus === 'loading' && 'AI 正在從你的衣櫃挑今天的穿搭…'}
+                      {outfitsStatus === 'empty' && '衣櫃至少要有 3 件衣服，AI 才能幫你搭配'}
+                      {outfitsStatus === 'error' && '推薦暫時載入失敗，請稍後重新整理'}
+                    </p>
+                    {outfitsStatus === 'empty' && (
+                      <button onClick={() => navigateTo('wardrobe')} className="mt-2 rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground">去衣櫃新增</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             {SHOW_COMMERCE_MOCKS && (
               <>
                 <WardrobeUtilization />

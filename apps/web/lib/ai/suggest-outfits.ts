@@ -34,6 +34,7 @@ export async function suggestOutfits(params: {
   occasion: string;
 }): Promise<OutfitSuggestion[]> {
   const { supabase, userId, weather, occasion } = params;
+  const t0 = Date.now();
 
   const { data, error } = await supabase
     .from('active_closet_items')
@@ -69,6 +70,8 @@ export async function suggestOutfits(params: {
     console.error('[suggest-outfits] image download failed:', (firstFailure.reason as Error).message);
   }
   if (items.length < MIN_ITEMS) return [];
+  const tImages = Date.now();
+  const imageBytes = items.reduce((sum, i) => sum + i.imageBase64.length * 0.75, 0);
 
   const raw = await generateJson<{ outfits: RawOutfitSuggestion[] }>(
     OUTFIT_SYSTEM_PROMPT,
@@ -76,6 +79,7 @@ export async function suggestOutfits(params: {
     OUTFIT_RESPONSE_SCHEMA
   );
 
+  const tModel = Date.now();
   const urls = await freshSignedUrls(supabase, userId, rows);
   const itemsById = new Map<string, { name: string; imageUrl: string }>();
   for (const row of rows) {
@@ -84,6 +88,6 @@ export async function suggestOutfits(params: {
   }
 
   const outfits = toOutfitSuggestions(raw.outfits ?? [], itemsById);
-  console.info(`[suggest-outfits] closet=${rows.length} sent=${items.length} raw=${raw.outfits?.length ?? 0} final=${outfits.length}`);
+  console.info(`[suggest-outfits] closet=${rows.length} sent=${items.length} raw=${raw.outfits?.length ?? 0} final=${outfits.length} images=${tImages - t0}ms/${Math.round(imageBytes / 1024)}KB model=${tModel - tImages}ms`);
   return outfits;
 }
