@@ -122,7 +122,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       category: body.category ?? 'uncategorized',
       image_url: stored.signedUrl,
       source_url: body.url,
-      source_type: 'OWNED',
+      source_type: 'URL_IMPORT',
       source_ref_id: null,
     })
     .select()

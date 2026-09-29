@@ -120,7 +120,7 @@ describe('POST /api/closet-items/from-url', () => {
     expect(res.status).toBe(201);
     expect(uploadClosetImage).toHaveBeenCalledWith(sb.client, 'u1', JPEG, 'image/jpeg');
     expect(sb.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'u1', name: '商品', category: 'uncategorized', source_url: 'https://shop.example/p/1' })
+      expect.objectContaining({ user_id: 'u1', name: '商品', category: 'uncategorized', source_url: 'https://shop.example/p/1', source_type: 'URL_IMPORT' })
     );
     const body = await res.json();
     expect(body.data.id).toBe('i1');

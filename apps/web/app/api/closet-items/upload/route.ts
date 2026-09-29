@@ -146,7 +146,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     status: parsed.data.status ?? 'ACTIVE',
     acquired_at: parsed.data.acquired_at ?? null,
     // Server-enforced fields
-    source_type: 'OWNED' as const,
+    source_type: 'UPLOAD' as const,
     source_ref_id: null,
   };
 

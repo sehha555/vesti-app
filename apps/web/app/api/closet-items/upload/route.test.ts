@@ -44,7 +44,7 @@ describe('POST /api/closet-items/upload', () => {
     const res = await POST(makeReq({ name: '黑色牛仔褲', category: 'bottom' }));
     expect(res.status).toBe(201);
     expect(insert).toHaveBeenCalledWith(
-      expect.objectContaining({ name: '黑色牛仔褲', category: 'bottom', status: 'ACTIVE', is_archived: false, tags: [] })
+      expect.objectContaining({ name: '黑色牛仔褲', category: 'bottom', status: 'ACTIVE', is_archived: false, tags: [], source_type: 'UPLOAD' })
     );
   });
 

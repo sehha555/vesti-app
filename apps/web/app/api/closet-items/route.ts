@@ -139,7 +139,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     acquired_at: parsed.data.acquired_at ?? null,
     // Server-enforced fields (prevent mass assignment)
     user_id: user.id,
-    source_type: 'OWNED' as const,
+    source_type: 'UPLOAD' as const,
     source_ref_id: null,
   };
 
