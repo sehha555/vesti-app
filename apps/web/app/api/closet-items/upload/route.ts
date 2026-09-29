@@ -93,10 +93,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Extract and validate metadata
-  const metadata: Record<string, string | null> = {};
+  // 沒帶的欄位不放進去：is_archived / status 不接受 null，放 null 會讓只填必填欄位的上傳全部 400
+  const metadata: Record<string, string> = {};
   for (const key of ['name', 'category', 'subcategory', 'brand', 'color', 'size', 'season', 'tags', 'custom_group', 'is_archived', 'status', 'acquired_at']) {
     const value = formData.get(key);
-    metadata[key] = value ? String(value) : null;
+    if (value) metadata[key] = String(value);
   }
 
   const parsed = UploadMetadataSchema.safeParse(metadata);
