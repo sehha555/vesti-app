@@ -242,17 +242,28 @@ export default function Page() {
       }
     };
 
-    const fetchWithDefaultLocation = () => {
-      fetchWithCoords(25.033, 121.565);
+    // 定位只用一次：成功、失敗、或自己的 5 秒保險，誰先到用誰。
+    // 瀏覽器在等使用者按「允許」時不會開始算 timeout，沒有保險會永遠卡在載入中
+    let located = false;
+    const fetchOnce = (latitude: number, longitude: number) => {
+      if (located) return;
+      located = true;
+      fetchWithCoords(latitude, longitude);
     };
+    const fetchWithDefaultLocation = () => fetchOnce(25.033, 121.565);
 
-    // 優先使用瀏覽器定位
     if ('geolocation' in navigator) {
+      const fallback = setTimeout(() => {
+        console.warn('[WeatherCard] 定位 5 秒沒回應，使用預設座標');
+        fetchWithDefaultLocation();
+      }, 5000);
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          fetchWithCoords(position.coords.latitude, position.coords.longitude);
+          clearTimeout(fallback);
+          fetchOnce(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
+          clearTimeout(fallback);
           console.warn('[WeatherCard] 定位失敗，使用預設座標:', error.message);
           fetchWithDefaultLocation();
         },
@@ -262,6 +273,7 @@ export default function Page() {
           maximumAge: 300000
         }
       );
+      return () => clearTimeout(fallback);
     } else {
       console.warn('[WeatherCard] 瀏覽器不支援定位');
       fetchWithDefaultLocation();
