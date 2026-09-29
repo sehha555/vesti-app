@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWeather } from '@/services/weather';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
-import { checkRateLimit, cacheResponse, getCachedResponse } from '@/lib/rateLimit';
-import { suggestOutfits } from '../../../lib/ai/suggest-outfits';
-import type { OutfitSuggestion } from '../../../lib/ai/outfit-prompt';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { pickOutfits, resolveOutfits } from '../../../lib/ai/suggest-outfits';
+import { currentPeriodStart } from '../../../lib/ai/recommendation-period';
+import type { OutfitSuggestion, RawOutfitSuggestion } from '../../../lib/ai/outfit-prompt';
 import type { WeatherSummary } from '../../../../../packages/types/src/weather';
 
 export const runtime = 'nodejs';
@@ -18,7 +19,8 @@ interface DailyOutfitsResponse {
 
 /**
  * GET /api/daily-outfits?latitude=&longitude=&occasion=
- * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一天同場合只算一次（快取）。
+ * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一時段同場合只算一次，結果存在 daily_recommendations，
+ * 之後直接讀表、重新簽圖片網址就回，不用再等模型。
  */
 export async function GET(request: NextRequest) {
   const { supabase, user } = await getSupabaseAndUser();
@@ -38,33 +40,53 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'Invalid occasion' }, { status: 400 });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const cacheKey = `daily-outfit:${user.id}:${today}:${occasion}`;
-
-  const cached = await getCachedResponse<DailyOutfitsResponse>(cacheKey);
-  if (cached) {
-    return NextResponse.json(cached, { headers: { 'Cache-Control': 'private, no-store' } });
-  }
-
-  const rl = await checkRateLimit(user.id, RATE_LIMIT);
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { message: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? rl.resetAfter) } }
-    );
-  }
+  const periodStart = currentPeriodStart().toISOString();
+  const headers = { 'Cache-Control': 'private, no-store' };
 
   try {
+    // 天氣有自己的 30 分鐘快取，每次都拿最新的給天氣卡
     const weather = await getWeather({ lat, lon });
-    const outfits = await suggestOutfits({ supabase, userId: user.id, weather, occasion });
-    const body: DailyOutfitsResponse = { outfits, weather };
 
-    // signed URL 最長 900 秒，快取不能活得比圖久
-    if (outfits.length > 0) {
-      await cacheResponse(cacheKey, body, 900);
+    const { data: stored } = await supabase
+      .from('daily_recommendations')
+      .select('outfits')
+      .eq('user_id', user.id)
+      .eq('period_start', periodStart)
+      .eq('occasion', occasion)
+      .maybeSingle();
+    if (stored) {
+      const outfits = await resolveOutfits(supabase, user.id, stored.outfits as RawOutfitSuggestion[]);
+      // 存的衣服全被刪光才重算，否則直接回
+      if (outfits.length > 0) {
+        return NextResponse.json({ outfits, weather } satisfies DailyOutfitsResponse, { headers });
+      }
     }
 
-    return NextResponse.json(body, { headers: { 'Cache-Control': 'private, no-store' } });
+    const rl = await checkRateLimit(user.id, RATE_LIMIT);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { message: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? rl.resetAfter) } }
+      );
+    }
+
+    const raw = await pickOutfits({ supabase, userId: user.id, weather, occasion });
+    const outfits = await resolveOutfits(supabase, user.id, raw);
+
+    if (outfits.length > 0) {
+      const { error } = await supabase.from('daily_recommendations').upsert({
+        user_id: user.id,
+        period_start: periodStart,
+        occasion,
+        outfits: raw,
+        weather,
+        latitude: lat,
+        longitude: lon,
+      });
+      if (error) console.error('[daily-outfits] save failed:', error.message);
+    }
+
+    return NextResponse.json({ outfits, weather } satisfies DailyOutfitsResponse, { headers });
   } catch (error) {
     console.error('[daily-outfits] failed:', (error as Error).message);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

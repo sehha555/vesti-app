@@ -24,15 +24,15 @@ interface ClosetRow {
 }
 
 /**
- * 從使用者衣櫃撈衣服 → 圖片轉 base64 → Gemini → 組成首頁要的 outfits。
- * 衣櫃不足 3 件回空陣列，讓首頁走既有 fallback。
+ * 從使用者衣櫃撈衣服 → 圖片轉 base64 → Gemini 挑搭配。回模型原始結果（只有 item id），
+ * 可以存起來之後再用 resolveOutfits 組成首頁形狀。衣櫃不足 3 件回空陣列。
  */
-export async function suggestOutfits(params: {
+export async function pickOutfits(params: {
   supabase: SupabaseClient;
   userId: string;
   weather: WeatherSummary;
   occasion: string;
-}): Promise<OutfitSuggestion[]> {
+}): Promise<RawOutfitSuggestion[]> {
   const { supabase, userId, weather, occasion } = params;
   const t0 = Date.now();
 
@@ -79,15 +79,38 @@ export async function suggestOutfits(params: {
     OUTFIT_RESPONSE_SCHEMA
   );
 
-  const tModel = Date.now();
+  console.info(
+    `[suggest-outfits] closet=${rows.length} sent=${items.length} raw=${raw.outfits?.length ?? 0} images=${tImages - t0}ms/${Math.round(imageBytes / 1024)}KB model=${Date.now() - tImages}ms`
+  );
+  return raw.outfits ?? [];
+}
+
+/**
+ * 把模型結果（item id）組成首頁要的 outfits：查衣櫃現況、重新簽圖片網址。
+ * 之後被刪掉或封存的衣服會被略過，缺上身或下身的整套丟掉。
+ */
+export async function resolveOutfits(
+  supabase: SupabaseClient,
+  userId: string,
+  raw: RawOutfitSuggestion[]
+): Promise<OutfitSuggestion[]> {
+  const ids = [...new Set(raw.flatMap((o) => (o.slots ?? []).map((s) => s.itemId)))];
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('active_closet_items')
+    .select('id, name, image_url')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .in('id', ids);
+  if (error) throw new Error(`closet query failed: ${error.message}`);
+
+  const rows = (data ?? []) as Array<{ id: string; name: string; image_url: string | null }>;
   const urls = await freshSignedUrls(supabase, userId, rows);
   const itemsById = new Map<string, { name: string; imageUrl: string }>();
   for (const row of rows) {
     const url = urls.get(row.id);
     if (url) itemsById.set(row.id, { name: row.name, imageUrl: url });
   }
-
-  const outfits = toOutfitSuggestions(raw.outfits ?? [], itemsById);
-  console.info(`[suggest-outfits] closet=${rows.length} sent=${items.length} raw=${raw.outfits?.length ?? 0} final=${outfits.length} images=${tImages - t0}ms/${Math.round(imageBytes / 1024)}KB model=${tModel - tImages}ms`);
-  return outfits;
+  return toOutfitSuggestions(raw, itemsById);
 }
