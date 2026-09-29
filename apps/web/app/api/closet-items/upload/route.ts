@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
+import { removeBackground } from '../../../../lib/closet/remove-bg';
+import { uploadClosetImage, CLOSET_BUCKET, type ClosetImageMime } from '../../../../lib/closet/storage';
 
 // Force Node.js runtime for stream compatibility
 export const runtime = 'nodejs';
@@ -9,12 +10,6 @@ export const runtime = 'nodejs';
 // File constraints
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const BUCKET_NAME = 'closet-images';
-
-// Signed URL expiration (server-controlled, not client-configurable)
-const SIGNED_URL_EXPIRES_IN = process.env.SIGNED_URL_EXPIRES_SECONDS
-  ? Math.min(parseInt(process.env.SIGNED_URL_EXPIRES_SECONDS, 10), 900)
-  : 300; // Default 5 minutes, max 15 minutes
 
 // Zod schema for metadata (whitelist only allowed fields)
 const UploadMetadataSchema = z.object({
@@ -45,7 +40,7 @@ interface ClosetItem {
  * POST /api/closet-items/upload
  *
  * Uploads an image to Supabase Storage and creates a closet_item record.
- * Optionally removes background using remove.bg API.
+ * 有設 REMOVE_BG_API_KEY 時先去背，存去背後的圖；沒設或失敗就存原圖。
  *
  * FormData fields:
  * - file: Image file (required, max 10MB, JPG/PNG/WebP)
@@ -53,7 +48,7 @@ interface ClosetItem {
  * - category: Item category (required)
  * - ...other closet_item fields (optional)
  *
- * Returns: 201 { data: ClosetItem, imageUrl, removedBgUrl? }
+ * Returns: 201 { data: ClosetItem, imageUrl, expiresAt }
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const { supabase, user } = await getSupabaseAndUser();
@@ -108,78 +103,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Generate unique filename
-  const fileId = randomUUID();
-  const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
-  const filePath = `${user.id}/${fileId}.${ext}`;
+  // 去背：與貼網址匯入共用同一支；沒 key 或失敗就存原圖
+  let image: { buffer: Buffer; contentType: ClosetImageMime } = {
+    buffer: Buffer.from(await file.arrayBuffer()),
+    contentType: file.type as ClosetImageMime,
+  };
+  const removed = await removeBackground(image.buffer, image.contentType);
+  if (removed) image = { buffer: removed.buffer, contentType: 'image/png' };
 
-  // Read file buffer
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-  // Upload to Supabase Storage
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(filePath, fileBuffer, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (uploadError) {
-    console.error('[closet-items/upload] Storage upload error:', uploadError.message);
+  let stored;
+  try {
+    stored = await uploadClosetImage(supabase, user.id, image.buffer, image.contentType);
+  } catch (err) {
+    console.error('[closet-items/upload]', (err as Error).message);
     return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 });
-  }
-
-  // Get signed URL for private bucket (1 hour expiration)
-  const { data: urlData, error: signedUrlError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .createSignedUrl(filePath, SIGNED_URL_EXPIRES_IN);
-
-  if (signedUrlError || !urlData?.signedUrl) {
-    console.error('[closet-items/upload] Signed URL error:', signedUrlError?.message);
-    // Cleanup uploaded file
-    await supabase.storage.from(BUCKET_NAME).remove([filePath]);
-    return NextResponse.json({ error: 'Failed to generate image URL' }, { status: 500 });
-  }
-
-  let imageUrl = urlData.signedUrl;
-  let removedBgUrl: string | undefined;
-
-  // Optional: Remove background using remove.bg API
-  if (process.env.REMOVE_BG_API_KEY) {
-    try {
-      const { removeBackgroundFromImageUrl } = await import('remove.bg');
-      const removeBgResult = await removeBackgroundFromImageUrl({
-        url: imageUrl,
-        apiKey: process.env.REMOVE_BG_API_KEY,
-        size: 'auto',
-        type: 'auto',
-        format: 'png',
-      });
-
-      const noBgBuffer = Buffer.from(removeBgResult.base64img, 'base64');
-      const noBgPath = `${user.id}/${fileId}_nobg.png`;
-
-      const { error: noBgUploadError } = await supabase.storage
-        .from(BUCKET_NAME)
-        .upload(noBgPath, noBgBuffer, {
-          contentType: 'image/png',
-          upsert: false,
-        });
-
-      if (!noBgUploadError) {
-        const { data: noBgUrlData } = await supabase.storage
-          .from(BUCKET_NAME)
-          .createSignedUrl(noBgPath, SIGNED_URL_EXPIRES_IN);
-        if (noBgUrlData?.signedUrl) {
-          removedBgUrl = noBgUrlData.signedUrl;
-          // Use background-removed image as main image
-          imageUrl = removedBgUrl;
-        }
-      }
-    } catch {
-      console.error('[closet-items/upload] Background removal failed');
-      // Continue without background removal
-    }
   }
 
   // Parse tags from JSON string
@@ -203,7 +140,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     size: parsed.data.size ?? null,
     season: parsed.data.season ?? null,
     tags,
-    image_url: imageUrl,
+    image_url: stored.signedUrl,
     custom_group: parsed.data.custom_group ?? null,
     is_archived: parsed.data.is_archived === 'true',
     status: parsed.data.status ?? 'ACTIVE',
@@ -222,23 +159,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (dbError) {
     console.error('[closet-items/upload] Database insert error:', dbError.message);
-    // Attempt to clean up uploaded files
-    await supabase.storage.from(BUCKET_NAME).remove([filePath]);
-    if (removedBgUrl) {
-      await supabase.storage.from(BUCKET_NAME).remove([`${user.id}/${fileId}_nobg.png`]);
-    }
+    await supabase.storage.from(CLOSET_BUCKET).remove([stored.filePath]);
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
   }
-
-  // Calculate expiration timestamp for frontend cache management
-  const expiresAt = new Date(Date.now() + SIGNED_URL_EXPIRES_IN * 1000).toISOString();
 
   return NextResponse.json(
     {
       data: closetItem as ClosetItem,
-      imageUrl,
-      removedBgUrl,
-      expiresAt,
+      imageUrl: stored.signedUrl,
+      expiresAt: stored.expiresAt,
     },
     { status: 201 }
   );
