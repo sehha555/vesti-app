@@ -115,6 +115,10 @@ export default function Page() {
   const [dailyOutfits, setDailyOutfits] = useState<Outfit[]>([]);
   // 推薦要等 AI 5-10 秒；empty = 衣櫃不到 3 件，AI 沒得挑
   const [outfitsStatus, setOutfitsStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // 使用者自己寫的今天情境（不用固定標籤）；occasionDraft 是輸入中的字，按「換」才送出
+  const [occasion, setOccasion] = useState('');
+  const [occasionDraft, setOccasionDraft] = useState('');
 
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
@@ -176,19 +180,62 @@ export default function Page() {
     return slots;
   };
 
-  // 獲取真實天氣資料 (使用瀏覽器定位)
+  // 定位只做一次，拿到座標才開始拿推薦
   useEffect(() => {
+    // 定位只用一次：成功、失敗、或自己的 5 秒保險，誰先到用誰。
+    // 瀏覽器在等使用者按「允許」時不會開始算 timeout，沒有保險會永遠卡在載入中
+    let located = false;
+    const locateOnce = (latitude: number, longitude: number) => {
+      if (located) return;
+      located = true;
+      setCoords({ latitude, longitude });
+    };
+    const fallbackToDefault = () => locateOnce(25.033, 121.565);
+
+    if ('geolocation' in navigator) {
+      const fallback = setTimeout(() => {
+        console.warn('[WeatherCard] 定位 5 秒沒回應，使用預設座標');
+        fallbackToDefault();
+      }, 5000);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          clearTimeout(fallback);
+          locateOnce(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          clearTimeout(fallback);
+          console.warn('[WeatherCard] 定位失敗，使用預設座標:', error.message);
+          fallbackToDefault();
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 300000
+        }
+      );
+      return () => clearTimeout(fallback);
+    } else {
+      console.warn('[WeatherCard] 瀏覽器不支援定位');
+      fallbackToDefault();
+    }
+  }, []);
+
+  // 座標或使用者寫的情境變了就重拿推薦；同一天同一句話，後端直接讀存好的
+  useEffect(() => {
+    if (!coords) return;
+    let cancelled = false;
     const fetchWithCoords = async (latitude: number, longitude: number) => {
       try {
         const params = new URLSearchParams({
           latitude: latitude.toString(),
           longitude: longitude.toString(),
-          occasion: 'casual'
+          occasion
         });
 
         const response = await fetch(`/api/daily-outfits?${params}`);
         if (!response.ok) throw new Error(`daily-outfits ${response.status}`);
         const data = await response.json();
+        if (cancelled) return;
 
         if (data.weather) {
           setWeatherData(data.weather);
@@ -237,48 +284,16 @@ export default function Page() {
           setOutfitsStatus('empty');
         }
       } catch (error) {
+        if (cancelled) return;
         console.error('[WeatherCard] Failed to fetch weather data:', error);
         setOutfitsStatus('error');
       }
     };
 
-    // 定位只用一次：成功、失敗、或自己的 5 秒保險，誰先到用誰。
-    // 瀏覽器在等使用者按「允許」時不會開始算 timeout，沒有保險會永遠卡在載入中
-    let located = false;
-    const fetchOnce = (latitude: number, longitude: number) => {
-      if (located) return;
-      located = true;
-      fetchWithCoords(latitude, longitude);
-    };
-    const fetchWithDefaultLocation = () => fetchOnce(25.033, 121.565);
-
-    if ('geolocation' in navigator) {
-      const fallback = setTimeout(() => {
-        console.warn('[WeatherCard] 定位 5 秒沒回應，使用預設座標');
-        fetchWithDefaultLocation();
-      }, 5000);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          clearTimeout(fallback);
-          fetchOnce(position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          clearTimeout(fallback);
-          console.warn('[WeatherCard] 定位失敗，使用預設座標:', error.message);
-          fetchWithDefaultLocation();
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 10000,
-          maximumAge: 300000
-        }
-      );
-      return () => clearTimeout(fallback);
-    } else {
-      console.warn('[WeatherCard] 瀏覽器不支援定位');
-      fetchWithDefaultLocation();
-    }
-  }, []);
+    setOutfitsStatus('loading');
+    fetchWithCoords(coords.latitude, coords.longitude);
+    return () => { cancelled = true; };
+  }, [coords, occasion]);
 
   // --- Core Functions ---
   const navigateTo = (newPage: PageType) => {
@@ -348,9 +363,28 @@ export default function Page() {
             <WeatherCard weather={weatherData} />
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
             <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
+            <form
+              onSubmit={(e) => { e.preventDefault(); setOccasion(occasionDraft.trim()); }}
+              className="mb-4 flex gap-2 px-5"
+            >
+              <input
+                value={occasionDraft}
+                onChange={(e) => setOccasionDraft(e.target.value)}
+                maxLength={100}
+                placeholder="今天要去哪、想怎麼穿？（可以不填）"
+                className="min-w-0 flex-1 rounded-full bg-gray-100 px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={outfitsStatus === 'loading' || occasionDraft.trim() === occasion}
+                className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-40"
+              >
+                換
+              </button>
+            </form>
             <div className="mb-16">
               {outfitsStatus === 'ready' ? (
-                <StackedCards outfits={dailyOutfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} />
+                <StackedCards outfits={dailyOutfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} occasion={occasion} />
               ) : (
                 <div className="px-4">
                   <div className={`mx-auto flex h-[400px] max-w-[300px] flex-col items-center justify-center gap-2 rounded-3xl bg-gray-100 px-6 text-center ${outfitsStatus === 'loading' ? 'animate-pulse' : ''}`}>
@@ -441,7 +475,7 @@ export default function Page() {
             {renderPage()}
           </motion.div>
         </AnimatePresence>
-        <OutfitDetailModal outfit={selectedOutfit} isOpen={isModalOpen} onClose={handleCloseModal} />
+        <OutfitDetailModal outfit={selectedOutfit} isOpen={isModalOpen} onClose={handleCloseModal} occasion={occasion} />
       </div>
       {/* BottomNav 獨立於動畫容器，避免頁面切換時閃爍 */}
       {currentPage !== null && currentPage !== 'login' && (

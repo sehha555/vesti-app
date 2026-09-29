@@ -56,8 +56,14 @@ describe('GET /api/daily-outfits', () => {
     expect((await GET(makeReq('latitude=abc&longitude=121.5&occasion=casual'))).status).toBe(400);
   });
 
-  it('occasion 不在清單回 400', async () => {
-    expect((await GET(makeReq('latitude=25&longitude=121.5&occasion=party'))).status).toBe(400);
+  it('情境超過 100 字回 400', async () => {
+    expect((await GET(makeReq(`latitude=25&longitude=121.5&occasion=${'a'.repeat(101)}`))).status).toBe(400);
+  });
+
+  it('沒帶情境：以空字串當 key 算推薦並存表', async () => {
+    await GET(makeReq('latitude=25&longitude=121.5'));
+    expect(pickOutfits).toHaveBeenCalledWith(expect.objectContaining({ occasion: '' }));
+    expect(db.upsert).toHaveBeenCalledWith(expect.objectContaining({ occasion: '' }));
   });
 
   it('沒存過：叫模型、回 { outfits, weather }、把 item id 與位置存進表', async () => {

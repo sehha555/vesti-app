@@ -38,9 +38,11 @@ interface OutfitDetailModalProps {
   outfit: Outfit | null;
   isOpen: boolean;
   onClose: () => void;
+  /** 使用者今天寫的情境，選定時一起記下 */
+  occasion?: string;
 }
 
-export function OutfitDetailModal({ outfit, isOpen, onClose }: OutfitDetailModalProps) {
+export function OutfitDetailModal({ outfit, isOpen, onClose, occasion }: OutfitDetailModalProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
 
@@ -56,7 +58,7 @@ export function OutfitDetailModal({ outfit, isOpen, onClose }: OutfitDetailModal
   const handleConfirm = async () => {
     if (!outfit) return;
     try {
-      await confirmTodayOutfit(outfit);
+      await confirmTodayOutfit(outfit, occasion);
       setIsConfirmed(true);
       toast.success('今天就穿這套');
       setTimeout(() => {

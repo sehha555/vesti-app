@@ -9,7 +9,7 @@ import type { WeatherSummary } from '../../../../../packages/types/src/weather';
 
 export const runtime = 'nodejs';
 
-const OCCASIONS = ['casual', 'work', 'date', 'sport'] as const;
+const MAX_OCCASION_LENGTH = 100;
 const RATE_LIMIT = { keyPrefix: 'daily-outfits', maxRequests: 20, windowMs: 3_600_000 };
 
 interface DailyOutfitsResponse {
@@ -19,7 +19,8 @@ interface DailyOutfitsResponse {
 
 /**
  * GET /api/daily-outfits?latitude=&longitude=&occasion=
- * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一時段同場合只算一次，結果存在 daily_recommendations，
+ * occasion 是使用者自己寫的一句今天情境（可空），不是固定標籤。
+ * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一時段同一句話只算一次，結果存在 daily_recommendations，
  * 之後直接讀表、重新簽圖片網址就回，不用再等模型。
  */
 export async function GET(request: NextRequest) {
@@ -31,12 +32,12 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const lat = parseFloat(params.get('latitude') ?? '');
   const lon = parseFloat(params.get('longitude') ?? '');
-  const occasion = params.get('occasion') ?? 'casual';
+  const occasion = (params.get('occasion') ?? '').trim();
 
   if (isNaN(lat) || isNaN(lon)) {
     return NextResponse.json({ message: 'Invalid latitude or longitude' }, { status: 400 });
   }
-  if (!OCCASIONS.includes(occasion as (typeof OCCASIONS)[number])) {
+  if (occasion.length > MAX_OCCASION_LENGTH) {
     return NextResponse.json({ message: 'Invalid occasion' }, { status: 400 });
   }
 

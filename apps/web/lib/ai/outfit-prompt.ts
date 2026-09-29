@@ -36,8 +36,8 @@ export const OUTFIT_RESPONSE_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: '這套搭配的短名稱，繁體中文，10 字以內' },
-          reason: { type: 'string', description: '為什麼這樣搭，繁體中文，一句話' },
+          title: { type: 'string', description: '一句話講這套穿起來的感覺，繁體中文，15 字以內，不要用「XX風」這類分類' },
+          reason: { type: 'string', description: '穿起來的感覺與為什麼適合今天，繁體中文，一到兩句' },
           slots: {
             type: 'array',
             items: {
@@ -57,18 +57,19 @@ export const OUTFIT_RESPONSE_SCHEMA = {
   required: ['outfits'],
 };
 
-export const OUTFIT_SYSTEM_PROMPT = `你是一位懂台灣氣候的穿搭顧問。使用者會給你衣櫃裡每一件衣服的照片、名稱、類別，以及今天的天氣與場合。
+export const OUTFIT_SYSTEM_PROMPT = `你是一位懂台灣氣候的穿搭顧問。使用者會給你衣櫃裡每一件衣服的照片、名稱、類別、今天的天氣，有時還有一句他自己寫的今天情境。
 請從「衣櫃裡現有的衣服」挑出 2 到 3 套完整搭配，只能使用給你的 itemId，不可以虛構。
 
 搭配原則：
 - 溫度優先：體感 28 度以上以透氣單層為主，不要外套；20 到 27 度可加薄外套；20 度以下需要保暖層；下雨避免淺色下身與麂皮鞋。
-- 每套至少要有上身（top_inner）與下身（bottom）；衣櫃裡有鞋子就要配鞋子（shoes）；外套（top_outer）與配件（accessory）視天氣與場合選配。同一件衣服在同一套裡只能出現一次。
+- 每套至少要有上身（top_inner）與下身（bottom）；衣櫃裡有鞋子就要配鞋子（shoes）；外套（top_outer）與配件（accessory）視天氣與情境選配。同一件衣服在同一套裡只能出現一次。
 - 配色：一套最多三個主色；深淺對比或同色系漸層都可以，避免全身同一個飽和色。
 - 比例：上寬下窄或上窄下寬擇一，避免上下都寬鬆。
-- 場合：casual 可以輕鬆；work 要整齊、避免破損牛仔與拖鞋；date 可以稍微講究；sport 以機能與運動鞋為主。
+- 情境：使用者有寫今天要做什麼，就照他的描述判斷需要的正式程度、活動量與氛圍；沒寫就只看天氣與衣櫃。
+- 不要把穿搭歸類成固定風格或場合標籤（例如上班風、約會風、休閒風）。同一套衣服穿在不同人身上感覺不同，用具體的感覺描述它。
 - 2 到 3 套之間要有明顯差異（例如色調或風格不同），不要只換一件。
 - 標註「最近穿過」的衣服，盡量不要再選；衣櫃太少、不用就湊不出整套時才可以用。
-- reason 用繁體中文，一句話講清楚為什麼這樣搭（提到天氣或配色），不要客套。`;
+- reason 用繁體中文，一到兩句描述這套穿起來的感覺，以及為什麼適合今天的天氣與使用者寫的情境，不要客套。`;
 
 export function buildOutfitParts(
   items: ClosetItemForPrompt[],
@@ -80,7 +81,7 @@ export function buildOutfitParts(
     {
       text: [
         `今天天氣：${weather.condition}，氣溫 ${weather.temperature} 度，體感 ${weather.feelsLike} 度，濕度 ${weather.humidity}%，風速 ${weather.windSpeed} km/h${weather.locationName ? `（${weather.locationName}）` : ''}。`,
-        `場合：${occasion}。`,
+        occasion ? `使用者寫的今天情境：「${occasion}」` : '使用者沒寫今天要做什麼。',
         `衣櫃共 ${items.length} 件，每件先是資料再接一張照片：`,
       ].join('\n'),
     },

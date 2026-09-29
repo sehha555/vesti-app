@@ -23,7 +23,8 @@ const PlanSchema = z.object({
     )
     .min(1)
     .max(10),
-  occasion: z.enum(['casual', 'work', 'date', 'sport']).optional(),
+  // 使用者自己寫的今天情境，不是固定標籤
+  occasion: z.string().trim().max(100).optional(),
   weather: z.record(z.string(), z.unknown()).optional(),
 });
 

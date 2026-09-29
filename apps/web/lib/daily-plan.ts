@@ -28,7 +28,8 @@ export async function fetchTodayItemIds(): Promise<string[] | null> {
   return body.plan?.itemIds ?? null;
 }
 
-export async function confirmTodayOutfit(outfit: OutfitLike, occasion = 'casual'): Promise<void> {
+/** occasion 是使用者當天自己寫的情境，沒寫就不送 */
+export async function confirmTodayOutfit(outfit: OutfitLike, occasion?: string): Promise<void> {
   const res = await fetch('/api/reco/daily-outfits/plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -37,7 +38,7 @@ export async function confirmTodayOutfit(outfit: OutfitLike, occasion = 'casual'
       layoutSlots: (outfit.layoutSlots ?? [])
         .filter((s) => s.item.id)
         .map((s) => ({ slotKey: s.slotKey, item: { id: String(s.item.id), name: s.item.name } })),
-      occasion,
+      occasion: occasion || undefined,
     }),
   });
   if (!res.ok) throw new Error(`plan ${res.status}`);

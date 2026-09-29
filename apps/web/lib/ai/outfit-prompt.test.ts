@@ -90,10 +90,11 @@ describe('buildOutfitParts', () => {
         { id: 'b1', name: '牛仔褲', category: 'bottom', color: null, imageBase64: 'BBB', mimeType: 'image/png' },
       ],
       { temperature: 30, feelsLike: 33, humidity: 70, condition: 'sunny', windSpeed: 5, locationName: '台北' },
-      'casual'
+      '跟朋友吃火鍋'
     );
     expect(parts).toHaveLength(1 + 2 * 2 + 1);
     expect(parts[0].text).toContain('體感 33 度');
+    expect(parts[0].text).toContain('「跟朋友吃火鍋」');
     expect(parts[1].text).toContain('itemId: t1');
     expect(parts[1].text).toContain('顏色: white');
     expect(parts[2].inlineData).toEqual({ data: 'AAA', mimeType: 'image/jpeg' });
@@ -107,9 +108,10 @@ describe('buildOutfitParts', () => {
         { id: 'b1', name: '牛仔褲', category: 'bottom', color: null, imageBase64: 'BBB', mimeType: 'image/png' },
       ],
       { temperature: 30, feelsLike: 33, humidity: 70, condition: 'sunny', windSpeed: 5 },
-      'casual',
+      '',
       new Set(['b1'])
     );
+    expect(parts[0].text).toContain('使用者沒寫今天要做什麼');
     expect(parts[1].text).not.toContain('最近穿過');
     expect(parts[3].text).toContain('最近穿過');
   });
