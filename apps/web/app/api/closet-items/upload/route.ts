@@ -25,6 +25,12 @@ const UploadMetadataSchema = z.object({
   is_archived: z.string().optional(), // "true" or "false"
   status: z.enum(['ACTIVE', 'ARCHIVED', 'DELETED']).optional(),
   acquired_at: z.string().nullable().optional(),
+  // 只開放兩種：拍照上傳、外部訂單截圖；網址匯入與站內購買各有自己的路徑
+  source_type: z.enum(['UPLOAD', 'EXTERNAL_ORDER']).optional(),
+  source_ref_id: z.string().trim().min(1).max(100).optional(),
+}).refine((d) => !d.source_ref_id || d.source_type === 'EXTERNAL_ORDER', {
+  message: 'source_ref_id 只能搭配 EXTERNAL_ORDER',
+  path: ['source_ref_id'],
 });
 
 interface ClosetItem {
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Extract and validate metadata
   // 沒帶的欄位不放進去：is_archived / status 不接受 null，放 null 會讓只填必填欄位的上傳全部 400
   const metadata: Record<string, string> = {};
-  for (const key of ['name', 'category', 'subcategory', 'brand', 'color', 'size', 'season', 'tags', 'custom_group', 'is_archived', 'status', 'acquired_at']) {
+  for (const key of ['name', 'category', 'subcategory', 'brand', 'color', 'size', 'season', 'tags', 'custom_group', 'is_archived', 'status', 'acquired_at', 'source_type', 'source_ref_id']) {
     const value = formData.get(key);
     if (value) metadata[key] = String(value);
   }
@@ -146,8 +152,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     status: parsed.data.status ?? 'ACTIVE',
     acquired_at: parsed.data.acquired_at ?? null,
     // Server-enforced fields
-    source_type: 'UPLOAD' as const,
-    source_ref_id: null,
+    source_type: parsed.data.source_type ?? 'UPLOAD',
+    source_ref_id: parsed.data.source_ref_id ?? null,
   };
 
   // Insert closet_item record

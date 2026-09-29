@@ -77,6 +77,19 @@ describe('POST /api/closet-items/upload', () => {
     expect(opts).toEqual(expect.objectContaining({ contentType: 'image/jpeg' }));
   });
 
+  it('外部訂單帶訂單編號時照存', async () => {
+    const { insert } = mockSupabase();
+    const res = await POST(makeReq({ name: 'T', category: 'top', source_type: 'EXTERNAL_ORDER', source_ref_id: '2409ABC' }));
+    expect(res.status).toBe(201);
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ source_type: 'EXTERNAL_ORDER', source_ref_id: '2409ABC' }));
+  });
+
+  it('不開放的來源或拍照上傳帶訂單編號回 400', async () => {
+    mockSupabase();
+    expect((await POST(makeReq({ name: 'T', category: 'top', source_type: 'IN_APP_PURCHASE' }))).status).toBe(400);
+    expect((await POST(makeReq({ name: 'T', category: 'top', source_ref_id: 'x' }))).status).toBe(400);
+  });
+
   it('缺必填欄位回 400', async () => {
     mockSupabase();
     const res = await POST(makeReq({ category: 'top' }));
