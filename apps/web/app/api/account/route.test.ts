@@ -19,14 +19,27 @@ function del(body?: unknown) {
   });
 }
 
-/** 模擬本人的 client：storage 有 files 個檔案，資料表刪除可指定失敗 */
-function loggedIn({ files = 0, tableError = null as string | null, listError = null as string | null } = {}) {
-  let remaining = Array.from({ length: files }, (_, i) => ({ name: `${i}.jpg` }));
-  const list = vi.fn(async (_prefix: string, { limit }: { limit: number }) =>
-    listError ? { data: null, error: { message: listError } } : { data: remaining.slice(0, limit), error: null }
-  );
+/** 模擬本人的 client：storage 最上層有 files 個檔案、nested 是子資料夾裡的檔案路徑，資料表刪除可指定失敗 */
+function loggedIn({
+  files = 0,
+  nested = [] as string[],
+  tableError = null as string | null,
+  listError = null as string | null,
+} = {}) {
+  let remaining = [...Array.from({ length: files }, (_, i) => `u1/${i}.jpg`), ...nested];
+  // 跟真的 Storage 一樣：列出該資料夾的檔案（有 id），子資料夾只出現名稱、id 是 null
+  const list = vi.fn(async (prefix: string, { limit }: { limit: number }) => {
+    if (listError) return { data: null, error: { message: listError } };
+    const inFolder = remaining.filter((p) => p.startsWith(`${prefix}/`)).map((p) => p.slice(prefix.length + 1));
+    const subfolders = [...new Set(inFolder.filter((n) => n.includes('/')).map((n) => n.split('/')[0]))];
+    const entries = [
+      ...subfolders.map((name) => ({ name, id: null })),
+      ...inFolder.filter((n) => !n.includes('/')).map((name) => ({ name, id: name })),
+    ];
+    return { data: entries.slice(0, limit), error: null };
+  });
   const remove = vi.fn(async (paths: string[]) => {
-    remaining = remaining.filter((f) => !paths.includes(`u1/${f.name}`));
+    remaining = remaining.filter((p) => !paths.includes(p));
     return { error: null };
   });
   const eq = vi.fn(async () => ({ error: tableError ? { message: tableError } : null }));
@@ -86,6 +99,14 @@ describe('DELETE /api/account', () => {
     expect(deleteUser).toHaveBeenCalledWith('u1');
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(res.headers.getSetCookie().some((c) => c.startsWith('sb-auth-status=') && c.includes('Max-Age=0'))).toBe(true);
+  });
+
+  it('子資料夾（全身照、平拍圖、試穿結果）裡的照片也一起刪', async () => {
+    const nested = ['u1/body/a.jpg', 'u1/flat/b.png', 'u1/tryon/c.png'];
+    const { remove } = loggedIn({ files: 1, nested });
+    const res = await DELETE(del({ confirm: 'DELETE' }));
+    expect(res.status).toBe(200);
+    expect(remove.mock.calls.flatMap(([paths]) => paths).sort()).toEqual(['u1/0.jpg', ...nested].sort());
   });
 
   it('列照片失敗就停，不刪帳號', async () => {

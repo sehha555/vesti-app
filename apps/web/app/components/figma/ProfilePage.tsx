@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Camera, User, Ruler, Settings, Upload, Edit2, Check, X, Sparkles, Search, Plus, ShoppingBag, Blend, Star, LogOut } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -42,6 +42,7 @@ interface ProfilePageProps {
 export function ProfilePage({ onLogout, onAccountDeleted, onTryOnPhotoUpdate }: ProfilePageProps = {}) {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [tryOnPhoto, setTryOnPhoto] = useState<string | null>(null);
+  const [isUploadingTryOn, setIsUploadingTryOn] = useState(false);
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
   const [measurements, setMeasurements] = useState<BodyMeasurements>({
     height: '170',
@@ -118,23 +119,48 @@ export function ProfilePage({ onLogout, onAccountDeleted, onTryOnPhotoUpdate }: 
     galleryInputRef.current?.click();
   };
 
+  // 試穿用全身照存在雲端，進頁面時讀回來
+  useEffect(() => {
+    fetch('/api/tryon/photo')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (body?.photo?.url) setTryOnPhoto(body.photo.url);
+      })
+      .catch(() => {});
+  }, []);
+
+  const uploadTryOnPhoto = async (file: File) => {
+    setIsUploadingTryOn(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/tryon/photo', { method: 'POST', body: form });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(body?.error ?? '照片上傳失敗');
+        return;
+      }
+      setTryOnPhoto(body.photo.url);
+      toast.success('試穿照片已上傳');
+      onTryOnPhotoUpdate?.(body.photo.url);
+    } catch {
+      toast.error('照片上傳失敗');
+    } finally {
+      setIsUploadingTryOn(false);
+    }
+  };
+
   // 處理檔案選擇
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && uploadType === 'tryon') {
+      uploadTryOnPhoto(file);
+    } else if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
-        if (uploadType === 'profile') {
-          setProfilePhoto(result);
-          toast.success('頭像已更新 ');
-        } else {
-          setTryOnPhoto(result);
-          toast.success('試穿照片已上傳 ');
-          if (onTryOnPhotoUpdate) {
-            onTryOnPhotoUpdate(result);
-          }
-        }
+        setProfilePhoto(result);
+        toast.success('頭像已更新 ');
       };
       reader.readAsDataURL(file);
     }
@@ -268,7 +294,7 @@ export function ProfilePage({ onLogout, onAccountDeleted, onTryOnPhotoUpdate }: 
               <ImageWithFallback
                 src={tryOnPhoto}
                 alt="Try On Photo"
-                className="w-full h-64 object-cover"
+                className={`w-full h-64 object-contain ${isUploadingTryOn ? 'opacity-50' : ''}`}
               />
               <div className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--vesti-primary)] text-white shadow-lg transition-all hover:bg-[var(--vesti-primary)]/90">
                 <Camera className="h-5 w-5" strokeWidth={2} />
@@ -281,10 +307,10 @@ export function ProfilePage({ onLogout, onAccountDeleted, onTryOnPhotoUpdate }: 
             >
               <Upload className="mb-2 h-8 w-8 text-[var(--vesti-primary)]" strokeWidth={2} />
               <p className="text-[var(--vesti-primary)]" style={{ fontWeight: 600 }}>
-                點擊上傳照片
+                {isUploadingTryOn ? '上傳中…' : '點擊上傳照片'}
               </p>
               <p className="text-[var(--vesti-gray-mid)]" style={{ fontSize: 'var(--text-label)' }}>
-                建議使用全身正面照
+                建議站直、頭到腳都入鏡、背景單純
               </p>
             </div>
           )}

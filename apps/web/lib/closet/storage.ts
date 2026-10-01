@@ -43,15 +43,17 @@ export interface StoredImage {
 }
 
 /**
- * 上傳一張圖到使用者自己的資料夾並回簽章網址。上傳成功但簽章失敗時會把檔案刪掉。
+ * 上傳一張圖到使用者自己的資料夾（可指定子資料夾）並回簽章網址。上傳成功但簽章失敗時會把檔案刪掉。
  */
 export async function uploadClosetImage(
   supabase: SupabaseClient,
   userId: string,
   buffer: Buffer,
-  contentType: ClosetImageMime
+  contentType: ClosetImageMime,
+  subfolder?: (typeof USER_SUBFOLDERS)[number]
 ): Promise<StoredImage> {
-  const filePath = `${userId}/${randomUUID()}.${EXT_BY_MIME[contentType]}`;
+  const folder = subfolder ? `${userId}/${subfolder}` : userId;
+  const filePath = `${folder}/${randomUUID()}.${EXT_BY_MIME[contentType]}`;
 
   const { error: uploadError } = await supabase.storage
     .from(CLOSET_BUCKET)
@@ -123,23 +125,36 @@ export async function downloadClosetImage(
 
 const LIST_PAGE_SIZE = 1000;
 
+// 使用者資料夾底下的子資料夾：試穿用的全身照、平拍圖、試穿結果
+export const USER_SUBFOLDERS = ['body', 'flat', 'tryon'] as const;
+
 /**
- * 刪掉使用者資料夾裡的所有圖片（刪帳號用）。清單分頁取到空為止，回傳刪掉的檔案數。
+ * 刪掉使用者資料夾（含子資料夾）裡的所有圖片（刪帳號用），回傳刪掉的檔案數。
  * 用本人的 client 就夠：storage policy 只允許碰自己的資料夾。
  */
 export async function removeAllUserImages(supabase: SupabaseClient, userId: string): Promise<number> {
+  let removed = 0;
+  for (const folder of [userId, ...USER_SUBFOLDERS.map((f) => `${userId}/${f}`)]) {
+    removed += await removeFolderFiles(supabase, folder);
+  }
+  return removed;
+}
+
+// 清單分頁取到沒有檔案為止；子資料夾在清單裡 id 是 null，略過
+async function removeFolderFiles(supabase: SupabaseClient, folder: string): Promise<number> {
   const bucket = supabase.storage.from(CLOSET_BUCKET);
   let removed = 0;
   // 每輪刪掉第一頁再重新列，不用 offset（刪完 offset 會跳過檔案）
   for (;;) {
-    const { data, error } = await bucket.list(userId, { limit: LIST_PAGE_SIZE });
+    const { data, error } = await bucket.list(folder, { limit: LIST_PAGE_SIZE });
     if (error) throw new Error(`Storage list failed: ${error.message}`);
-    if (!data || data.length === 0) return removed;
+    const files = (data ?? []).filter((f) => f.id !== null);
+    if (files.length === 0) return removed;
 
-    const paths = data.map((f) => `${userId}/${f.name}`);
+    const paths = files.map((f) => `${folder}/${f.name}`);
     const { error: removeError } = await bucket.remove(paths);
     if (removeError) throw new Error(`Storage remove failed: ${removeError.message}`);
     removed += paths.length;
-    if (data.length < LIST_PAGE_SIZE) return removed;
+    if ((data ?? []).length < LIST_PAGE_SIZE) return removed;
   }
 }
