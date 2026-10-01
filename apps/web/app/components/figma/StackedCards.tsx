@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Bookmark, Check, ChevronLeft, ChevronRight, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Bookmark, Check, ChevronLeft, ChevronRight, Loader2, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { haptic } from './hooks/useHaptic';
 import { BottomSheet } from './ui/bottom-sheet';
@@ -26,6 +26,12 @@ interface LayoutSlot {
   priority: number;
 }
 
+interface TryonState {
+  jobId: string;
+  status: 'queued' | 'running' | 'done' | 'failed';
+  imageUrl?: string;
+}
+
 interface Outfit {
   id: number;
   imageUrl: string;
@@ -33,7 +39,12 @@ interface Outfit {
   description: string;
   howToWear?: string;
   layoutSlots?: LayoutSlot[];
+  /** 有上傳全身照時才有；桌機 worker 做好後 status 變 done 並附 imageUrl */
+  tryon?: TryonState;
 }
+
+const TRYON_POLL_MS = 15_000;
+const isTryonPending = (t?: TryonState) => t?.status === 'queued' || t?.status === 'running';
 
 
 
@@ -93,6 +104,30 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
   const [dislikeReasons, setDislikeReasons] = useState<DislikeReason[]>([]);
   // 昨天選的那套還沒回答有沒有穿
   const [yesterdayPlan, setYesterdayPlan] = useState<DailyPlan | null>(null);
+  // 試穿進度：推薦回來時帶初始狀態，還沒做好的每 15 秒問一次，問到的新狀態蓋過初始值
+  const [tryonUpdates, setTryonUpdates] = useState<Record<string, TryonState>>({});
+  const tryonOf = (card: Outfit): TryonState | undefined =>
+    card.tryon ? (tryonUpdates[card.tryon.jobId] ?? card.tryon) : undefined;
+  const pendingTryonIds = outfits
+    .map(tryonOf)
+    .filter(isTryonPending)
+    .map((t) => t!.jobId)
+    .join(',');
+
+  useEffect(() => {
+    if (!pendingTryonIds) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/tryon/jobs?ids=${pendingTryonIds}`);
+        if (!res.ok) return;
+        const { jobs } = (await res.json()) as { jobs: TryonState[] };
+        setTryonUpdates((prev) => ({ ...prev, ...Object.fromEntries(jobs.map((j) => [j.jobId, j])) }));
+      } catch {
+        // 網路斷了就等下一輪
+      }
+    }, TRYON_POLL_MS);
+    return () => clearInterval(timer);
+  }, [pendingTryonIds]);
 
   // 昨天選的還沒回答有沒有穿就問一次（最可靠的回饋）
   useEffect(() => {
@@ -283,6 +318,9 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
             const cardKey = outfitKey(card);
             const isSaved = cardKey !== null && (savedKeys?.has(cardKey) ?? false);
             const isConfirmed = cardKey !== null && cardKey === plannedKey;
+            const tryon = tryonOf(card);
+            const tryonImage = tryon?.status === 'done' ? tryon.imageUrl : undefined;
+            const slots = card.layoutSlots ?? [];
 
             // 水平堆疊參數 - 右側露出
             const xOffset = index === 0 ? 0 : index === 1 ? 15 : 30;
@@ -362,7 +400,10 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
                       條件判斷：當後端有回傳 layoutSlots 時，使用人體結構白板佈局
                       否則 fallback 到原本的單張圖片顯示
                     */}
-                    {card.layoutSlots && card.layoutSlots.length > 0 ? (
+                    {tryonImage ? (
+                      /* 試穿做好了：照片滿版（像 IG 貼文） */
+                      <ImageWithFallback src={tryonImage} alt={`${card.styleName}試穿`} className="h-full w-full object-cover" />
+                    ) : card.layoutSlots && card.layoutSlots.length > 0 ? (
                       <div className="flex h-full w-full flex-col bg-white px-2 pt-3 pb-[86px]">
                         {(() => {
                           const slots = card.layoutSlots || [];
@@ -471,6 +512,21 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
 
                     {/* 底部：這套的感覺；單品與穿法在背面 */}
                     <div className="absolute inset-x-0 bottom-0 z-20 bg-black/55 px-4 pb-3 pt-2 text-white backdrop-blur-sm pointer-events-none">
+                      {/* 試穿照片看不出是哪幾件，底下放一排小縮圖 */}
+                      {tryonImage && (
+                        <div className="mb-2 flex gap-1.5">
+                          {slots.map((slot) => (
+                            <div
+                              key={`${slot.slotKey}-${slot.item?.id}`}
+                              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-[9px] bg-white shadow-md"
+                            >
+                              {slot.item?.imageUrl && (
+                                <ImageWithFallback src={slot.item.imageUrl} alt={slot.item.name || ''} className="max-h-[34px] max-w-[34px] object-contain" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <p className="truncate text-[13px] font-semibold leading-tight">{card.styleName}</p>
                       {card.description && (
                         <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/85">{card.description}</p>
@@ -478,16 +534,24 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
                       {isTop && <p className="mt-1 text-[10px] text-white/60">點一下看單品</p>}
                     </div>
 
-                    {/* 左上角：已選為今日穿搭 */}
-                    {isConfirmed && (
-                      <div
-                        className="absolute left-3 top-3 z-30 flex items-center gap-1 rounded-full px-3 py-1 text-xs text-white shadow-md"
-                        style={{ background: 'var(--vesti-accent)' }}
-                      >
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                        今天穿這套
-                      </div>
-                    )}
+                    {/* 左上角：已選為今日穿搭、試穿還在做 */}
+                    <div className="absolute left-3 top-3 z-30 flex flex-col items-start gap-1.5">
+                      {isConfirmed && (
+                        <div
+                          className="flex items-center gap-1 rounded-full px-3 py-1 text-xs text-white shadow-md"
+                          style={{ background: 'var(--vesti-accent)' }}
+                        >
+                          <Check className="h-3 w-3" strokeWidth={3} />
+                          今天穿這套
+                        </div>
+                      )}
+                      {isTryonPending(tryon) && (
+                        <div className="flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-[var(--vesti-primary)] shadow-md">
+                          <Loader2 className="h-3 w-3 animate-spin" strokeWidth={3} />
+                          試穿準備中
+                        </div>
+                      )}
+                    </div>
 
                     {/* 右上角按鈕組 - z-30 確保在白板佈局元素之上 */}
                     {isTop && (
@@ -521,41 +585,51 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
                     >
                       <div className="border-b px-4 pb-2 pt-3">
                         <p className="truncate text-[13px] font-semibold">{card.styleName}</p>
-                        <p className="text-[11px] text-muted-foreground">這套的單品</p>
+                        <p className="text-[10px] text-muted-foreground">這套的單品 · {slots.length} 件</p>
                       </div>
-                      <div className="flex-1 space-y-2 overflow-y-auto px-3 py-2">
-                        {(card.layoutSlots ?? []).map((slot) => (
-                          <div key={`${slot.slotKey}-${slot.item?.id}`} className="flex items-center gap-3 rounded-xl border p-2">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50">
-                              {slot.item?.imageUrl && (
-                                <ImageWithFallback src={slot.item.imageUrl} alt={slot.item.name || ''} className="max-h-full max-w-full object-contain" />
-                              )}
+                      <div className="flex-1 overflow-y-auto px-3 py-2.5">
+                        {/* 兩欄大圖，像商店的整套推薦；4 件剛好 2 × 2 */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {slots.map((slot) => (
+                            <div key={`${slot.slotKey}-${slot.item?.id}`} className="flex flex-col rounded-[14px] bg-gray-50 px-2 pb-2 pt-2">
+                              <div className="flex h-[96px] items-center justify-center">
+                                {slot.item?.imageUrl && (
+                                  <ImageWithFallback src={slot.item.imageUrl} alt={slot.item.name || ''} className="max-h-full max-w-full object-contain" />
+                                )}
+                              </div>
+                              <p className="mt-1 text-[9px] font-semibold text-[var(--vesti-primary)]">{SLOT_LABELS[slot.slotKey] ?? slot.slotKey}</p>
+                              <p className="line-clamp-2 text-[11px] leading-tight">{slot.item?.name || '未命名'}</p>
                             </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-[13px] font-medium">{slot.item?.name || '未命名'}</p>
-                              <p className="text-[11px] text-muted-foreground">{SLOT_LABELS[slot.slotKey] ?? slot.slotKey}</p>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                         {card.howToWear && (
-                          <p className="pt-1 text-[12px] leading-snug">
-                            <span className="font-medium">穿法：</span>
+                          <p className="mt-2.5 rounded-xl bg-[var(--vesti-primary)]/10 px-2.5 py-2 text-[11px] leading-snug">
+                            <span className="font-semibold text-[var(--vesti-primary)]">穿法　</span>
                             {card.howToWear}
                           </p>
                         )}
-                        {card.description && <p className="text-[11px] leading-snug text-muted-foreground">{card.description}</p>}
+                        {card.description && <p className="mt-1.5 px-1 text-[10.5px] leading-snug text-muted-foreground">{card.description}</p>}
                       </div>
-                      <div className="flex items-center justify-between border-t px-4 py-2">
-                        <span className="text-[10px] text-muted-foreground">點一下翻回正面</span>
+                      <div className="flex gap-2 px-3 pb-3 pt-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onCardClick(card);
                           }}
-                          className="text-[12px] font-medium text-[var(--vesti-primary)]"
+                          className="flex-1 rounded-[10px] bg-gray-100 py-2 text-[12px]"
                         >
                           看詳情
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleConfirm(e, card)}
+                          disabled={planBusy}
+                          aria-pressed={isConfirmed}
+                          className="flex-1 rounded-[10px] py-2 text-[12px] font-semibold text-white disabled:opacity-50"
+                          style={{ background: isConfirmed ? 'var(--vesti-accent)' : 'var(--vesti-primary)' }}
+                        >
+                          {isConfirmed ? '已選這套' : '今天穿這套'}
                         </button>
                       </div>
                     </div>

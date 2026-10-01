@@ -64,6 +64,7 @@ interface Outfit {
     accessories?: OutfitItem;   // 配件 (預留)
   };
   layoutSlots?: LayoutSlot[];   // 白板結構：人體結構分槽
+  tryon?: { jobId: string; status: 'queued' | 'running' | 'done' | 'failed'; imageUrl?: string };
 }
 
 // 伺服器上的收藏（/api/saved-outfits），savedId 用來取消收藏
@@ -297,6 +298,8 @@ export default function Page() {
                 outfit.shoes?.name
               ].filter(Boolean).join(' ・ '),
               howToWear: outfit.howToWear,
+              // 試穿狀態（有全身照才有）；卡片做好會換成試穿照片
+              tryon: outfit.tryon,
               // 完整單品資料 (為未來 IG 風格 UI 與試穿功能預留)
               items: items,
               // 白板結構：依人體結構分槽
