@@ -10,18 +10,25 @@ export function flatSize(slotKey) {
   return slotKey === 'bottom' ? { w: 768, h: 1152 } : { w: 1024, h: 1024 };
 }
 
+/** 請 Gemini 看原始照片寫版型描述的指示；生圖模型只看名稱會照一般版型畫（2026-10-01 job1 實測） */
+export const FIT_INSTRUCTION =
+  '你是服裝版型描述員。看照片裡這件衣物，用一句繁體中文描述它穿在身上的版型，給 AI 生圖參考，40 到 80 字。' +
+  '要寫：寬鬆或合身程度、肩線位置（落肩或正肩）、衣長或褲長落在哪裡、褲管或袖子的形狀（直筒、錐形、向外弧、喇叭）、' +
+  '明顯細節（開衩、羅紋、打褶、口袋、扣子、拉鍊）。不要寫顏色、品牌、文字、模特兒或拍攝方式。只回那一句話。';
+
 /** 把一件衣服從原始照片抽成平拍商品圖的 prompt */
 export function extractPrompt(item) {
   return (
     `從圖 1 把這件${item.name}單獨抽出來，做成平放的商品圖：純白背景，正面平放，整件完整入鏡置中。` +
     '保留原本的顏色、材質紋理、版型、長度和所有細節（領口、袖口、口袋、縫線、開衩）。' +
+    (item.fit ? `版型：${item.fit}` : '') +
     '不要任何文字、logo、標籤、人、手或其他衣服。'
   );
 }
 
 /**
  * 依 job 的衣服排出參考圖順序並組 prompt。
- * items: [{ slotKey, name }]，只取 SLOT_ORDER 裡的部位，同部位只取第一件。
+ * items: [{ slotKey, name, fit? }]，只取 SLOT_ORDER 裡的部位，同部位只取第一件；fit 是版型描述，有就寫進 prompt。
  * 回傳 refs: [{ kind: 'person' } | { kind: 'flat', index } | { kind: 'shape', index }]，
  * index 指回 items 的位置；圖的編號就是 refs 的順序 + 1。
  */
@@ -37,7 +44,8 @@ export function buildTryonPlan(items) {
   for (const { slot, index } of picked) {
     refs.push({ kind: 'flat', index });
     const n = refs.length;
-    const name = items[index].name;
+    const { name: itemName, fit } = items[index];
+    const name = fit ? `${itemName}（版型：${fit.replace(/[。\s]+$/, '')}）` : itemName;
     if (slot === 'top_inner') lines.push(`上身改穿圖 ${n} 的${name}。`);
     if (slot === 'top_outer') lines.push(`外面套上圖 ${n} 的${name}，穿在上衣外面。`);
     if (slot === 'bottom') lines.push(`下身改穿圖 ${n} 的${name}。`);

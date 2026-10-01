@@ -42,6 +42,11 @@ describe('buildTryonPlan', () => {
     ]);
     expect(refs).toEqual([{ kind: 'person' }, { kind: 'flat', index: 1 }]);
   });
+
+  it('有版型描述就接在名稱後面', () => {
+    const { prompt } = buildTryonPlan([{ slotKey: 'bottom', name: '牛仔褲', fit: '寬版，褲管向外弧。' }]);
+    expect(prompt).toContain('下身改穿圖 2 的牛仔褲（版型：寬版，褲管向外弧）');
+  });
 });
 
 describe('平拍圖', () => {
@@ -49,6 +54,8 @@ describe('平拍圖', () => {
     const p = extractPrompt({ name: '酒紅長袖T' });
     expect(p).toContain('酒紅長袖T');
     expect(p).toContain('不要任何文字');
+    expect(p).not.toContain('版型：');
+    expect(extractPrompt({ name: '牛仔褲', fit: '寬版弧形' })).toContain('版型：寬版弧形');
   });
 
   it('下身用直式尺寸，其他用正方形', () => {

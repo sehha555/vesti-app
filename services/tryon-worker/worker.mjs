@@ -7,12 +7,13 @@
 // 一次只做一件工作（顯卡一次只能跑一張）；啟動時把上次中斷、卡在 running 的工作放回排隊
 import { createClient } from '@supabase/supabase-js';
 import sharp from 'sharp';
+import { GoogleGenAI } from '@google/genai';
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildTryonPlan, extractPrompt, flatSize } from './prompts.mjs';
+import { buildTryonPlan, extractPrompt, flatSize, FIT_INSTRUCTION } from './prompts.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BUCKET = 'closet-images';
@@ -20,6 +21,8 @@ const POLL_MS = 10_000;
 const PERSON = { w: 896, h: 1184 };
 const GEN_SCRIPT = join(HERE, 'gen.ps1');
 const WORK_DIR = join(tmpdir(), 'vesti-tryon');
+// 版型描述只存在桌機本機（每件衣服問一次 Gemini）；刪掉這個資料夾就會重新問
+const FIT_CACHE_DIR = join(homedir(), '.vesti-tryon-cache');
 
 async function loadEnv() {
   const text = await readFile(join(HERE, '../../apps/web/.env.local'), 'utf8');
@@ -73,6 +76,40 @@ async function main() {
   const db = createClient(url, key, { auth: { persistSession: false } });
   const storage = db.storage.from(BUCKET);
 
+  const gemini = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+  const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+
+  /** 請 Gemini 看原始照片寫一句版型描述；失敗就回空字串（照樣生圖，只是版型比較不準） */
+  async function describeFit(item, pngBuffer) {
+    const cacheFile = join(FIT_CACHE_DIR, `${item.id}.txt`);
+    try {
+      return await readFile(cacheFile, 'utf8');
+    } catch {
+      // 還沒問過
+    }
+    if (!gemini) return '';
+    try {
+      const res = await gemini.models.generateContent({
+        model: geminiModel,
+        contents: [
+          {
+            role: 'user',
+            parts: [{ inlineData: { data: pngBuffer.toString('base64'), mimeType: 'image/png' } }, { text: `這件是「${item.name}」。` }],
+          },
+        ],
+        config: { systemInstruction: FIT_INSTRUCTION, temperature: 0.2 },
+      });
+      const fit = (res.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 150);
+      await mkdir(FIT_CACHE_DIR, { recursive: true });
+      await writeFile(cacheFile, fit, 'utf8');
+      log(`  版型：${item.name} → ${fit}`);
+      return fit;
+    } catch (err) {
+      log(`  版型描述失敗（${item.name}）：${err.message}`);
+      return '';
+    }
+  }
+
   async function download(path) {
     const { data, error } = await storage.download(path);
     if (error || !data) throw new Error(`下載失敗 ${path}：${error?.message ?? 'no data'}`);
@@ -94,10 +131,8 @@ async function main() {
     } catch {
       // 還沒抽過
     }
-    const original = join(dir, `orig-${item.id}.png`);
-    await writeFile(original, await sharp(await download(pathFromImageUrl(item.image_url))).png().toBuffer());
     log(`  抽平拍圖：${item.name}`);
-    const buf = await generate({ prompt: extractPrompt(item), refs: [original], out: local, ...flatSize(slotKey) });
+    const buf = await generate({ prompt: extractPrompt(item), refs: [item.original], out: local, ...flatSize(slotKey) });
     await upload(flatPath, buf);
     return local;
   }
@@ -113,6 +148,14 @@ async function main() {
       const items = job.items
         .filter((it) => byId.get(it.itemId)?.image_url)
         .map((it) => ({ ...byId.get(it.itemId), slotKey: it.slotKey }));
+
+      // 每件衣服的原始照片：抽平拍圖、寫版型描述、當下身版型參考都用它
+      for (const it of items) {
+        it.original = join(dir, `orig-${it.id}.png`);
+        const png = await sharp(await download(pathFromImageUrl(it.image_url))).png().toBuffer();
+        await writeFile(it.original, png);
+        it.fit = await describeFit(it, png);
+      }
 
       // 人物照縮放到生圖尺寸，不裁切，空白處補左上角的背景色
       const personRaw = await download(job.person_path);
@@ -132,13 +175,7 @@ async function main() {
           const it = items[ref.index];
           refFiles.push(await ensureFlat(job.user_id, it, it.slotKey, dir));
         }
-        if (ref.kind === 'shape') {
-          // 下身的原始照片當版型參考（平拍圖若是快取拿到的，原始照片還沒下載過）
-          const it = items[ref.index];
-          const file = join(dir, `orig-${it.id}.png`);
-          await writeFile(file, await sharp(await download(pathFromImageUrl(it.image_url))).png().toBuffer());
-          refFiles.push(file);
-        }
+        if (ref.kind === 'shape') refFiles.push(items[ref.index].original);
       }
 
       log(`  試穿：${items.map((it) => it.name).join('、')}`);
