@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Search, ShoppingBag, ShoppingCart, Shirt, X, MapPin, Star, Clock, Plus } from 'lucide-react';
+import { ArrowLeft, Search, ShoppingBag, Shirt, X, MapPin, Star, Clock, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailView } from './ProductDetailView';
@@ -82,7 +82,6 @@ interface StoreProfilePageProps {
   tryOnCount: number;
   onAddToBag: () => void;
   onNavigateToTryOn: () => void;
-  onNavigateToCheckout?: () => void;
 }
 
 export function StoreProfilePage({ 
@@ -90,8 +89,7 @@ export function StoreProfilePage({
   onBack,
   tryOnCount,
   onAddToBag,
-  onNavigateToTryOn,
-  onNavigateToCheckout
+  onNavigateToTryOn
 }: StoreProfilePageProps) {
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [isFabExpanded, setIsFabExpanded] = useState(false);
@@ -388,32 +386,6 @@ export function StoreProfilePage({
                 className="mb-3 flex flex-col gap-3 items-end"
                 style={{ overflow: 'visible' }}
               >
-                {onNavigateToCheckout && (
-                  <motion.button
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ 
-                      duration: 0.2,
-                      ease: [0.4, 0, 0.2, 1],
-                      delay: 0.08
-                    }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setIsFabExpanded(false);
-                      onNavigateToCheckout();
-                    }}
-                    className="flex items-center justify-between gap-3 rounded-full bg-white pr-5 pl-3 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.15)] border-2 border-[var(--vesti-primary)]/30 transition-all hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] w-[160px]"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--vesti-primary)] flex-shrink-0">
-                      <ShoppingCart className="h-5 w-5 text-white" strokeWidth={2.5} />
-                    </div>
-                    <span className="text-[var(--vesti-dark)] whitespace-nowrap flex-1 text-center" style={{ fontWeight: 600 }}>
-                      前往結帳
-                    </span>
-                  </motion.button>
-                )}
 
                 <motion.button
                   initial={{ opacity: 0, x: 20 }}

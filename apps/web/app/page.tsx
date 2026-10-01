@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RefreshCw, Bell, ShoppingCart } from 'lucide-react';
+import { RefreshCw, Bell } from 'lucide-react';
 import type { WeatherSummary } from '@/packages/types/src/weather';
 
 // --- Import all required components from './components/figma/*' ---
@@ -12,7 +12,6 @@ import { QuickActions } from './components/figma/QuickActions';
 import { StackedCards } from './components/figma/StackedCards';
 import { WardrobeUtilization } from './components/figma/WardrobeUtilization';
 import { CPWRanking } from './components/figma/CPWRanking';
-import { EstimatedDelivery } from './components/figma/EstimatedDelivery';
 import { OutfitDetailModal } from './components/figma/OutfitDetailModal';
 import { BottomNav } from './components/figma/BottomNav';
 import { Toaster } from './components/figma/ui/sonner';
@@ -25,16 +24,14 @@ import { ExplorePage } from './components/figma/ExplorePage';
 import { StorePage } from './components/figma/StorePage';
 import { ProfilePage } from './components/figma/ProfilePage';
 import { TryOnPage } from './components/figma/TryOnPage';
-import { CheckoutPage } from './components/figma/CheckoutPage';
 import { DiscountPage } from './components/figma/DiscountPage';
 import { TrendingPage } from './components/figma/TrendingPage';
 import { UploadClothingPage } from './components/figma/UploadClothingPage';
 import { BroadcastPage } from './components/figma/BroadcastPage';
 import { CalendarPage } from './components/figma/CalendarPage';
 import { CPWRankingFullPage } from './components/figma/CPWRankingFullPage';
-import { DeliveryTrackingPage } from './components/figma/DeliveryTrackingPage';
 import { NotificationPage } from './components/figma/NotificationPage';
-import { PaymentMethodsPage } from './components/figma/PaymentMethodsPage';
+import { outfitKeyFromSlots } from '../lib/outfits/key';
 
 // --- Types and Mock Data ---
 interface OutfitItem {
@@ -58,6 +55,7 @@ interface Outfit {
   imageUrl: string;
   styleName: string;
   description: string;
+  howToWear?: string;
   items?: {
     top?: OutfitItem;           // 上衣/內層
     outerwear?: OutfitItem;     // 外套/外層 (預留)
@@ -68,17 +66,43 @@ interface Outfit {
   layoutSlots?: LayoutSlot[];   // 白板結構：人體結構分槽
 }
 
-interface PaymentCard {
+// 伺服器上的收藏（/api/saved-outfits），savedId 用來取消收藏
+interface SavedOutfit extends Outfit {
+  savedId: string;
+  key: string;
+}
+
+interface SavedOutfitRow {
   id: string;
-  last4: string;
-  brand: string;
-  isDefault?: boolean;
+  outfit_data: {
+    imageUrl: string;
+    styleName: string;
+    description?: string;
+    layoutSlots?: LayoutSlot[];
+  };
+}
+
+// 衣櫃頁以數字 id 當 key：每筆收藏轉換時配一個不會重複、之後也不變的 id（跟推薦卡片的 1、2、3 分開）
+let nextSavedCardId = 100000;
+
+function toSavedOutfit(row: SavedOutfitRow): SavedOutfit | null {
+  const key = outfitKeyFromSlots(row.outfit_data?.layoutSlots);
+  if (!key) return null;
+  return {
+    id: nextSavedCardId++,
+    imageUrl: row.outfit_data.imageUrl,
+    styleName: row.outfit_data.styleName,
+    description: row.outfit_data.description ?? '',
+    layoutSlots: row.outfit_data.layoutSlots,
+    savedId: row.id,
+    key,
+  };
 }
 
 // 首頁下半部（衣櫃利用率、CPW 排行、預計配送）與購物車/通知角標仍是電商規劃的假資料，先隱藏
 const SHOW_COMMERCE_MOCKS = false;
 
-type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile' | 'tryon' | 'checkout' | 'discount' | 'trending' | 'upload' | 'login' | 'broadcast' | 'calendar' | 'cpwranking' | 'delivery' | 'notification' | 'payment-methods';
+type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile' | 'tryon' | 'discount' | 'trending' | 'upload' | 'login' | 'broadcast' | 'calendar' | 'cpwranking' | 'notification';
 
 const pageHierarchy: Record<PageType, number> = {
   'login': 0,
@@ -88,18 +112,22 @@ const pageHierarchy: Record<PageType, number> = {
   'store': 1,
   'profile': 1,
   'tryon': 2,
-  'checkout': 2,
   'discount': 2,
   'trending': 2,
   'upload': 2,
   'broadcast': 2,
   'calendar': 2,
   'cpwranking': 2,
-  'delivery': 2,
   'notification': 2,
-  'payment-methods': 2,
 };
 
+
+// 沒有推薦時，說明原因（顯示在載入卡上）
+const RECO_NOTICES: Record<string, string> = {
+  CLOSET_TOO_SMALL: '衣櫃至少要有 3 件衣服（含上衣和下身），AI 才能幫你搭配',
+  AI_UNAVAILABLE: 'AI 推薦暫時無法使用，請稍後重新整理',
+  NO_OUTFIT: '今天沒搭出合適的組合，衣服多一點會更好搭',
+};
 
 export default function Page() {
   // --- State Management ---
@@ -110,21 +138,20 @@ export default function Page() {
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
-  const [selectedDeliveryMerchant, setSelectedDeliveryMerchant] = useState<string>('');
   const [weatherData, setWeatherData] = useState<WeatherSummary | undefined>();
   const [dailyOutfits, setDailyOutfits] = useState<Outfit[]>([]);
-  // 推薦要等 AI 5-10 秒；empty = 衣櫃不到 3 件，AI 沒得挑
+  // 推薦要等 AI 5-10 秒；empty = 沒有推薦，原因在 recoReason
   const [outfitsStatus, setOutfitsStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   // 使用者自己寫的今天情境（不用固定標籤）；occasionDraft 是輸入中的字，按「換」才送出
   const [occasion, setOccasion] = useState('');
   const [occasionDraft, setOccasionDraft] = useState('');
+  // /api/daily-outfits 沒給推薦時的原因（顯示在卡片上方）；null = 還沒回來或有推薦
+  const [recoReason, setRecoReason] = useState<string | null>(null);
 
   // Mock Data States
-  const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
-  const [savedCards, setSavedCards] = useState<PaymentCard[]>([]);
-  const [savedOutfitSets, setSavedOutfitSets] = useState<any[]>([]); // Mock state
-  const [tryOnBasketItems, setTryOnBasketItems] = useState<any[]>([]); // Mock state
+  const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
+  const savedKeys = useMemo(() => new Set(savedOutfits.map((o) => o.key)), [savedOutfits]);
 
   // --- Hooks ---
   useScrollMemory(currentPage || 'home');
@@ -156,7 +183,6 @@ export default function Page() {
   // 輔助函數：將單品資料映射到白板槽位
   const createLayoutSlots = (items: any): LayoutSlot[] => {
     const slots: LayoutSlot[] = [];
-    let priority = 1;
 
     // 槽位定義：slotKey → items字段 的映射
     const slotMappings = [
@@ -240,6 +266,7 @@ export default function Page() {
         if (data.weather) {
           setWeatherData(data.weather);
         }
+        setRecoReason(typeof data.reason === 'string' && data.reason !== 'OK' ? data.reason : null);
 
         if (data.outfits && Array.isArray(data.outfits) && data.outfits.length > 0) {
           const mapped: Outfit[] = data.outfits.map((outfit: any, index: number) => {
@@ -269,6 +296,7 @@ export default function Page() {
                 outfit.bottom?.name,
                 outfit.shoes?.name
               ].filter(Boolean).join(' ・ '),
+              howToWear: outfit.howToWear,
               // 完整單品資料 (為未來 IG 風格 UI 與試穿功能預留)
               items: items,
               // 白板結構：依人體結構分槽
@@ -304,6 +332,15 @@ export default function Page() {
     setCurrentPage(newPage);
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+    } catch (error) {
+      console.error('[Page] Sign out request failed:', error);
+    }
+    navigateTo('login');
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     setTimeout(() => setIsRefreshing(false), 1500);
@@ -319,11 +356,64 @@ export default function Page() {
     setTimeout(() => setSelectedOutfit(null), 300);
   };
 
-  const handleSaveOutfit = (outfit: Outfit) => {
-    setSavedOutfits(prev => {
-      const exists = prev.find(o => o.id === outfit.id);
-      return exists ? prev.filter(o => o.id !== outfit.id) : [...prev, outfit];
+  // 登入後從伺服器載入收藏（首頁愛心狀態 + 衣櫃頁「收藏」都用這份）
+  const isLoggedIn = currentPage !== null && currentPage !== 'login';
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/saved-outfits?limit=100');
+        if (!res.ok) return;
+        const body = await res.json();
+        const rows: SavedOutfitRow[] = body.outfits ?? [];
+        const list = rows.map(toSavedOutfit).filter((o): o is SavedOutfit => o !== null);
+        if (!cancelled) setSavedOutfits(list);
+      } catch (error) {
+        console.error('[Page] 載入收藏失敗:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
+
+  const handleToggleSave = async (outfit: Outfit): Promise<'saved' | 'removed'> => {
+    const key = outfitKeyFromSlots(outfit.layoutSlots);
+    if (!key) throw new Error('範例穿搭無法收藏');
+
+    const existing = savedOutfits.find((o) => o.key === key);
+    if (existing) {
+      const res = await fetch(`/api/saved-outfits?id=${existing.savedId}`, { method: 'DELETE' });
+      // 404 代表伺服器上已經沒有了，一樣從畫面移除
+      if (!res.ok && res.status !== 404) throw new Error(`取消收藏失敗 (${res.status})`);
+      setSavedOutfits((prev) => prev.filter((o) => o.key !== key));
+      return 'removed';
+    }
+
+    const res = await fetch('/api/saved-outfits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        outfitData: {
+          imageUrl: outfit.imageUrl,
+          styleName: outfit.styleName,
+          description: outfit.description,
+          layoutSlots: outfit.layoutSlots,
+        },
+        occasion: 'casual',
+      }),
     });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.savedOutfit?.id) throw new Error(body.error || `收藏失敗 (${res.status})`);
+
+    setSavedOutfits((prev) => {
+      const saved = toSavedOutfit(body.savedOutfit);
+      if (!saved || prev.some((o) => o.key === key)) return prev;
+      // 新收藏放最前面
+      return [saved, ...prev];
+    });
+    return 'saved';
   };
 
   // --- Page Renderer ---
@@ -342,10 +432,6 @@ export default function Page() {
               <div className="flex h-16 items-center justify-between px-5">
                 <h1 className="text-2xl font-black italic tracking-tighter text-primary">VESTI</h1>
                 <div className="flex items-center gap-2">
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigateTo('checkout')} className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors">
-                    <ShoppingCart className="h-6 w-6 text-foreground" strokeWidth={2} />
-                    {SHOW_COMMERCE_MOCKS && <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">3</div>}
-                  </motion.button>
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => navigateTo('notification')} className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors">
                     <Bell className="h-6 w-6 text-foreground" strokeWidth={2} />
                     {SHOW_COMMERCE_MOCKS && <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />}
@@ -384,16 +470,16 @@ export default function Page() {
             </form>
             <div className="mb-16">
               {outfitsStatus === 'ready' ? (
-                <StackedCards outfits={dailyOutfits} onCardClick={handleCardClick} onSaveOutfit={handleSaveOutfit} occasion={occasion} />
+                <StackedCards outfits={dailyOutfits} onCardClick={handleCardClick} savedKeys={savedKeys} onToggleSave={handleToggleSave} occasion={occasion} />
               ) : (
                 <div className="px-4">
                   <div className={`mx-auto flex h-[400px] max-w-[300px] flex-col items-center justify-center gap-2 rounded-3xl bg-gray-100 px-6 text-center ${outfitsStatus === 'loading' ? 'animate-pulse' : ''}`}>
                     <p className="text-sm text-muted-foreground">
                       {outfitsStatus === 'loading' && 'AI 正在從你的衣櫃挑今天的穿搭…'}
-                      {outfitsStatus === 'empty' && '衣櫃至少要有 3 件衣服，AI 才能幫你搭配'}
+                      {outfitsStatus === 'empty' && (RECO_NOTICES[recoReason ?? ''] ?? RECO_NOTICES.NO_OUTFIT)}
                       {outfitsStatus === 'error' && '推薦暫時載入失敗，請稍後重新整理'}
                     </p>
-                    {outfitsStatus === 'empty' && (
+                    {outfitsStatus === 'empty' && recoReason !== 'AI_UNAVAILABLE' && (
                       <button onClick={() => navigateTo('wardrobe')} className="mt-2 rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground">去衣櫃新增</button>
                     )}
                   </div>
@@ -404,7 +490,6 @@ export default function Page() {
               <>
                 <WardrobeUtilization />
                 <CPWRanking onNavigateToFullRanking={() => navigateTo('cpwranking')} />
-                <EstimatedDelivery onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} />
               </>
             )}
           </>
@@ -414,13 +499,11 @@ export default function Page() {
       case 'explore':
         return <ExplorePage />;
       case 'store':
-        return <StorePage onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToCheckout={() => navigateTo('checkout')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToTrending={() => navigateTo('trending')} />;
+        return <StorePage onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToTrending={() => navigateTo('trending')} />;
       case 'profile':
-        return <ProfilePage onNavigateToCheckout={() => navigateTo('checkout')} onNavigateToDelivery={(merchant) => { if (merchant) setSelectedDeliveryMerchant(merchant); navigateTo('delivery'); }} onNavigateToPaymentMethods={() => navigateTo('payment-methods')} onLogout={() => navigateTo('login')} />;
+        return <ProfilePage onLogout={handleLogout} onAccountDeleted={() => navigateTo('login')} />;
       case 'tryon':
-        return <TryOnPage onBack={() => navigateTo(previousPage)} onNavigateToCheckout={() => navigateTo('checkout')} />;
-      case 'checkout':
-        return <CheckoutPage onBack={() => navigateTo(previousPage)} />;
+        return <TryOnPage onBack={() => navigateTo(previousPage)} />;
       case 'discount':
         return <DiscountPage onBack={() => navigateTo(previousPage)} onNavigateToTryOn={() => navigateTo('tryon')} />;
       case 'trending':
@@ -435,12 +518,8 @@ export default function Page() {
         return <CalendarPage onBack={() => navigateTo(previousPage)} />;
       case 'cpwranking':
         return <CPWRankingFullPage onBack={() => navigateTo(previousPage)} />;
-      case 'delivery':
-        return <DeliveryTrackingPage onBack={() => navigateTo(previousPage)} initialMerchant={selectedDeliveryMerchant} />;
       case 'notification':
         return <NotificationPage onBack={() => navigateTo(previousPage)} />;
-      case 'payment-methods':
-        return <PaymentMethodsPage onBack={() => navigateTo(previousPage)} savedCards={savedCards} onCardsUpdate={setSavedCards} />;
       default:
         return null;
     }

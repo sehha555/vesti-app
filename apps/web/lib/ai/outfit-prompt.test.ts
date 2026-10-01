@@ -109,10 +109,64 @@ describe('buildOutfitParts', () => {
       ],
       { temperature: 30, feelsLike: 33, humidity: 70, condition: 'sunny', windSpeed: 5 },
       '',
-      new Set(['b1'])
+      { recentlyWornIds: new Set(['b1']) }
     );
     expect(parts[0].text).toContain('使用者沒寫今天要做什麼');
     expect(parts[1].text).not.toContain('最近穿過');
     expect(parts[3].text).toContain('最近穿過');
+  });
+
+  it('有辨識屬性時寫出保暖度、正式度與風格', () => {
+    const parts = buildOutfitParts(
+      [
+        {
+          id: 't1',
+          name: '白色襯衫',
+          category: 'top',
+          color: '白',
+          attributes: {
+            version: 1,
+            category: 'top',
+            subcategory: '牛津襯衫',
+            name: '白色襯衫',
+            colors: ['白', '淺藍'],
+            pattern: 'stripe',
+            warmth: 3,
+            formality: 4,
+            styles: ['商務', '簡約'],
+            seasons: ['spring'],
+          },
+          imageBase64: 'AAA',
+          mimeType: 'image/jpeg',
+        },
+      ],
+      { temperature: 22, feelsLike: 22, humidity: 60, condition: 'cloudy', windSpeed: 3 },
+      'work'
+    );
+    expect(parts[1].text).toBe(
+      'itemId: t1｜名稱: 白色襯衫｜類別: top｜細類: 牛津襯衫｜顏色: 白/淺藍｜花紋: 條紋｜保暖 3/5｜正式 4/5｜風格: 商務、簡約'
+    );
+  });
+
+  it('有回饋時放在最後指令之前，沒有就不出現', () => {
+    const items = [{ id: 't1', name: '白 T', category: 'top', color: null, imageBase64: 'AAA', mimeType: 'image/jpeg' }];
+    const weather = { temperature: 25, feelsLike: 25, humidity: 60, condition: 'cloudy' as const, windSpeed: 3 };
+
+    const without = buildOutfitParts(items, weather, 'casual', { feedbackSummary: null });
+    expect(without.some((p) => p.text?.includes('使用者回饋'))).toBe(false);
+
+    const withFeedback = buildOutfitParts(items, weather, 'casual', { feedbackSummary: '使用者不喜歡的組合：\n- 白 T + 牛仔褲（太正式）' });
+    expect(withFeedback).toHaveLength(without.length + 1);
+    expect(withFeedback.at(-2)?.text).toContain('白 T + 牛仔褲（太正式）');
+    expect(withFeedback.at(-1)?.text).toContain('請依照原則');
+  });
+
+  it('冷天而且衣櫃有外套時，最後指令要求每套穿外套', () => {
+    const top = { id: 't1', name: '針織衫', category: 'top', color: null, imageBase64: 'AAA', mimeType: 'image/jpeg' };
+    const coat = { ...top, id: 'o1', name: '大衣', category: 'outerwear' };
+    const cold = { temperature: 9, feelsLike: 7, humidity: 60, condition: 'cloudy' as const, windSpeed: 3 };
+    expect(buildOutfitParts([top, coat], cold, 'casual').at(-1)?.text).toContain('每套都要從類別 outerwear');
+    expect(buildOutfitParts([top], cold, 'casual').at(-1)?.text).not.toContain('outerwear');
+    expect(buildOutfitParts([top, coat], { ...cold, feelsLike: 16 }, 'casual').at(-1)?.text).not.toContain('outerwear');
   });
 });

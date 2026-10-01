@@ -47,7 +47,7 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
   describe('Authentication', () => {
     it('should return 401 when user is not authenticated', async () => {
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: {} as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
+        supabase: {} as never,
         user: null,
       });
 
@@ -70,8 +70,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       };
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: mockSupabase as unknown as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: 'user-123' } as { id: string },
+        supabase: mockSupabase as never,
+        user: { id: 'user-123' } as never,
       });
 
       const response = await GET(createMockRequest(), createMockContext());
@@ -91,8 +91,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       };
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: mockSupabase as unknown as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: 'other-user' } as { id: string },
+        supabase: mockSupabase as never,
+        user: { id: 'other-user' } as never,
       });
 
       const response = await GET(createMockRequest(), createMockContext());
@@ -129,8 +129,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       };
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: mockSupabase as unknown as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: userId } as { id: string },
+        supabase: mockSupabase as never,
+        user: { id: userId } as never,
       });
 
       const response = await GET(createMockRequest(), createMockContext());
@@ -172,8 +172,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       };
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: mockSupabase as unknown as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: userId } as { id: string },
+        supabase: mockSupabase as never,
+        user: { id: userId } as never,
       });
 
       await GET(createMockRequest(), createMockContext('item-456'));
@@ -206,8 +206,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       mockGetCachedResponse.mockResolvedValue(cachedResponse);
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: {} as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: 'user-123' } as { id: string },
+        supabase: {} as never,
+        user: { id: 'user-123' } as never,
       });
 
       const response = await GET(createMockRequest(), createMockContext());
@@ -236,8 +236,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       mockGetCachedResponse.mockResolvedValue(cachedResponse);
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: {} as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: 'user-123' } as { id: string },
+        supabase: {} as never,
+        user: { id: 'user-123' } as never,
       });
 
       const response = await GET(createMockRequest(), createMockContext());
@@ -261,8 +261,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       mockGetCachedResponse.mockResolvedValue(null);
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: {} as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: 'user-123' } as { id: string },
+        supabase: {} as never,
+        user: { id: 'user-123' } as never,
       });
 
       const response = await GET(createMockRequest(), createMockContext());
@@ -285,8 +285,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       };
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: mockSupabase as unknown as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: userId } as { id: string },
+        supabase: mockSupabase as never,
+        user: { id: userId } as never,
       });
 
       await GET(createMockRequest(), createMockContext(itemId));
@@ -324,8 +324,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
       };
 
       mockGetSupabaseAndUser.mockResolvedValue({
-        supabase: mockSupabase as unknown as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-        user: { id: userId } as { id: string },
+        supabase: mockSupabase as never,
+        user: { id: userId } as never,
       });
 
       const response = await GET(createMockRequest(), createMockContext());
@@ -364,8 +364,8 @@ describe('GET /api/closet-items/[id]/refresh-url', () => {
         };
 
         mockGetSupabaseAndUser.mockResolvedValue({
-          supabase: mockSupabase as unknown as ReturnType<typeof mockGetSupabaseAndUser> extends Promise<infer T> ? T['supabase'] : never,
-          user: { id: userId } as { id: string },
+          supabase: mockSupabase as never,
+          user: { id: userId } as never,
         });
 
         const response = await GET(createMockRequest(), createMockContext());

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Sparkles, ShoppingBag, Grid3x3, LayoutGrid, Shirt, ShoppingCart, X, Plus, ChevronLeft } from 'lucide-react';
+import { Search, Sparkles, ShoppingBag, Grid3x3, LayoutGrid, Shirt, X, Plus, ChevronLeft } from 'lucide-react';
 import { StoreOutfitCard } from './StoreOutfitCard';
 import { OutfitPackCard } from './OutfitPackCard';
 import { AIOutfitRecommendation } from './AIOutfitRecommendation';
@@ -345,11 +345,10 @@ interface StorePageProps {
   onNavigateToTryOn: () => void;
   onNavigateToDiscount?: () => void;
   onNavigateToTrending?: () => void;
-  onNavigateToCheckout?: () => void;
   initialTag?: string;
 }
 
-export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateToTrending, onNavigateToCheckout, initialTag }: StorePageProps) {
+export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateToTrending, initialTag }: StorePageProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('shopping');
   const [searchQuery, setSearchQuery] = useState('');
   const [isQuizOpen, setIsQuizOpen] = useState(false);
@@ -371,7 +370,6 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
         tryOnCount={tryOnCount}
         onAddToBag={() => setTryOnCount(c => c + 1)}
         onNavigateToTryOn={onNavigateToTryOn}
-        onNavigateToCheckout={onNavigateToCheckout}
       />
     );
   }
@@ -878,32 +876,6 @@ export function StorePage({ onNavigateToTryOn, onNavigateToDiscount, onNavigateT
                 className="mb-3 flex flex-col gap-3 items-end"
                 style={{ overflow: 'visible' }}
               >
-                {onNavigateToCheckout && (
-                  <motion.button
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ 
-                      duration: 0.2,
-                      ease: [0.4, 0, 0.2, 1],
-                      delay: 0.08
-                    }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setIsFabExpanded(false);
-                      onNavigateToCheckout();
-                    }}
-                    className="flex items-center justify-between gap-3 rounded-full bg-white pr-5 pl-3 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.15)] border-2 border-[var(--vesti-primary)]/30 transition-all hover:shadow-[0_12px_32px_rgba(0,0,0,0.2)] w-[160px]"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--vesti-primary)] flex-shrink-0">
-                      <ShoppingCart className="h-5 w-5 text-white" strokeWidth={2.5} />
-                    </div>
-                    <span className="text-[var(--vesti-dark)] whitespace-nowrap flex-1 text-center" style={{ fontWeight: 600 }}>
-                      前往結帳
-                    </span>
-                  </motion.button>
-                )}
 
                 <motion.button
                   initial={{ opacity: 0, x: 20 }}

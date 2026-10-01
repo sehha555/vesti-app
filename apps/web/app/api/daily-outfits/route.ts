@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWeather } from '@/services/weather';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { pickOutfits, resolveOutfits } from '../../../lib/ai/suggest-outfits';
+import { pickOutfits, resolveOutfits, type SuggestReason } from '../../../lib/ai/suggest-outfits';
 import { currentPeriodStart } from '../../../lib/ai/recommendation-period';
 import type { OutfitSuggestion, RawOutfitSuggestion } from '../../../lib/ai/outfit-prompt';
 import type { WeatherSummary } from '../../../../../packages/types/src/weather';
@@ -15,6 +15,8 @@ const RATE_LIMIT = { keyPrefix: 'daily-outfits', maxRequests: 20, windowMs: 3_60
 interface DailyOutfitsResponse {
   outfits: OutfitSuggestion[];
   weather: WeatherSummary;
+  /** outfits 為空時說明原因，首頁據此顯示提示 */
+  reason: SuggestReason;
 }
 
 /**
@@ -22,6 +24,7 @@ interface DailyOutfitsResponse {
  * occasion 是使用者自己寫的一句今天情境（可空），不是固定標籤。
  * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一時段同一句話只算一次，結果存在 daily_recommendations，
  * 之後直接讀表、重新簽圖片網址就回，不用再等模型。
+ * 推薦失敗（沒設 AI、模型出錯、衣櫃不足）不算錯誤：照樣回 200 與天氣，outfits 為空並附 reason。
  */
 export async function GET(request: NextRequest) {
   const { supabase, user } = await getSupabaseAndUser();
@@ -59,7 +62,7 @@ export async function GET(request: NextRequest) {
       const outfits = await resolveOutfits(supabase, user.id, stored.outfits as RawOutfitSuggestion[]);
       // 存的衣服全被刪光才重算，否則直接回
       if (outfits.length > 0) {
-        return NextResponse.json({ outfits, weather } satisfies DailyOutfitsResponse, { headers });
+        return NextResponse.json({ outfits, weather, reason: 'OK' } satisfies DailyOutfitsResponse, { headers });
       }
     }
 
@@ -71,8 +74,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const raw = await pickOutfits({ supabase, userId: user.id, weather, occasion });
-    const outfits = await resolveOutfits(supabase, user.id, raw);
+    let raw: RawOutfitSuggestion[] = [];
+    let outfits: OutfitSuggestion[] = [];
+    let reason: SuggestReason;
+    try {
+      ({ raw, reason } = await pickOutfits({ supabase, userId: user.id, weather, occasion }));
+      outfits = await resolveOutfits(supabase, user.id, raw);
+      if (outfits.length === 0 && reason === 'OK') reason = 'NO_OUTFIT';
+    } catch (error) {
+      console.error('[daily-outfits] suggest failed:', (error as Error).message);
+      reason = 'AI_UNAVAILABLE';
+    }
 
     if (outfits.length > 0) {
       const { error } = await supabase.from('daily_recommendations').upsert({
@@ -87,7 +99,7 @@ export async function GET(request: NextRequest) {
       if (error) console.error('[daily-outfits] save failed:', error.message);
     }
 
-    return NextResponse.json({ outfits, weather } satisfies DailyOutfitsResponse, { headers });
+    return NextResponse.json({ outfits, weather, reason } satisfies DailyOutfitsResponse, { headers });
   } catch (error) {
     console.error('[daily-outfits] failed:', (error as Error).message);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

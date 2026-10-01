@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-const { v4: uuidv4 } = require('uuid');
+import { v4 as uuidv4 } from 'uuid';
 
 // 佔位符：請求日誌
 const logRequest = (traceId: string, req: NextApiRequest) => {

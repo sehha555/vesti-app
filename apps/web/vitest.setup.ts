@@ -75,8 +75,8 @@
       from: vi.fn(() => ({
         select: vi.fn(() => ({
           eq: vi.fn(async () => ({ data: [], error: null })),
-          order: vi.fn(function() { return this; }),
-          limit: vi.fn(function() { return this; }),
+          order: vi.fn(function (this: unknown) { return this; }),
+          limit: vi.fn(function (this: unknown) { return this; }),
           single: vi.fn(async () => ({ data: null, error: null })),
         })),
         insert: vi.fn(() => ({

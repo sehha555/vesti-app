@@ -22,9 +22,10 @@ import {
 
 describe('Layout Visibility Integration Tests', () => {
   describe('Phase 1 UI Registry - Priority 1-2 完整性驗證', () => {
-    it('應該有至少 10 個 Priority 1-2 的 UI 元件', () => {
+    // 改成導購外連後拿掉了結帳頁的 checkout-action-bar，剩 9 個
+    it('應該有至少 9 個 Priority 1-2 的 UI 元件', () => {
       const criticalUI = getUIByPriority(2);
-      expect(criticalUI.length).toBeGreaterThanOrEqual(10);
+      expect(criticalUI.length).toBeGreaterThanOrEqual(9);
     });
 
     it('所有 Priority 1 UI 應該都有有效的 testId', () => {
@@ -63,7 +64,6 @@ describe('Layout Visibility Integration Tests', () => {
         'outfit-detail-modal',
         'clothing-detail-modal',
         'floating-basket',
-        'checkout-action-bar',
         'tryon-action-bar',
         'toaster',
       ];
@@ -157,11 +157,11 @@ describe('Layout Visibility Integration Tests', () => {
       expect(headerExp?.visible).toBe(true);
     });
 
-    it('子頁面（如 checkout）應該顯示 bottom-nav 供返回', () => {
-      const checkoutExpectations = getExpectationsForState('checkout_authenticated');
+    it('子頁面（如 tryon）應該顯示 bottom-nav 供返回', () => {
+      const tryOnExpectations = getExpectationsForState('tryon_authenticated');
 
-      const bottomNavExp = checkoutExpectations.find((e) => e.ui === 'bottom-nav');
-      const actionBarExp = checkoutExpectations.find((e) => e.ui === 'checkout-action-bar');
+      const bottomNavExp = tryOnExpectations.find((e) => e.ui === 'bottom-nav');
+      const actionBarExp = tryOnExpectations.find((e) => e.ui === 'tryon-action-bar');
 
       expect(bottomNavExp?.visible).toBe(true);
       expect(actionBarExp?.visible).toBe(true);
@@ -264,7 +264,6 @@ describe('Layout Visibility Integration Tests', () => {
       expect(priority2Keys).toContain('outfit-detail-modal');
       expect(priority2Keys).toContain('clothing-detail-modal');
       expect(priority2Keys).toContain('floating-basket');
-      expect(priority2Keys).toContain('checkout-action-bar');
       expect(priority2Keys).toContain('tryon-action-bar');
       expect(priority2Keys).toContain('toaster');
     });
@@ -285,7 +284,7 @@ describe('Layout Visibility Integration Tests', () => {
   });
 
   describe('Phase 1 完成度檢查清單', () => {
-    it('✅ 已補齊 10 個 Priority 1-2 UI 的 data-testid', () => {
+    it('✅ 已補齊 9 個 Priority 1-2 UI 的 data-testid', () => {
       const phase1UIKeys = [
         'bottom-nav',
         'loading-screen',
@@ -294,7 +293,6 @@ describe('Layout Visibility Integration Tests', () => {
         'outfit-detail-modal',
         'clothing-detail-modal',
         'floating-basket',
-        'checkout-action-bar',
         'tryon-action-bar',
         'toaster',
       ];
@@ -329,7 +327,6 @@ describe('Layout Visibility Integration Tests', () => {
         'login_page_unauth',
         'home_authenticated',
         'wardrobe_authenticated',
-        'checkout_authenticated',
         'tryon_authenticated',
       ];
 

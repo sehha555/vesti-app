@@ -1,122 +1,167 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSupabaseAndUser } from '@/lib/supabase/server';
-import { checkRateLimit } from '@/lib/rateLimit';
-import { taipeiDate } from '../../../../../lib/ai/recommendation-period';
+import { requireUser } from '@/lib/http/require-user';
+import { jsonNoStore } from '@/lib/http/no-store';
+import { DateSchema, LayoutSlotSchema, WeatherSchema, type LayoutSlotInput } from '@/lib/outfits/schemas';
 
 /**
- * 今天穿哪一套：每人每天（台灣日期，由 server 決定）一筆 daily_outfit_plans。
- * GET 讀今天的、POST 選定（同一天再選會蓋掉）、DELETE 取消。
+ * 今日穿搭計畫：每人每天一筆（daily_outfit_plans 有 UNIQUE(user_id, date)）。
+ * userId 一律取自 session，不接受 client 傳入；RLS 也只允許碰自己的資料。
+ *
+ * GET    /api/reco/daily-outfits/plan?date=YYYY-MM-DD → { ok, plan | null }
+ * PUT    /api/reco/daily-outfits/plan  { date, outfitId, layoutSlots, occasion?, weather? } → { ok, plan }
+ * PATCH  /api/reco/daily-outfits/plan  { date, wore } → { ok, plan }（隔天回答「有沒有穿」）
+ * DELETE /api/reco/daily-outfits/plan?date=YYYY-MM-DD → { ok }
  */
 
-const NO_STORE = { 'Cache-Control': 'private, no-store' };
-const RATE_LIMIT = { keyPrefix: 'daily-plan', maxRequests: 30, windowMs: 60_000 };
+const RATE_LIMIT = { keyPrefix: 'daily-plan', maxRequests: 60, windowMs: 60_000 };
 
-const PlanSchema = z.object({
+const PutBodySchema = z.object({
+  date: DateSchema,
   outfitId: z.number().int(),
-  layoutSlots: z
-    .array(
-      z.object({
-        slotKey: z.string().max(40),
-        item: z.object({ id: z.string().uuid(), name: z.string().max(200).optional() }),
-      })
-    )
-    .min(1)
-    .max(10),
+  layoutSlots: z.array(LayoutSlotSchema).min(1).max(10),
   // 使用者自己寫的今天情境，不是固定標籤
   occasion: z.string().trim().max(100).optional(),
-  weather: z.record(z.string(), z.unknown()).optional(),
+  weather: WeatherSchema.optional(),
+});
+
+const PatchBodySchema = z.object({
+  date: DateSchema,
+  wore: z.boolean(),
 });
 
 interface PlanRow {
   date: string;
   outfit_id: number;
-  layout_slots: Array<{ slotKey: string; item: { id: string; name?: string } }>;
+  layout_slots: LayoutSlotInput[];
   occasion: string | null;
+  weather: Record<string, unknown> | null;
+  wore: boolean | null;
+  updated_at: string | null;
 }
 
 function toPlan(row: PlanRow) {
   return {
     date: row.date,
     outfitId: row.outfit_id,
-    itemIds: row.layout_slots.map((s) => s.item.id),
+    layoutSlots: row.layout_slots,
     occasion: row.occasion,
+    weather: row.weather,
+    wore: row.wore,
+    updatedAt: row.updated_at,
   };
 }
 
-export async function GET(): Promise<NextResponse> {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
+const PLAN_COLUMNS = 'date, outfit_id, layout_slots, occasion, weather, wore, updated_at';
+
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
+
+  const date = DateSchema.safeParse(req.nextUrl.searchParams.get('date'));
+  if (!date.success) return jsonNoStore({ error: 'Invalid date' }, { status: 400 });
 
   const { data, error } = await supabase
     .from('daily_outfit_plans')
-    .select('date, outfit_id, layout_slots, occasion')
+    .select(PLAN_COLUMNS)
     .eq('user_id', user.id)
-    .eq('date', taipeiDate())
+    .eq('date', date.data)
     .maybeSingle();
+
   if (error) {
-    console.error('[daily-outfits/plan] read failed:', error.message);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500, headers: NO_STORE });
+    console.error('[daily-outfits/plan] select failed:', error.message);
+    return jsonNoStore({ error: 'Failed to load plan' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, plan: data ? toPlan(data as PlanRow) : null }, { headers: NO_STORE });
+  return jsonNoStore({ ok: true, plan: data ? toPlan(data as PlanRow) : null });
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
+export async function PUT(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
 
-  const rl = await checkRateLimit(user.id, RATE_LIMIT);
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { ok: false, error: 'Too many requests' },
-      { status: 429, headers: { ...NO_STORE, 'Retry-After': String(rl.retryAfter ?? rl.resetAfter) } }
-    );
+  let body: z.infer<typeof PutBodySchema>;
+  try {
+    body = PutBodySchema.parse(await req.json());
+  } catch {
+    return jsonNoStore({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const parsed = PlanSchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: 'Invalid request body' }, { status: 400, headers: NO_STORE });
-  }
-  const { outfitId, layoutSlots, occasion, weather } = parsed.data;
-
-  // 只存 id 與名稱；signed URL 會過期，不存
   const { data, error } = await supabase
     .from('daily_outfit_plans')
     .upsert(
       {
         user_id: user.id,
-        date: taipeiDate(),
-        outfit_id: outfitId,
-        layout_slots: layoutSlots.map((s) => ({ slotKey: s.slotKey, item: { id: s.item.id, name: s.item.name } })),
-        occasion: occasion ?? null,
-        weather: weather ?? null,
+        date: body.date,
+        outfit_id: body.outfitId,
+        layout_slots: body.layoutSlots,
+        occasion: body.occasion ?? null,
+        weather: body.weather ?? null,
+        // 換了一套就要重新問有沒有穿
+        wore: null,
       },
       { onConflict: 'user_id,date' }
     )
-    .select('date, outfit_id, layout_slots, occasion')
+    .select(PLAN_COLUMNS)
     .single();
+
   if (error) {
-    console.error('[daily-outfits/plan] save failed:', error.message);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500, headers: NO_STORE });
+    console.error('[daily-outfits/plan] upsert failed:', error.message);
+    return jsonNoStore({ error: 'Failed to save plan' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, plan: toPlan(data as PlanRow) }, { headers: NO_STORE });
+  return jsonNoStore({ ok: true, plan: toPlan(data as PlanRow) });
 }
 
-export async function DELETE(): Promise<NextResponse> {
-  const { supabase, user } = await getSupabaseAndUser();
-  if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
+
+  let body: z.infer<typeof PatchBodySchema>;
+  try {
+    body = PatchBodySchema.parse(await req.json());
+  } catch {
+    return jsonNoStore({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('daily_outfit_plans')
+    .update({ wore: body.wore })
+    .eq('user_id', user.id)
+    .eq('date', body.date)
+    .select(PLAN_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[daily-outfits/plan] update failed:', error.message);
+    return jsonNoStore({ error: 'Failed to update plan' }, { status: 500 });
+  }
+  if (!data) return jsonNoStore({ error: 'Plan not found' }, { status: 404 });
+
+  return jsonNoStore({ ok: true, plan: toPlan(data as PlanRow) });
+}
+
+export async function DELETE(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireUser(req, RATE_LIMIT);
+  if (auth.response) return auth.response;
+  const { supabase, user } = auth;
+
+  const date = DateSchema.safeParse(req.nextUrl.searchParams.get('date'));
+  if (!date.success) return jsonNoStore({ error: 'Invalid date' }, { status: 400 });
 
   const { error } = await supabase
     .from('daily_outfit_plans')
     .delete()
     .eq('user_id', user.id)
-    .eq('date', taipeiDate());
+    .eq('date', date.data);
+
   if (error) {
     console.error('[daily-outfits/plan] delete failed:', error.message);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500, headers: NO_STORE });
+    return jsonNoStore({ error: 'Failed to delete plan' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, plan: null }, { headers: NO_STORE });
+  return jsonNoStore({ ok: true });
 }

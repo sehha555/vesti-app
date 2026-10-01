@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile' | 'tryon' | 'checkout' | 'discount' | 'trending' | 'upload' | 'login' | 'broadcast' | 'calendar' | 'cpwranking' | 'delivery' | 'notification' | 'payment-methods';
+export type PageType = 'home' | 'wardrobe' | 'explore' | 'store' | 'profile' | 'tryon' | 'discount' | 'trending' | 'upload' | 'login' | 'broadcast' | 'calendar' | 'cpwranking' | 'notification';
 
 export type LoadingState = 'loading' | 'ready' | 'error';
 
@@ -30,16 +30,13 @@ const pageHierarchy: Record<PageType, number> = {
   'store': 1,
   'profile': 1,
   'tryon': 2,
-  'checkout': 2,
   'discount': 2,
   'trending': 2,
   'upload': 2,
   'broadcast': 2,
   'calendar': 2,
   'cpwranking': 2,
-  'delivery': 2,
   'notification': 2,
-  'payment-methods': 2,
 };
 
 interface AppStateProviderProps {

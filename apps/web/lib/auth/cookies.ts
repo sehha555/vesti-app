@@ -1,6 +1,4 @@
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
-import type { NextResponse } from 'next/server';
-import type { Session } from '@supabase/supabase-js';
 
 /**
  * An interface representing the cookies object from a NextResponse or NextRequest.
@@ -15,88 +13,47 @@ interface CookiesAPI {
 }
 
 /**
- * Data required to set authentication cookies.
+ * Client-readable marker (NOT httpOnly) so the frontend can tell whether
+ * the user is logged in. The real session lives in the httpOnly
+ * `sb-<project-ref>-auth-token` cookies managed by `@supabase/ssr`.
  */
-export interface AuthSessionData {
-  accessToken: string;
-  refreshToken: string;
-  userId: string;
-}
+export const AUTH_STATUS_COOKIE = 'sb-auth-status';
 
-const SESSION_COOKIE_NAMES = [
-  'sb-auth-token',
-  'sb-refresh-token',
-  'sb-user-id',
-  'sb-auth-status', // Client-readable marker (NOT httpOnly)
-];
+// 舊版自己寫的 token cookie，伺服器從來不讀；登出時一併清掉殘留
+const LEGACY_COOKIE_NAMES = ['sb-auth-token', 'sb-refresh-token', 'sb-user-id'];
 
-/**
- * Returns the secure, HttpOnly cookie options for session management.
- * @param isProduction - Determines if the 'Secure' flag should be set.
- */
-function getCookieOptions(isProduction: boolean): Partial<ResponseCookie> {
+const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
+function baseOptions(): Partial<ResponseCookie> {
   return {
-    httpOnly: true,
-    secure: isProduction,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
   };
 }
 
 /**
- * Sets the authentication cookies on a response object.
- *
- * @param cookiesApi - The cookies API from a NextResponse object.
- * @param session - The session data containing tokens and user ID.
+ * Sets the client-readable login marker on a response.
  */
-export function setAuthCookies(
-  cookiesApi: CookiesAPI,
-  session: AuthSessionData
-): void {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const options = getCookieOptions(isProduction);
-
-  cookiesApi.set('sb-auth-token', session.accessToken, {
-    ...options,
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
-
-  cookiesApi.set('sb-refresh-token', session.refreshToken, {
-    ...options,
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
-
-  cookiesApi.set('sb-user-id', session.userId, {
-    ...options,
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
-
-  // Client-readable marker cookie (NOT httpOnly) for frontend auth detection
-  // This allows JavaScript to check if user is logged in without exposing tokens
-  cookiesApi.set('sb-auth-status', 'authenticated', {
+export function setAuthStatusCookie(cookiesApi: CookiesAPI): void {
+  cookiesApi.set(AUTH_STATUS_COOKIE, 'authenticated', {
+    ...baseOptions(),
     httpOnly: false, // Intentionally readable by JavaScript
-    secure: isProduction,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: MAX_AGE,
   });
 }
 
 /**
- * Clears all authentication cookies from a response object.
- *
- * @param cookiesApi - The cookies API from a NextResponse object.
+ * Clears the login marker and any legacy token cookies from a response.
+ * The Supabase session cookies are cleared by `supabase.auth.signOut()`.
  */
 export function clearAuthCookies(cookiesApi: CookiesAPI): void {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const options = getCookieOptions(isProduction);
-
-  for (const cookieName of SESSION_COOKIE_NAMES) {
-    // sb-auth-status needs httpOnly: false to match how it was set
-    const cookieOptions = cookieName === 'sb-auth-status'
-      ? { ...options, httpOnly: false, maxAge: 0 }
-      : { ...options, maxAge: 0 };
-
-    cookiesApi.set(cookieName, '', cookieOptions);
+  cookiesApi.set(AUTH_STATUS_COOKIE, '', {
+    ...baseOptions(),
+    httpOnly: false,
+    maxAge: 0,
+  });
+  for (const name of LEGACY_COOKIE_NAMES) {
+    cookiesApi.set(name, '', { ...baseOptions(), httpOnly: true, maxAge: 0 });
   }
 }

@@ -12,9 +12,15 @@ import {
 } from './outfit-prompt';
 import { downloadClosetImage, freshSignedUrls, storagePathFromImageUrl } from '../closet/storage';
 import { taipeiDate } from './recommendation-period';
+import { loadRecentFeedback, summarizeFeedback } from '../feedback/summary';
+import { parseAttributes, type ItemAttributes } from '../closet/attributes';
+import { selectCandidates } from '../reco/candidates';
 
 const MIN_ITEMS = 3;
+// 一次最多送幾件（幾張圖）給模型
 const MAX_ITEMS = 30;
+// 從衣櫃撈多少件來挑候選；只撈文字欄位，不下載圖片
+const MAX_CLOSET_ROWS = 300;
 const RECENT_DAYS = 3;
 
 interface ClosetRow {
@@ -23,33 +29,77 @@ interface ClosetRow {
   category: string;
   color: string | null;
   image_url: string | null;
+  attributes: unknown;
+}
+
+/** 沒有推薦時的原因，首頁據此顯示提示 */
+export type SuggestReason = 'OK' | 'AI_UNAVAILABLE' | 'CLOSET_TOO_SMALL' | 'NO_OUTFIT';
+
+async function askModel(
+  items: ClosetItemForPrompt[],
+  weather: WeatherSummary,
+  occasion: string,
+  extras: { feedbackSummary?: string | null; recentlyWornIds?: ReadonlySet<string> }
+): Promise<RawOutfitSuggestion[]> {
+  const response = await generateJson<{ outfits: RawOutfitSuggestion[] }>(
+    OUTFIT_SYSTEM_PROMPT,
+    buildOutfitParts(items, weather, occasion, extras),
+    OUTFIT_RESPONSE_SCHEMA
+  );
+  return response.outfits ?? [];
 }
 
 /**
- * 從使用者衣櫃撈衣服 → 圖片轉 base64 → Gemini 挑搭配。回模型原始結果（只有 item id），
- * 可以存起來之後再用 resolveOutfits 組成首頁形狀。衣櫃不足 3 件回空陣列。
+ * 搭配的核心：衣物（含圖片）＋天氣＋情境＋回饋 → Gemini → 過濾成合法的搭配。
+ * 考卷（evals/outfits）用這一段，考卷量到的就是線上送給模型的 prompt。
+ * itemsById 提供每件衣物給前端顯示的名稱與圖片網址。
+ */
+export async function generateOutfits(params: {
+  items: ClosetItemForPrompt[];
+  weather: WeatherSummary;
+  occasion: string;
+  feedbackSummary?: string | null;
+  itemsById: Map<string, { name: string; imageUrl: string }>;
+}): Promise<{ raw: RawOutfitSuggestion[]; outfits: OutfitSuggestion[] }> {
+  const { items, weather, occasion, feedbackSummary, itemsById } = params;
+  const raw = await askModel(items, weather, occasion, { feedbackSummary });
+  return { raw, outfits: toOutfitSuggestions(raw, itemsById) };
+}
+
+/**
+ * 從使用者衣櫃撈衣服 → 依天氣挑候選 → 圖片轉 base64 → 連同回饋與最近穿過的一起問 Gemini。
+ * 回模型原始結果（只有 item id），可以存起來之後再用 resolveOutfits 組成首頁形狀。
+ * 沒有推薦時 raw 是空陣列並附原因（沒設 AI、衣櫃不足 3 件、模型沒給出搭配）。
  */
 export async function pickOutfits(params: {
   supabase: SupabaseClient;
   userId: string;
   weather: WeatherSummary;
   occasion: string;
-}): Promise<RawOutfitSuggestion[]> {
+}): Promise<{ raw: RawOutfitSuggestion[]; reason: SuggestReason }> {
   const { supabase, userId, weather, occasion } = params;
+  if (!process.env.GEMINI_API_KEY) return { raw: [], reason: 'AI_UNAVAILABLE' };
   const t0 = Date.now();
 
   const { data, error } = await supabase
     .from('active_closet_items')
-    .select('id, name, category, color, image_url')
+    .select('id, name, category, color, image_url, attributes')
     .eq('user_id', userId)
     .eq('is_archived', false)
     .order('created_at', { ascending: false })
-    .limit(MAX_ITEMS);
+    .limit(MAX_CLOSET_ROWS);
 
   if (error) throw new Error(`closet query failed: ${error.message}`);
 
-  const rows = ((data ?? []) as ClosetRow[]).filter((r) => r.image_url);
-  if (rows.length < MIN_ITEMS) return [];
+  const closet = ((data ?? []) as ClosetRow[])
+    .filter((r) => r.image_url)
+    .map((r) => ({ ...r, attributes: parseAttributes(r.attributes) as ItemAttributes | null }));
+  const rows = selectCandidates(closet, weather.feelsLike, occasion, MAX_ITEMS);
+  if (rows.length < MIN_ITEMS) return { raw: [], reason: 'CLOSET_TOO_SMALL' };
+
+  // 回饋與最近穿過只需要 userId，跟圖片下載同時開始
+  const feedbackRows = loadRecentFeedback(supabase, userId);
+  const recentlyWorn = recentlyWornIds(supabase, userId);
 
   const settled = await Promise.allSettled(
     rows.map(async (row): Promise<ClosetItemForPrompt> => {
@@ -59,6 +109,7 @@ export async function pickOutfits(params: {
         name: row.name,
         category: row.category,
         color: row.color,
+        attributes: row.attributes,
         imageBase64: buffer.toString('base64'),
         mimeType,
       };
@@ -71,20 +122,17 @@ export async function pickOutfits(params: {
   if (firstFailure) {
     console.error('[suggest-outfits] image download failed:', (firstFailure.reason as Error).message);
   }
-  if (items.length < MIN_ITEMS) return [];
+  if (items.length < MIN_ITEMS) return { raw: [], reason: 'NO_OUTFIT' };
   const tImages = Date.now();
-  const imageBytes = items.reduce((sum, i) => sum + i.imageBase64.length * 0.75, 0);
 
-  const raw = await generateJson<{ outfits: RawOutfitSuggestion[] }>(
-    OUTFIT_SYSTEM_PROMPT,
-    buildOutfitParts(items, weather, occasion, await recentlyWornIds(supabase, userId)),
-    OUTFIT_RESPONSE_SCHEMA
-  );
+  // 核心迴圈：把使用者最近的回饋（要這套 / 不要 / 有沒有穿）一起給模型
+  const feedbackSummary = summarizeFeedback(await feedbackRows, new Map(items.map((item) => [item.id, item.name])));
+  const raw = await askModel(items, weather, occasion, { feedbackSummary, recentlyWornIds: await recentlyWorn });
 
   console.info(
-    `[suggest-outfits] closet=${rows.length} sent=${items.length} raw=${raw.outfits?.length ?? 0} images=${tImages - t0}ms/${Math.round(imageBytes / 1024)}KB model=${Date.now() - tImages}ms`
+    `[suggest-outfits] closet=${closet.length} candidates=${rows.length} sent=${items.length} feedback=${feedbackSummary ? 'yes' : 'no'} raw=${raw.length} images=${tImages - t0}ms model=${Date.now() - tImages}ms`
   );
-  return raw.outfits ?? [];
+  return { raw, reason: raw.length > 0 ? 'OK' : 'NO_OUTFIT' };
 }
 
 /**

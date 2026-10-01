@@ -35,6 +35,8 @@ jobs:
           fi
           echo "Required secrets are configured"
       - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
       - run: npm test
       - name: Build (同 repo PR 或 push 事件)
         if: |

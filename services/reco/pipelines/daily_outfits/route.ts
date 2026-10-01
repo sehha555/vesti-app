@@ -31,10 +31,8 @@ const dailyOutfitsHandler = async (req: NextApiRequest, res: NextApiResponse): P
 
       const wardrobeService = await wardrobeServicePromise;
 
-      // Adapter to map the Location type from the service ({lat, lon}) 
-      // to the one expected by the mock getWeather function ({latitude, longitude}).
-      const weatherAdapter = (location: Location) => 
-        getWeather({ latitude: location.lat, longitude: location.lon });
+      // getWeather 跟 service 用同一種 Location（{ lat, lon }），直接轉交
+      const weatherAdapter = (location: Location) => getWeather(location);
 
       const service = new DailyOutfitsService(wardrobeService, weatherAdapter);
       

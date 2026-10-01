@@ -1,5 +1,5 @@
 import { PersistenceAdapter } from './interface';
-const { v4: uuidv4 } = require('uuid');
+import { v4 as uuidv4 } from 'uuid';
 
 export class InMemoryAdapter<T extends { id?: string }> implements PersistenceAdapter<T> {
   private store: Map<string, T> = new Map();

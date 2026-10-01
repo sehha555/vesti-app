@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 // Use vi.hoisted() to ensure mocks are available before vi.mock hoisting
-const { mockExchangeCodeForSession, mockCookieStore, mockSetAuthCookies } = vi.hoisted(() => ({
+const { mockExchangeCodeForSession, mockCookieStore, mockSetAuthStatusCookie } = vi.hoisted(() => ({
   mockExchangeCodeForSession: vi.fn(),
   mockCookieStore: {
     getAll: vi.fn(() => []),
     set: vi.fn(),
   },
-  mockSetAuthCookies: vi.fn(),
+  mockSetAuthStatusCookie: vi.fn(),
 }));
 
 // Mock next/headers cookies
@@ -25,9 +25,9 @@ vi.mock('@supabase/ssr', () => ({
   })),
 }));
 
-// Mock setAuthCookies
+// Mock auth status cookie helper
 vi.mock('../../../../lib/auth/cookies', () => ({
-  setAuthCookies: mockSetAuthCookies,
+  setAuthStatusCookie: mockSetAuthStatusCookie,
 }));
 
 import { GET } from './route';
@@ -49,10 +49,10 @@ describe('GET /api/auth/callback', () => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
-    process.env.NODE_ENV = 'development';
+    vi.stubEnv('NODE_ENV', 'development');
   });
 
-  it('should exchange code and call setAuthCookies with session data', async () => {
+  it('should exchange code and set the auth status marker', async () => {
     const mockSession = {
       access_token: 'test-access-token',
       refresh_token: 'test-refresh-token',
@@ -70,15 +70,9 @@ describe('GET /api/auth/callback', () => {
     // Default redirect is /reco (when no auth_redirect_to cookie)
     expect(res.headers.get('location')).toBe('http://localhost:3000/reco');
 
-    // Verify setAuthCookies was called with correct session data
-    expect(mockSetAuthCookies).toHaveBeenCalledWith(
-      expect.anything(), // response.cookies
-      expect.objectContaining({
-        accessToken: 'test-access-token',
-        refreshToken: 'test-refresh-token',
-        userId: 'user-123',
-      })
-    );
+    // Session cookies are written by the SSR client; only the marker is set here
+    expect(mockExchangeCodeForSession).toHaveBeenCalledWith('valid_oauth_code_1');
+    expect(mockSetAuthStatusCookie).toHaveBeenCalledTimes(1);
 
     // Verify auth_redirect_to cookie is cleared
     const setCookieHeaders = res.headers.getSetCookie();
@@ -90,7 +84,7 @@ describe('GET /api/auth/callback', () => {
   });
 
   it('should set Secure flag on auth_redirect_to clear cookie in production', async () => {
-    process.env.NODE_ENV = 'production';
+    vi.stubEnv('NODE_ENV', 'production');
     const mockSession = {
       access_token: 'test-access-token',
       refresh_token: 'test-refresh-token',

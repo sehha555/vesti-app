@@ -90,6 +90,14 @@ describe('POST /api/closet-items/from-url', () => {
     expect(safeFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('網站不允許自動擷取（robots.txt / 封鎖名單）回 422 並請使用者改拍照', async () => {
+    vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: {} as never, user: { id: 'u1' } as never });
+    vi.mocked(safeFetch).mockRejectedValueOnce(new SafeFetchError('disallowed', 'DISALLOWED'));
+    const res = await POST(makeReq({ url: 'https://shop.example/p/1' }));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toContain('改用拍照上傳');
+  });
+
   it('頁面沒有 og:image 回 422', async () => {
     vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: {} as never, user: { id: 'u1' } as never });
     vi.mocked(safeFetch).mockResolvedValueOnce({ buffer: Buffer.from(html(null)), contentType: 'text/html', finalUrl: 'https://shop.example/p/1' });

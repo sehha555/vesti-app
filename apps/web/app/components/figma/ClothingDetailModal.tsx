@@ -28,7 +28,7 @@ interface ClothingDetailModalProps {
 }
 
 const sourceLabels = {
-  'app-purchase': { label: 'App 內購買', icon: ShoppingBag, color: 'var(--vesti-primary)' },
+  'app-purchase': { label: '從商店加入', icon: ShoppingBag, color: 'var(--vesti-primary)' },
   'user-upload': { label: '用戶上傳', icon: Upload, color: 'var(--vesti-accent)' },
 };
 

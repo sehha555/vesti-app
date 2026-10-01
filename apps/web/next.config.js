@@ -8,14 +8,8 @@ const nextConfig = {
   // Fix monorepo workspace root detection (prevents "multiple lockfiles" warning)
   outputFileTracingRoot: path.join(__dirname, '../../'),
   eslint: {
-    // Ignore ESLint during builds to unblock CI
-    // Linting is handled separately via 'npm run lint' job
+    // Lint 由根目錄的 `npm run lint`（eslint.config.js）在 CI 單獨跑，build 不重複跑
     ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // Ignore TypeScript errors during builds to unblock CI
-    // Type checking issues are handled separately
-    ignoreBuildErrors: true,
   },
   webpack: (config, { isServer }) => {
     config.watchOptions = {

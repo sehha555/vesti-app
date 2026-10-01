@@ -120,3 +120,26 @@ export async function downloadClosetImage(
   }
   return { buffer: Buffer.from(await data.arrayBuffer()), mimeType: data.type || 'image/jpeg' };
 }
+
+const LIST_PAGE_SIZE = 1000;
+
+/**
+ * 刪掉使用者資料夾裡的所有圖片（刪帳號用）。清單分頁取到空為止，回傳刪掉的檔案數。
+ * 用本人的 client 就夠：storage policy 只允許碰自己的資料夾。
+ */
+export async function removeAllUserImages(supabase: SupabaseClient, userId: string): Promise<number> {
+  const bucket = supabase.storage.from(CLOSET_BUCKET);
+  let removed = 0;
+  // 每輪刪掉第一頁再重新列，不用 offset（刪完 offset 會跳過檔案）
+  for (;;) {
+    const { data, error } = await bucket.list(userId, { limit: LIST_PAGE_SIZE });
+    if (error) throw new Error(`Storage list failed: ${error.message}`);
+    if (!data || data.length === 0) return removed;
+
+    const paths = data.map((f) => `${userId}/${f.name}`);
+    const { error: removeError } = await bucket.remove(paths);
+    if (removeError) throw new Error(`Storage remove failed: ${removeError.message}`);
+    removed += paths.length;
+    if (data.length < LIST_PAGE_SIZE) return removed;
+  }
+}

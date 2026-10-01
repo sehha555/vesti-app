@@ -4,28 +4,32 @@ import { NextRequest } from 'next/server';
 // Use vi.hoisted() to ensure mocks are available before vi.mock hoisting
 const {
   mockSignUp,
-  mockSetAuthCookies,
+  mockSetAuthStatusCookie,
   mockCheckIPRateLimit,
   mockCheckEmailRateLimit,
 } = vi.hoisted(() => ({
   mockSignUp: vi.fn(),
-  mockSetAuthCookies: vi.fn(),
+  mockSetAuthStatusCookie: vi.fn(),
   mockCheckIPRateLimit: vi.fn(),
   mockCheckEmailRateLimit: vi.fn(),
 }));
 
-// Mock Supabase client
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
+// Mock Supabase SSR client (same client getSupabaseAndUser uses)
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() => Promise.resolve({ getAll: vi.fn(() => []), set: vi.fn() })),
+}));
+
+vi.mock('@supabase/ssr', () => ({
+  createServerClient: vi.fn(() => ({
     auth: {
       signUp: mockSignUp,
     },
   })),
 }));
 
-// Mock setAuthCookies
+// Mock auth status cookie helper
 vi.mock('@/lib/auth/cookies', () => ({
-  setAuthCookies: mockSetAuthCookies,
+  setAuthStatusCookie: mockSetAuthStatusCookie,
 }));
 
 // Mock rate limit functions
@@ -282,15 +286,8 @@ describe('POST /api/auth/signup', () => {
       // Security: tokens should NOT be in response body
       expect(data.accessToken).toBeUndefined();
       expect(data.refreshToken).toBeUndefined();
-      // Verify cookies were set
-      expect(mockSetAuthCookies).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          accessToken: 'test-access-token',
-          refreshToken: 'test-refresh-token',
-          userId: 'user-123',
-        })
-      );
+      // Session cookies are written by the SSR client; only the marker is set here
+      expect(mockSetAuthStatusCookie).toHaveBeenCalledTimes(1);
     });
 
     it('should return 200 with next=/auth/verify-email when email confirmation required', async () => {
@@ -311,7 +308,7 @@ describe('POST /api/auth/signup', () => {
       expect(data.next).toBe('/auth/verify-email');
       expect(data.message).toContain('verify');
       // Should NOT set cookies when no session
-      expect(mockSetAuthCookies).not.toHaveBeenCalled();
+      expect(mockSetAuthStatusCookie).not.toHaveBeenCalled();
     });
 
     it('should call signUp with correct parameters including name in metadata', async () => {
@@ -336,6 +333,7 @@ describe('POST /api/auth/signup', () => {
         password: 'SecurePass123',
         options: {
           data: { name: 'John Doe' },
+          emailRedirectTo: 'http://localhost:3000/api/auth/callback',
         },
       });
     });

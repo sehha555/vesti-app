@@ -40,7 +40,7 @@ beforeEach(() => {
   vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: db.supabase as never, user: { id: 'u1' } as never });
   vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, remaining: 19, limit: 20, resetAfter: 3600, resetAt: 0 });
   vi.mocked(getWeather).mockResolvedValue(WEATHER as never);
-  vi.mocked(pickOutfits).mockResolvedValue(RAW as never);
+  vi.mocked(pickOutfits).mockResolvedValue({ raw: RAW, reason: 'OK' } as never);
   vi.mocked(resolveOutfits).mockResolvedValue([OUTFIT] as never);
 });
 
@@ -66,10 +66,10 @@ describe('GET /api/daily-outfits', () => {
     expect(db.upsert).toHaveBeenCalledWith(expect.objectContaining({ occasion: '' }));
   });
 
-  it('沒存過：叫模型、回 { outfits, weather }、把 item id 與位置存進表', async () => {
+  it('沒存過：叫模型、回 { outfits, weather, reason }、把 item id 與位置存進表', async () => {
     const res = await GET(makeReq(QUERY));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ outfits: [OUTFIT], weather: WEATHER });
+    expect(await res.json()).toEqual({ outfits: [OUTFIT], weather: WEATHER, reason: 'OK' });
     expect(pickOutfits).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1', occasion: 'casual' }));
     expect(db.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 'u1', occasion: 'casual', outfits: RAW, latitude: 25, longitude: 121.5 })
@@ -95,11 +95,13 @@ describe('GET /api/daily-outfits', () => {
     expect(pickOutfits).toHaveBeenCalledTimes(1);
   });
 
-  it('衣櫃不足時 outfits 空陣列且不存表', async () => {
-    vi.mocked(pickOutfits).mockResolvedValue([]);
+  it('衣櫃不足時 outfits 空陣列、附原因、不存表', async () => {
+    vi.mocked(pickOutfits).mockResolvedValue({ raw: [], reason: 'CLOSET_TOO_SMALL' });
     vi.mocked(resolveOutfits).mockResolvedValue([]);
-    const res = await GET(makeReq(QUERY));
-    expect((await res.json()).outfits).toEqual([]);
+    const body = await (await GET(makeReq(QUERY))).json();
+    expect(body.outfits).toEqual([]);
+    expect(body.reason).toBe('CLOSET_TOO_SMALL');
+    expect(body.weather).toBeDefined();
     expect(db.upsert).not.toHaveBeenCalled();
   });
 
@@ -110,10 +112,14 @@ describe('GET /api/daily-outfits', () => {
     expect(pickOutfits).not.toHaveBeenCalled();
   });
 
-  it('模型失敗回 500 且不外洩訊息', async () => {
+  it('模型失敗仍回 200 與天氣，reason 為 AI_UNAVAILABLE，不外洩訊息、不存表', async () => {
     vi.mocked(pickOutfits).mockRejectedValue(new Error('secret detail'));
     const res = await GET(makeReq(QUERY));
-    expect(res.status).toBe(500);
-    expect(JSON.stringify(await res.json())).not.toContain('secret');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ outfits: [], reason: 'AI_UNAVAILABLE' });
+    expect(body.weather).toBeDefined();
+    expect(JSON.stringify(body)).not.toContain('secret');
+    expect(db.upsert).not.toHaveBeenCalled();
   });
 });

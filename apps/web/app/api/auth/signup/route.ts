@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { setAuthCookies } from '@/lib/auth/cookies';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { setAuthStatusCookie } from '@/lib/auth/cookies';
 import { checkIPRateLimit, checkEmailRateLimit } from '@/lib/auth/rateLimit';
 
 /**
@@ -33,27 +33,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let { name, email, password, confirmPassword } = body;
+    const { name: rawName, email: rawEmail, password, confirmPassword } = body;
 
     // === Input Validation ===
 
     // Name validation
-    if (typeof name !== 'string' || !name.trim()) {
+    if (typeof rawName !== 'string' || !rawName.trim()) {
       return NextResponse.json(
         { ok: false, message: 'Name is required' },
         { status: 422 }
       );
     }
-    name = name.trim();
+    const name = rawName.trim();
 
     // Email validation
-    if (typeof email !== 'string' || !email.trim()) {
+    if (typeof rawEmail !== 'string' || !rawEmail.trim()) {
       return NextResponse.json(
         { ok: false, message: 'Email is required' },
         { status: 422 }
       );
     }
-    email = email.trim().toLowerCase();
+    const email = rawEmail.trim().toLowerCase();
 
     // Basic email format check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -145,18 +145,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    // SSR client：有 session 時直接寫進 sb-<ref>-auth-token cookie；
+    // 需要驗證信時，PKCE code_verifier 也存在 cookie，驗證連結回到 /api/auth/callback 換 session
+    const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name },
+        emailRedirectTo: `${request.nextUrl.origin}/api/auth/callback`,
       },
     });
 
@@ -179,11 +177,7 @@ export async function POST(request: NextRequest) {
         next: '/reco',
       });
 
-      setAuthCookies(response.cookies, {
-        accessToken: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-        userId: data.user!.id,
-      });
+      setAuthStatusCookie(response.cookies);
 
       return response;
     }
