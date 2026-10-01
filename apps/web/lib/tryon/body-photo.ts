@@ -23,9 +23,15 @@ async function listBodyPaths(supabase: SupabaseClient, userId: string): Promise<
   return (data ?? []).filter((f) => f.id !== null).map((f) => `${bodyFolder(userId)}/${f.name}`);
 }
 
+/** 目前全身照在 bucket 裡的路徑；沒上傳過回 null */
+export async function getBodyPhotoPath(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const [path] = await listBodyPaths(supabase, userId);
+  return path ?? null;
+}
+
 /** 目前的全身照；沒上傳過回 null */
 export async function getBodyPhoto(supabase: SupabaseClient, userId: string): Promise<BodyPhoto | null> {
-  const [path] = await listBodyPaths(supabase, userId);
+  const path = await getBodyPhotoPath(supabase, userId);
   if (!path) return null;
   const { data, error } = await supabase.storage
     .from(CLOSET_BUCKET)

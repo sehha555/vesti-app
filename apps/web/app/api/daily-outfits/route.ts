@@ -6,14 +6,17 @@ import { pickOutfits, resolveOutfits, type SuggestReason } from '../../../lib/ai
 import { currentPeriodStart } from '../../../lib/ai/recommendation-period';
 import type { OutfitSuggestion, RawOutfitSuggestion } from '../../../lib/ai/outfit-prompt';
 import type { WeatherSummary } from '../../../../../packages/types/src/weather';
+import { ensureTryonJobs, type TryonState } from '../../../lib/tryon/jobs';
 
 export const runtime = 'nodejs';
 
 const MAX_OCCASION_LENGTH = 100;
 const RATE_LIMIT = { keyPrefix: 'daily-outfits', maxRequests: 20, windowMs: 3_600_000 };
 
+type OutfitWithTryon = OutfitSuggestion & { tryon?: TryonState };
+
 interface DailyOutfitsResponse {
-  outfits: OutfitSuggestion[];
+  outfits: OutfitWithTryon[];
   weather: WeatherSummary;
   /** outfits 為空時說明原因，首頁據此顯示提示 */
   reason: SuggestReason;
@@ -25,6 +28,7 @@ interface DailyOutfitsResponse {
  * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一時段同一句話只算一次，結果存在 daily_recommendations，
  * 之後直接讀表、重新簽圖片網址就回，不用再等模型。
  * 推薦失敗（沒設 AI、模型出錯、衣櫃不足）不算錯誤：照樣回 200 與天氣，outfits 為空並附 reason。
+ * 有上傳全身照時，每套順便登記試穿工作（桌機 worker 會來做），並附上 tryon 狀態；做好了就有 imageUrl。
  */
 export async function GET(request: NextRequest) {
   const { supabase, user } = await getSupabaseAndUser();
@@ -62,7 +66,10 @@ export async function GET(request: NextRequest) {
       const outfits = await resolveOutfits(supabase, user.id, stored.outfits as RawOutfitSuggestion[]);
       // 存的衣服全被刪光才重算，否則直接回
       if (outfits.length > 0) {
-        return NextResponse.json({ outfits, weather, reason: 'OK' } satisfies DailyOutfitsResponse, { headers });
+        return NextResponse.json(
+          { outfits: await withTryon(supabase, user.id, outfits), weather, reason: 'OK' } satisfies DailyOutfitsResponse,
+          { headers }
+        );
       }
     }
 
@@ -99,9 +106,22 @@ export async function GET(request: NextRequest) {
       if (error) console.error('[daily-outfits] save failed:', error.message);
     }
 
-    return NextResponse.json({ outfits, weather, reason } satisfies DailyOutfitsResponse, { headers });
+    return NextResponse.json(
+      { outfits: await withTryon(supabase, user.id, outfits), weather, reason } satisfies DailyOutfitsResponse,
+      { headers }
+    );
   } catch (error) {
     console.error('[daily-outfits] failed:', (error as Error).message);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
+}
+
+async function withTryon(
+  supabase: Parameters<typeof ensureTryonJobs>[0],
+  userId: string,
+  outfits: OutfitSuggestion[]
+): Promise<OutfitWithTryon[]> {
+  if (outfits.length === 0) return outfits;
+  const states = await ensureTryonJobs(supabase, userId, outfits);
+  return outfits.map((o) => (states.has(o.id) ? { ...o, tryon: states.get(o.id) } : o));
 }

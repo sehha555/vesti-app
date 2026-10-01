@@ -5,12 +5,14 @@ vi.mock('@/lib/supabase/server', () => ({ getSupabaseAndUser: vi.fn() }));
 vi.mock('@/lib/rateLimit', () => ({ checkRateLimit: vi.fn() }));
 vi.mock('@/services/weather', () => ({ getWeather: vi.fn() }));
 vi.mock('../../../lib/ai/suggest-outfits', () => ({ pickOutfits: vi.fn(), resolveOutfits: vi.fn() }));
+vi.mock('../../../lib/tryon/jobs', () => ({ ensureTryonJobs: vi.fn() }));
 
 import { GET } from './route';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getWeather } from '@/services/weather';
 import { pickOutfits, resolveOutfits } from '../../../lib/ai/suggest-outfits';
+import { ensureTryonJobs } from '../../../lib/tryon/jobs';
 
 const WEATHER = { temperature: 30, feelsLike: 33, humidity: 70, condition: 'sunny', windSpeed: 5, locationName: '台北' };
 const RAW = [{ title: '清爽', reason: '熱', slots: [{ slotKey: 'top_inner', itemId: 'a' }] }];
@@ -42,6 +44,7 @@ beforeEach(() => {
   vi.mocked(getWeather).mockResolvedValue(WEATHER as never);
   vi.mocked(pickOutfits).mockResolvedValue({ raw: RAW, reason: 'OK' } as never);
   vi.mocked(resolveOutfits).mockResolvedValue([OUTFIT] as never);
+  vi.mocked(ensureTryonJobs).mockResolvedValue(new Map());
 });
 
 const QUERY = 'latitude=25&longitude=121.5&occasion=casual';
@@ -74,6 +77,18 @@ describe('GET /api/daily-outfits', () => {
     expect(db.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 'u1', occasion: 'casual', outfits: RAW, latitude: 25, longitude: 121.5 })
     );
+  });
+
+  it.each([
+    ['沒存過', null],
+    ['已存過', { outfits: RAW }],
+  ])('%s：每套登記試穿工作並附上試穿狀態', async (_label, stored) => {
+    db = makeSupabase(stored);
+    vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: db.supabase as never, user: { id: 'u1' } as never });
+    vi.mocked(ensureTryonJobs).mockResolvedValue(new Map([[1, { jobId: 'j1', status: 'queued' as const }]]));
+    const body = await (await GET(makeReq(QUERY))).json();
+    expect(ensureTryonJobs).toHaveBeenCalledWith(db.supabase, 'u1', [OUTFIT]);
+    expect(body.outfits).toEqual([{ ...OUTFIT, tryon: { jobId: 'j1', status: 'queued' } }]);
   });
 
   it('已存過：不叫模型、不算限流，直接組回', async () => {
