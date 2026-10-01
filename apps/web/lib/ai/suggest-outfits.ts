@@ -94,7 +94,7 @@ export async function pickOutfits(params: {
   const closet = ((data ?? []) as ClosetRow[])
     .filter((r) => r.image_url)
     .map((r) => ({ ...r, attributes: parseAttributes(r.attributes) as ItemAttributes | null }));
-  const rows = selectCandidates(closet, weather.feelsLike, occasion, MAX_ITEMS);
+  const rows = selectCandidates(closet, weather.feelsLike, MAX_ITEMS);
   if (rows.length < MIN_ITEMS) return { raw: [], reason: 'CLOSET_TOO_SMALL' };
 
   // 回饋與最近穿過只需要 userId，跟圖片下載同時開始

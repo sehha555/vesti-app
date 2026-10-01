@@ -164,11 +164,10 @@ export async function runScenario(params: {
   const closet = [...closetByCategory.values()].flat();
   const nameOf = (item: PoolItem) => attributes.get(item.id)?.name ?? item.name;
 
-  // ② 候選：跟線上一樣依天氣、場合與類別挑
+  // ② 候選：跟線上一樣依天氣與類別挑
   const candidates = selectCandidates(
     closet.map((item) => ({ ...item, attributes: attributes.get(item.id) ?? null })),
     scenario.weather.feelsLike,
-    scenario.occasion,
     MAX_CANDIDATES
   );
 
