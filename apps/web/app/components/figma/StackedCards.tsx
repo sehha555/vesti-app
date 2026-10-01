@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Bookmark, Check, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Bookmark, Check, ChevronLeft, ChevronRight, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { haptic } from './hooks/useHaptic';
 import { BottomSheet } from './ui/bottom-sheet';
@@ -37,6 +37,23 @@ interface Outfit {
 
 
 
+// 翻面時只露出朝前的那一面：WebKit 的 backface-visibility 常失效，另外在轉到一半時切換透明度
+const faceStyle = (visible: boolean): React.CSSProperties => ({
+  backfaceVisibility: 'hidden',
+  WebkitBackfaceVisibility: 'hidden',
+  opacity: visible ? 1 : 0,
+  transition: 'opacity 0s linear 0.2s',
+});
+
+// 背面單品清單上的部位名稱
+const SLOT_LABELS: Record<string, string> = {
+  top_inner: '上身',
+  top_outer: '外套',
+  bottom: '下身',
+  shoes: '鞋子',
+  accessory: '配件',
+};
+
 // 卡片的 id 只是這次推薦的順序（1、2、3），重新整理後會變；用組成單品辨認是不是同一套
 const outfitKey = (outfit: Pick<Outfit, 'layoutSlots'>) => outfitKeyFromSlots(outfit.layoutSlots);
 
@@ -64,6 +81,8 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
     setCards(outfits);
   }, [outfits]);
   const [isDragging, setIsDragging] = useState(false);
+  // 最上面那張翻到背面（看單品清單）；換卡就翻回正面
+  const [flipped, setFlipped] = useState(false);
   const [exitX, setExitX] = useState(0);
   const [saveBusy, setSaveBusy] = useState(false);
   // 今日計畫選定的那一套（以組成單品辨認），每人每天只有一套
@@ -115,8 +134,27 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
     if (skipped && top && outfitKey(top) !== plannedKey) {
       sendFeedback('skip', top);
     }
+    setFlipped(false);
     setCards((prev) => (prev.length > 1 ? [...prev.slice(1), prev[0]] : prev));
   };
+
+  // 上一張：把最後一張拉回最上面
+  const showPrevious = () => {
+    setFlipped(false);
+    setCards((prev) => (prev.length > 1 ? [prev[prev.length - 1], ...prev.slice(0, -1)] : prev));
+  };
+
+  // 筆電觸控板很難拖曳，另外給箭頭按鈕與鍵盤左右鍵；正在輸入文字時不攔
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.key === 'ArrowRight') advanceTopCard(true);
+      else if (e.key === 'ArrowLeft') showPrevious();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   const openDislike = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -292,7 +330,7 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
                 onClick={() => {
                   if (isTop && !isDragging) {
                     haptic('light');
-                    onCardClick(card);
+                    setFlipped((f) => !f);
                   }
                 }}
               >
@@ -312,8 +350,14 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
                     mass: 0.8
                   }}
                 >
-                  {/* 圖片區域 */}
-                  <div className="relative h-full overflow-hidden bg-gray-100">
+                  <motion.div
+                    className="relative h-full"
+                    style={{ transformStyle: 'preserve-3d', transformPerspective: 1200 }}
+                    animate={{ rotateY: isTop && flipped ? 180 : 0 }}
+                    transition={{ duration: 0.45, ease: 'easeInOut' }}
+                  >
+                  {/* 正面：整套的樣子 */}
+                  <div className="absolute inset-0 overflow-hidden bg-gray-100" style={faceStyle(!(isTop && flipped))}>
                     {/*
                       條件判斷：當後端有回傳 layoutSlots 時，使用人體結構白板佈局
                       否則 fallback 到原本的單張圖片顯示
@@ -425,20 +469,13 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
                     {/* 漸層遮罩 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
 
-                    {/* 底部：這套叫什麼、要穿哪幾件、怎麼穿、Gemini 為什麼這樣搭 */}
+                    {/* 底部：這套的感覺；單品與穿法在背面 */}
                     <div className="absolute inset-x-0 bottom-0 z-20 bg-black/55 px-4 pb-3 pt-2 text-white backdrop-blur-sm pointer-events-none">
                       <p className="truncate text-[13px] font-semibold leading-tight">{card.styleName}</p>
-                      {card.layoutSlots && card.layoutSlots.length > 0 && (
-                        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/95">
-                          {card.layoutSlots.map((s) => s.item?.name).filter(Boolean).join('・')}
-                        </p>
-                      )}
-                      {card.howToWear && (
-                        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/95">穿法：{card.howToWear}</p>
-                      )}
                       {card.description && (
-                        <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/75">{card.description}</p>
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/85">{card.description}</p>
                       )}
+                      {isTop && <p className="mt-1 text-[10px] text-white/60">點一下看單品</p>}
                     </div>
 
                     {/* 左上角：已選為今日穿搭 */}
@@ -475,12 +512,83 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
                       </div>
                     )}
                   </div>
+
+                  {/* 背面：這套的單品（像商店的整套推薦） */}
+                  {isTop && (
+                    <div
+                      className="absolute inset-0 flex flex-col bg-white"
+                      style={{ ...faceStyle(flipped), transform: 'rotateY(180deg)' }}
+                    >
+                      <div className="border-b px-4 pb-2 pt-3">
+                        <p className="truncate text-[13px] font-semibold">{card.styleName}</p>
+                        <p className="text-[11px] text-muted-foreground">這套的單品</p>
+                      </div>
+                      <div className="flex-1 space-y-2 overflow-y-auto px-3 py-2">
+                        {(card.layoutSlots ?? []).map((slot) => (
+                          <div key={`${slot.slotKey}-${slot.item?.id}`} className="flex items-center gap-3 rounded-xl border p-2">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50">
+                              {slot.item?.imageUrl && (
+                                <ImageWithFallback src={slot.item.imageUrl} alt={slot.item.name || ''} className="max-h-full max-w-full object-contain" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-[13px] font-medium">{slot.item?.name || '未命名'}</p>
+                              <p className="text-[11px] text-muted-foreground">{SLOT_LABELS[slot.slotKey] ?? slot.slotKey}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {card.howToWear && (
+                          <p className="pt-1 text-[12px] leading-snug">
+                            <span className="font-medium">穿法：</span>
+                            {card.howToWear}
+                          </p>
+                        )}
+                        {card.description && <p className="text-[11px] leading-snug text-muted-foreground">{card.description}</p>}
+                      </div>
+                      <div className="flex items-center justify-between border-t px-4 py-2">
+                        <span className="text-[10px] text-muted-foreground">點一下翻回正面</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCardClick(card);
+                          }}
+                          className="text-[12px] font-medium text-[var(--vesti-primary)]"
+                        >
+                          看詳情
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  </motion.div>
                 </motion.div>
               </motion.div>
             );
           })}
         </AnimatePresence>
       </div>
+
+      {/* 換上一張 / 下一張（筆電拖不動時用） */}
+      {cards.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={showPrevious}
+            aria-label="上一套"
+            className="absolute left-0 top-1/2 z-40 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-md"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => advanceTopCard(true)}
+            aria-label="下一套"
+            className="absolute right-0 top-1/2 z-40 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-md"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
 
       {/* 滑動指示器 */}
       <div className="absolute -bottom-8 left-0 right-0 flex justify-center gap-2">
