@@ -117,6 +117,16 @@ export async function ensureTryonJobs(
   return result;
 }
 
+/**
+ * 「換一批」時取消這個人還在排隊的試穿工作，桌機就不會去做沒人要看的舊推薦。
+ * RLS 只允許刪自己 status = queued 的；桌機已經在做的不受影響。之後新推薦會重新登記。
+ * 失敗只記 log：頂多桌機白做幾套，不影響推薦。
+ */
+export async function cancelQueuedTryonJobs(supabase: SupabaseClient, userId: string): Promise<void> {
+  const { error } = await supabase.from('tryon_jobs').delete().eq('user_id', userId).eq('status', 'queued');
+  if (error) console.error('[tryon] cancel queued failed:', error.message);
+}
+
 /** 前端輪詢用：查自己這幾件工作的狀態（RLS 保證只看得到自己的） */
 export async function getTryonStates(
   supabase: SupabaseClient,

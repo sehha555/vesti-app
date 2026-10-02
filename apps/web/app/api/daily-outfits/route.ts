@@ -6,7 +6,7 @@ import { pickOutfits, resolveOutfits, type SuggestReason } from '../../../lib/ai
 import { currentPeriodStart } from '../../../lib/ai/recommendation-period';
 import type { OutfitSuggestion, RawOutfitSuggestion } from '../../../lib/ai/outfit-prompt';
 import type { WeatherSummary } from '../../../../../packages/types/src/weather';
-import { ensureTryonJobs, type TryonState } from '../../../lib/tryon/jobs';
+import { cancelQueuedTryonJobs, ensureTryonJobs, type TryonState } from '../../../lib/tryon/jobs';
 
 export const runtime = 'nodejs';
 
@@ -23,11 +23,13 @@ interface DailyOutfitsResponse {
 }
 
 /**
- * GET /api/daily-outfits?latitude=&longitude=&occasion=
+ * GET /api/daily-outfits?latitude=&longitude=&occasion=&refresh=1
  * occasion 是使用者自己寫的一句今天情境（可空），不是固定標籤。
  * 依天氣從使用者衣櫃用 Gemini 挑 2-3 套。同一人同一時段同一句話只算一次，結果存在 daily_recommendations，
  * 之後直接讀表、重新簽圖片網址就回，不用再等模型。
  * 推薦失敗（沒設 AI、模型出錯、衣櫃不足）不算錯誤：照樣回 200 與天氣，outfits 為空並附 reason。
+ * refresh=1 是「換一批」：不讀存好的，請模型避開剛給過的幾套重挑，新結果蓋掉存的那份，
+ * 並取消舊推薦還在排隊的試穿工作。重挑失敗就不動存的與試穿，回原本那幾套並附原因。
  * 有上傳全身照時，每套順便登記試穿工作（桌機 worker 會來做），並附上 tryon 狀態；做好了就有 imageUrl。
  */
 export async function GET(request: NextRequest) {
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
   const lat = parseFloat(params.get('latitude') ?? '');
   const lon = parseFloat(params.get('longitude') ?? '');
   const occasion = (params.get('occasion') ?? '').trim();
+  const refresh = params.get('refresh') === '1';
 
   if (isNaN(lat) || isNaN(lon)) {
     return NextResponse.json({ message: 'Invalid latitude or longitude' }, { status: 400 });
@@ -62,7 +65,7 @@ export async function GET(request: NextRequest) {
       .eq('period_start', periodStart)
       .eq('occasion', occasion)
       .maybeSingle();
-    if (stored) {
+    if (stored && !refresh) {
       const outfits = await resolveOutfits(supabase, user.id, stored.outfits as RawOutfitSuggestion[]);
       // 存的衣服全被刪光才重算，否則直接回
       if (outfits.length > 0) {
@@ -85,12 +88,29 @@ export async function GET(request: NextRequest) {
     let outfits: OutfitSuggestion[] = [];
     let reason: SuggestReason;
     try {
-      ({ raw, reason } = await pickOutfits({ supabase, userId: user.id, weather, occasion }));
+      ({ raw, reason } = await pickOutfits({
+        supabase,
+        userId: user.id,
+        weather,
+        occasion,
+        ...(refresh && stored ? { avoid: stored.outfits as RawOutfitSuggestion[] } : {}),
+      }));
+      // 模型不一定照「不要再給」做，換一批時程式自己再濾掉剛給過的組合
+      if (refresh && stored) raw = withoutRepeats(raw, stored.outfits as RawOutfitSuggestion[]);
       outfits = await resolveOutfits(supabase, user.id, raw);
       if (outfits.length === 0 && reason === 'OK') reason = 'NO_OUTFIT';
     } catch (error) {
       console.error('[daily-outfits] suggest failed:', (error as Error).message);
       reason = 'AI_UNAVAILABLE';
+    }
+
+    // 換一批沒換成：回原本那幾套，附上原因讓首頁提示
+    if (refresh && stored && outfits.length === 0) {
+      const previous = await resolveOutfits(supabase, user.id, stored.outfits as RawOutfitSuggestion[]);
+      return NextResponse.json(
+        { outfits: await withTryon(supabase, user.id, previous), weather, reason } satisfies DailyOutfitsResponse,
+        { headers }
+      );
     }
 
     if (outfits.length > 0) {
@@ -104,6 +124,7 @@ export async function GET(request: NextRequest) {
         longitude: lon,
       });
       if (error) console.error('[daily-outfits] save failed:', error.message);
+      if (refresh) await cancelQueuedTryonJobs(supabase, user.id);
     }
 
     return NextResponse.json(
@@ -124,4 +145,11 @@ async function withTryon(
   if (outfits.length === 0) return outfits;
   const states = await ensureTryonJobs(supabase, userId, outfits);
   return outfits.map((o) => (states.has(o.id) ? { ...o, tryon: states.get(o.id) } : o));
+}
+
+/** 同一組衣服（不論順序、部位）算同一套 */
+function withoutRepeats(raw: RawOutfitSuggestion[], previous: RawOutfitSuggestion[]): RawOutfitSuggestion[] {
+  const key = (o: RawOutfitSuggestion) => [...new Set(o.slots.map((s) => s.itemId))].sort().join(',');
+  const seen = new Set(previous.map(key));
+  return raw.filter((o) => !seen.has(key(o)));
 }

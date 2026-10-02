@@ -90,6 +90,7 @@ export function StackedCards({ outfits, onCardClick, savedKeys, onToggleSave, oc
   // 首頁一開始給的是預設卡片，Gemini 結果幾秒後才到；props 換了卡片要跟著換
   useEffect(() => {
     setCards(outfits);
+    setFlipped(false);
   }, [outfits]);
   const [isDragging, setIsDragging] = useState(false);
   // 最上面那張翻到背面（看單品清單）；換卡就翻回正面

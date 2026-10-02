@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RefreshCw, Bell } from 'lucide-react';
 import type { WeatherSummary } from '@/packages/types/src/weather';
@@ -149,6 +149,11 @@ export default function Page() {
   const [occasionDraft, setOccasionDraft] = useState('');
   // /api/daily-outfits 沒給推薦時的原因（顯示在卡片上方）；null = 還沒回來或有推薦
   const [recoReason, setRecoReason] = useState<string | null>(null);
+  // 「換一批」：按一下 nonce 加一觸發重拿，refreshRequested 讓這一次帶 refresh=1（之後換情境不會再帶）
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const refreshRequested = useRef(false);
+  // 換一批沒換成時顯示在卡片上方，原本的卡片留著
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
   // Mock Data States
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
@@ -251,6 +256,8 @@ export default function Page() {
   useEffect(() => {
     if (!coords) return;
     let cancelled = false;
+    const refresh = refreshRequested.current;
+    refreshRequested.current = false;
     const fetchWithCoords = async (latitude: number, longitude: number) => {
       try {
         const params = new URLSearchParams({
@@ -258,11 +265,20 @@ export default function Page() {
           longitude: longitude.toString(),
           occasion
         });
+        if (refresh) params.set('refresh', '1');
 
         const response = await fetch(`/api/daily-outfits?${params}`);
+        if (refresh && !response.ok) {
+          if (cancelled) return;
+          setRefreshNotice(response.status === 429 ? '換太多次了，等一下再換' : '這次沒換成，先看原本的');
+          setOutfitsStatus('ready');
+          return;
+        }
         if (!response.ok) throw new Error(`daily-outfits ${response.status}`);
         const data = await response.json();
         if (cancelled) return;
+        // 換一批沒換成時後端回原本那幾套並附原因
+        if (refresh && data.reason !== 'OK') setRefreshNotice('這次沒換成，先看原本的');
 
         if (data.weather) {
           setWeatherData(data.weather);
@@ -322,9 +338,10 @@ export default function Page() {
     };
 
     setOutfitsStatus('loading');
+    setRefreshNotice(null);
     fetchWithCoords(coords.latitude, coords.longitude);
     return () => { cancelled = true; };
-  }, [coords, occasion]);
+  }, [coords, occasion, refreshNonce]);
 
   // --- Core Functions ---
   const navigateTo = (newPage: PageType) => {
@@ -451,7 +468,19 @@ export default function Page() {
             </AnimatePresence>
             <WeatherCard weather={weatherData} />
             <QuickActions onNavigateToTryOn={() => navigateTo('tryon')} onNavigateToTrending={() => navigateTo('trending')} onNavigateToDiscount={() => navigateTo('discount')} onNavigateToCalendar={() => navigateTo('calendar')} />
-            <div className="mb-3 px-5"><h2 className="text-foreground font-sans">今日穿搭推薦</h2></div>
+            <div className="mb-3 flex items-center justify-between px-5">
+              <h2 className="text-foreground font-sans">今日穿搭推薦</h2>
+              {outfitsStatus === 'ready' && (
+                <button
+                  type="button"
+                  onClick={() => { refreshRequested.current = true; setRefreshNonce((n) => n + 1); }}
+                  className="flex items-center gap-1 text-sm text-muted-foreground"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  換一批
+                </button>
+              )}
+            </div>
             <form
               onSubmit={(e) => { e.preventDefault(); setOccasion(occasionDraft.trim()); }}
               className="mb-4 flex gap-2 px-5"
@@ -471,6 +500,7 @@ export default function Page() {
                 換
               </button>
             </form>
+            {refreshNotice && <p className="mb-2 px-5 text-sm text-muted-foreground">{refreshNotice}</p>}
             <div className="mb-16">
               {outfitsStatus === 'ready' ? (
                 <StackedCards outfits={dailyOutfits} onCardClick={handleCardClick} savedKeys={savedKeys} onToggleSave={handleToggleSave} occasion={occasion} />

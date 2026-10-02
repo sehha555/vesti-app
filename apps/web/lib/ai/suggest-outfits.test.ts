@@ -90,4 +90,13 @@ describe('pickOutfits', () => {
     const { client } = supabaseWith(ROWS);
     expect((await pickOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: 'casual' })).reason).toBe('NO_OUTFIT');
   });
+
+  it('換一批時把剛給過的幾套（item id）交給模型避開', async () => {
+    const { client } = supabaseWith(ROWS);
+    const avoid = [{ title: '舊', reason: '', slots: [{ slotKey: 'top_inner', itemId: 'tee' }, { slotKey: 'bottom', itemId: 'jeans' }] }];
+    await pickOutfits({ supabase: client, userId: 'u1', weather: HOT, occasion: '', avoid });
+    const parts = vi.mocked(generateJson).mock.calls[0][1] as Part[];
+    expect(parts.at(-1)?.text).toContain('1. tee、jeans');
+  });
 });
+

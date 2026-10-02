@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ensureTryonJobs, getTryonStates, jobKey, tryonItems } from './jobs';
+import { cancelQueuedTryonJobs, ensureTryonJobs, getTryonStates, jobKey, tryonItems } from './jobs';
 
 const outfit = (id: number, slots: Array<[string, string]>) => ({
   id,
@@ -20,7 +20,7 @@ interface Row {
  * 假的 Supabase：tryon_jobs 跟真的表一樣有 (user_id, job_key) 唯一限制，
  * upsert + ignoreDuplicates 遇到重複就跳過；沒帶 ignoreDuplicates 會變成更新，被 RLS 擋；storage 的 body 資料夾有 bodyFiles 這些檔案。
  */
-function fakeDb({ bodyFiles = ['me.png'], rows = [] as Row[], failInsert = false } = {}) {
+function fakeDb({ bodyFiles = ['me.png'], rows = [] as Row[], failInsert = false, failDelete = false, authUser = 'u1' } = {}) {
   let seq = rows.length;
   const table = [...rows];
   const query = () => {
@@ -43,8 +43,23 @@ function fakeDb({ bodyFiles = ['me.png'], rows = [] as Row[], failInsert = false
     }
     return { error: null };
   });
+  // 跟真的 RLS 一樣：只刪得到登入者自己 status = queued 的列，其他的不報錯、就是刪不到
+  const del = () => {
+    const filters: Array<(r: Row) => boolean> = [];
+    const q = {
+      eq: (col: keyof Row, v: unknown) => (filters.push((r) => r[col] === v), q),
+      then: (resolve: (v: unknown) => void) => {
+        for (let i = table.length - 1; i >= 0; i--) {
+          const r = table[i];
+          if (r.user_id === authUser && r.status === 'queued' && filters.every((f) => f(r))) table.splice(i, 1);
+        }
+        resolve({ data: null, error: failDelete ? { message: 'boom' } : null });
+      },
+    };
+    return q;
+  };
   const supabase = {
-    from: () => ({ upsert, select: () => query() }),
+    from: () => ({ upsert, select: () => query(), delete: del }),
     storage: {
       from: () => ({
         list: async () => ({ data: bodyFiles.map((name) => ({ name, id: name })), error: null }),
@@ -132,5 +147,36 @@ describe('getTryonStates', () => {
     });
     const states = await getTryonStates(db.supabase, 'u1', ['j1', 'j2']);
     expect(states).toEqual([{ jobId: 'j1', status: 'running' }]);
+  });
+});
+
+describe('cancelQueuedTryonJobs', () => {
+  const row = (id: string, user_id: string, status: string): Row => ({
+    id, user_id, job_key: id, person_path: 'p', items: [], status, result_path: null,
+  });
+
+  it('只刪自己還在排隊的，做到一半、做好的、別人的都留著', async () => {
+    const db = fakeDb({
+      rows: [row('a', 'u1', 'queued'), row('b', 'u1', 'running'), row('c', 'u1', 'done'), row('d', 'u2', 'queued')],
+    });
+    await cancelQueuedTryonJobs(db.supabase, 'u1');
+    expect(db.table.map((r) => r.id)).toEqual(['b', 'c', 'd']);
+  });
+
+  // 上面的假 RLS 會替程式擋下多刪的；這裡確認程式自己也只要求刪自己排隊中的，不靠 RLS 兜底
+  it('查詢條件本身就限定本人與 queued', async () => {
+    const eq = vi.fn();
+    const q = { eq: (...a: unknown[]) => (eq(...a), q), then: (r: (v: unknown) => void) => r({ error: null }) };
+    await cancelQueuedTryonJobs({ from: () => ({ delete: () => q }) } as never, 'u1');
+    expect(eq).toHaveBeenCalledWith('user_id', 'u1');
+    expect(eq).toHaveBeenCalledWith('status', 'queued');
+  });
+
+  it('刪除失敗只記 log，不丟錯', async () => {
+    const db = fakeDb({ failDelete: true });
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(cancelQueuedTryonJobs(db.supabase, 'u1')).resolves.toBeUndefined();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

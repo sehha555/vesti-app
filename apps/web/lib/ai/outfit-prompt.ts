@@ -125,7 +125,16 @@ export function buildOutfitParts(
   items: ClosetItemForPrompt[],
   weather: WeatherSummary,
   occasion: string,
-  { feedbackSummary, recentlyWornIds = new Set() }: { feedbackSummary?: string | null; recentlyWornIds?: ReadonlySet<string> } = {}
+  {
+    feedbackSummary,
+    recentlyWornIds = new Set(),
+    avoidOutfits = [],
+  }: {
+    feedbackSummary?: string | null;
+    recentlyWornIds?: ReadonlySet<string>;
+    /** 「換一批」時剛給過的幾套（每套是 itemId 清單），這次不要再給一樣的 */
+    avoidOutfits?: string[][];
+  } = {}
 ): Part[] {
   const parts: Part[] = [
     {
@@ -152,8 +161,13 @@ export function buildOutfitParts(
 
   // 守則寫了冷天要穿外套，模型還是常拿針織衫當外層；在最後指令再講一次，而且只在真的有外套時講
   const needCoat = weather.feelsLike < 12 && items.some((item) => item.category === 'outerwear');
+  // 跟外套同理，放在最後指令才會被遵守
+  const avoid =
+    avoidOutfits.length > 0
+      ? `使用者想換一批，下面這幾套剛剛給過，不要再給一樣的組合：\n${avoidOutfits.map((ids, i) => `${i + 1}. ${ids.join('、')}`).join('\n')}\n`
+      : '';
   parts.push({
-    text: `請依照原則挑出 2 到 3 套搭配。${needCoat ? `今天體感 ${weather.feelsLike} 度，每套都要從類別 outerwear 的衣服選一件外套放在 top_outer，針織衫、襯衫不算外套。` : ''}`,
+    text: `${avoid}請依照原則挑出 2 到 3 套搭配。${needCoat ? `今天體感 ${weather.feelsLike} 度，每套都要從類別 outerwear 的衣服選一件外套放在 top_outer，針織衫、襯衫不算外套。` : ''}`,
   });
   return parts;
 }

@@ -169,4 +169,16 @@ describe('buildOutfitParts', () => {
     expect(buildOutfitParts([top], cold, 'casual').at(-1)?.text).not.toContain('outerwear');
     expect(buildOutfitParts([top, coat], { ...cold, feelsLike: 16 }, 'casual').at(-1)?.text).not.toContain('outerwear');
   });
+
+  it('換一批時把剛給過的幾套列進最後指令，沒有就不出現', () => {
+    const items = [{ id: 't1', name: '白 T', category: 'top', color: null, imageBase64: 'AAA', mimeType: 'image/jpeg' }];
+    const weather = { temperature: 25, feelsLike: 25, humidity: 60, condition: 'cloudy' as const, windSpeed: 3 };
+    const last = buildOutfitParts(items, weather, '', { avoidOutfits: [['t1', 'b1'], ['t2', 'b2', 's1']] }).at(-1)?.text;
+    expect(last).toContain('不要再給一樣的組合');
+    expect(last).toContain('1. t1、b1');
+    expect(last).toContain('2. t2、b2、s1');
+    expect(last).toContain('請依照原則');
+    expect(buildOutfitParts(items, weather, '').at(-1)?.text).not.toContain('不要再給');
+  });
 });
+

@@ -39,7 +39,7 @@ async function askModel(
   items: ClosetItemForPrompt[],
   weather: WeatherSummary,
   occasion: string,
-  extras: { feedbackSummary?: string | null; recentlyWornIds?: ReadonlySet<string> }
+  extras: Parameters<typeof buildOutfitParts>[3]
 ): Promise<RawOutfitSuggestion[]> {
   const response = await generateJson<{ outfits: RawOutfitSuggestion[] }>(
     OUTFIT_SYSTEM_PROMPT,
@@ -76,8 +76,10 @@ export async function pickOutfits(params: {
   userId: string;
   weather: WeatherSummary;
   occasion: string;
+  /** 「換一批」時剛給過的推薦，請模型避開 */
+  avoid?: RawOutfitSuggestion[];
 }): Promise<{ raw: RawOutfitSuggestion[]; reason: SuggestReason }> {
-  const { supabase, userId, weather, occasion } = params;
+  const { supabase, userId, weather, occasion, avoid = [] } = params;
   if (!process.env.GEMINI_API_KEY) return { raw: [], reason: 'AI_UNAVAILABLE' };
   const t0 = Date.now();
 
@@ -127,7 +129,11 @@ export async function pickOutfits(params: {
 
   // 核心迴圈：把使用者最近的回饋（要這套 / 不要 / 有沒有穿）一起給模型
   const feedbackSummary = summarizeFeedback(await feedbackRows, new Map(items.map((item) => [item.id, item.name])));
-  const raw = await askModel(items, weather, occasion, { feedbackSummary, recentlyWornIds: await recentlyWorn });
+  const raw = await askModel(items, weather, occasion, {
+    feedbackSummary,
+    recentlyWornIds: await recentlyWorn,
+    avoidOutfits: avoid.map((o) => o.slots.map((slot) => slot.itemId)),
+  });
 
   console.info(
     `[suggest-outfits] closet=${closet.length} candidates=${rows.length} sent=${items.length} feedback=${feedbackSummary ? 'yes' : 'no'} raw=${raw.length} images=${tImages - t0}ms model=${Date.now() - tImages}ms`

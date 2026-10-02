@@ -5,14 +5,14 @@ vi.mock('@/lib/supabase/server', () => ({ getSupabaseAndUser: vi.fn() }));
 vi.mock('@/lib/rateLimit', () => ({ checkRateLimit: vi.fn() }));
 vi.mock('@/services/weather', () => ({ getWeather: vi.fn() }));
 vi.mock('../../../lib/ai/suggest-outfits', () => ({ pickOutfits: vi.fn(), resolveOutfits: vi.fn() }));
-vi.mock('../../../lib/tryon/jobs', () => ({ ensureTryonJobs: vi.fn() }));
+vi.mock('../../../lib/tryon/jobs', () => ({ ensureTryonJobs: vi.fn(), cancelQueuedTryonJobs: vi.fn() }));
 
 import { GET } from './route';
 import { getSupabaseAndUser } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getWeather } from '@/services/weather';
 import { pickOutfits, resolveOutfits } from '../../../lib/ai/suggest-outfits';
-import { ensureTryonJobs } from '../../../lib/tryon/jobs';
+import { cancelQueuedTryonJobs, ensureTryonJobs } from '../../../lib/tryon/jobs';
 
 const WEATHER = { temperature: 30, feelsLike: 33, humidity: 70, condition: 'sunny', windSpeed: 5, locationName: '台北' };
 const RAW = [{ title: '清爽', reason: '熱', slots: [{ slotKey: 'top_inner', itemId: 'a' }] }];
@@ -137,4 +137,65 @@ describe('GET /api/daily-outfits', () => {
     expect(JSON.stringify(body)).not.toContain('secret');
     expect(db.upsert).not.toHaveBeenCalled();
   });
+
+  describe('換一批 refresh=1', () => {
+    const NEW_RAW = [{ title: '新的', reason: '換', slots: [{ slotKey: 'top_inner', itemId: 'z' }] }];
+    const NEW_OUTFIT = { ...OUTFIT, styleName: '新的' };
+    const REFRESH = `${QUERY}&refresh=1`;
+
+    beforeEach(() => {
+      db = makeSupabase({ outfits: RAW });
+      vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: db.supabase as never, user: { id: 'u1' } as never });
+    });
+
+    it('已存過也重挑：請模型避開剛給過的、新結果蓋掉存的、取消排隊中的試穿再登記新的', async () => {
+      vi.mocked(pickOutfits).mockResolvedValue({ raw: NEW_RAW, reason: 'OK' } as never);
+      vi.mocked(resolveOutfits).mockResolvedValue([NEW_OUTFIT] as never);
+      const order: string[] = [];
+      vi.mocked(cancelQueuedTryonJobs).mockImplementation(async () => void order.push('cancel'));
+      vi.mocked(ensureTryonJobs).mockImplementation(async () => (order.push('ensure'), new Map()));
+
+      const body = await (await GET(makeReq(REFRESH))).json();
+      expect(body.outfits).toEqual([NEW_OUTFIT]);
+      expect(checkRateLimit).toHaveBeenCalled();
+      expect(pickOutfits).toHaveBeenCalledWith(expect.objectContaining({ avoid: RAW }));
+      expect(db.upsert).toHaveBeenCalledWith(expect.objectContaining({ outfits: NEW_RAW }));
+      expect(cancelQueuedTryonJobs).toHaveBeenCalledWith(db.supabase, 'u1');
+      expect(order).toEqual(['cancel', 'ensure']);
+    });
+
+    it('重挑失敗：回原本那幾套並附原因，不存表、不取消試穿', async () => {
+      vi.mocked(pickOutfits).mockRejectedValue(new Error('boom'));
+      const body = await (await GET(makeReq(REFRESH))).json();
+      expect(body).toMatchObject({ outfits: [OUTFIT], reason: 'AI_UNAVAILABLE' });
+      expect(resolveOutfits).toHaveBeenCalledWith(db.supabase, 'u1', RAW);
+      expect(db.upsert).not.toHaveBeenCalled();
+      expect(cancelQueuedTryonJobs).not.toHaveBeenCalled();
+    });
+
+    it('模型又給了剛給過的組合就濾掉，全部重複時回原本那幾套', async () => {
+      vi.mocked(pickOutfits).mockResolvedValue({ raw: [...RAW], reason: 'OK' } as never);
+      vi.mocked(resolveOutfits).mockImplementation(async (_s, _u, raw) => (raw.length ? [OUTFIT] : []) as never);
+      const body = await (await GET(makeReq(REFRESH))).json();
+      expect(vi.mocked(resolveOutfits).mock.calls[0][2]).toEqual([]);
+      expect(body).toMatchObject({ outfits: [OUTFIT], reason: 'NO_OUTFIT' });
+      expect(db.upsert).not.toHaveBeenCalled();
+    });
+
+    it('限流時回 429，不叫模型', async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({ allowed: false, remaining: 0, limit: 20, resetAfter: 100, resetAt: 0, retryAfter: 100 });
+      expect((await GET(makeReq(REFRESH))).status).toBe(429);
+      expect(pickOutfits).not.toHaveBeenCalled();
+      expect(cancelQueuedTryonJobs).not.toHaveBeenCalled();
+    });
+
+    it('沒帶 refresh 時不取消試穿、不帶 avoid', async () => {
+      db = makeSupabase(null);
+      vi.mocked(getSupabaseAndUser).mockResolvedValue({ supabase: db.supabase as never, user: { id: 'u1' } as never });
+      await GET(makeReq(QUERY));
+      expect(cancelQueuedTryonJobs).not.toHaveBeenCalled();
+      expect(vi.mocked(pickOutfits).mock.calls[0][0]).not.toHaveProperty('avoid');
+    });
+  });
 });
+
